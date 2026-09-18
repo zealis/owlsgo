@@ -1,4 +1,4 @@
-# owlsgo（owlsgo）
+# owlsgo
 
 一个**纯原生 PHP** 的轻量论坛系统：不依赖任何第三方框架与 Composer 包，无构建步骤，
 
@@ -265,49 +265,7 @@ php -S 127.0.0.1:8080 -t public router.php
 
 ---
 
-## 数据库配置
 
-优先级（高 → 低）：
-
-1. `storage/config/database.php` —— 安装向导生成，含真实凭据
-2. 环境变量 `OWLSGO_DB_*`
-3. `config/database.php` 中的默认值
-
-### 使用 SQLite（默认，零配置）
-
-```php
-'driver'   => 'sqlite',
-'database' => 'owlsgo.sqlite',   // 实际文件落在 storage/database/ 下
-```
-
-### 使用 MySQL / PostgreSQL
-
-```php
-'driver'   => 'mysql',          // 或 pgsql
-'host'     => '127.0.0.1',
-'port'     => 3306,             // 0 表示按引擎取默认端口
-'database' => 'owlsgo',
-'username' => 'owlsgo',
-'password' => '……',
-```
-
-### 使用环境变量
-
-```bash
-OWLSGO_DB_DRIVER=mysql
-OWLSGO_DB_HOST=127.0.0.1
-OWLSGO_DB_PORT=3306
-OWLSGO_DB_NAME=owlsgo
-OWLSGO_DB_USER=owlsgo
-OWLSGO_DB_PASS=……
-```
-
-> **说明**：本系统不使用表前缀。需要在同一数据库部署多套论坛时，请使用不同的库或 schema。
->
-> 三种引擎的建表脚本分别位于 `sql/sqlite.sql`、`sql/mysql.sql`、`sql/pgsql.sql`，
-> 所有时间字段统一为 `INTEGER`（Unix 时间戳），删除统一为软删除（`deleted_at IS NULL`）。
-
----
 
 ## 计划任务配置
 
@@ -387,78 +345,4 @@ final class Plugin
 
 ---
 
-## 常见问题
-
-**访问首页跳到了 `/install`**
-说明 `storage/install.lock` 不存在。完成安装向导即可；若是迁移过来的站点，请确认 `storage/` 已一并拷贝且有写权限。
-
-**想重新安装（重置站点）**
-删除 `storage/install.lock`，再删除 `storage/config/database.php`（换库时）或直接清空数据库，
-然后重新访问 `/install`。`storage/` 下的附件、头像与日志不会自动清除，需要手动处理。
-
-**页面能打开，但点任何链接都 404**
-URL 重写没生效。Apache 检查 `mod_rewrite` 与 `AllowOverride`；Nginx 检查 `try_files` 一行；
-或直接改用兼容形态：`config/app.php` 中设 `'pretty_url' => false`。
-
-**URL 里多出一段 `/public/`**
-站点根目录被指向了 `forum/`（走了降级方案）。要么把根目录改为 `forum/public/`，
-要么在 `config/app.php` 中设 `'base_path' => ''` 去掉前缀。
-
-**部署在子目录，样式和链接全部错位**
-在 `config/app.php` 中显式指定前缀，例如 `'base_path' => '/forum'`，
-同时解开 `public/.htaccess` 的 `RewriteBase` 一行。
-
-**页面样式或图标丢失**
-确认 Web 根目录指向的是 `public/`，且 `public/assets/` 已完整上传。
-
-**合并后的插件资源没有更新**
-核心仅在源文件修改时间变化时重建。可删除 `storage/cache/plugins.css`、`storage/cache/plugins.js`
-与 `storage/cache/.signature` 强制重建；插件未启用时不会生成合并资源。
-
-**接口返回 419**
-表单缺少 CSRF 字段。请确认表单内有 `<?= csrf_field() ?>`。
-
-**接口返回 429**
-触发了限流，等待窗口期结束即可；阈值在 `config/app.php` 的 `rate_limit` 中调整。
-
-**上传失败**
-检查 PHP 的 `upload_max_filesize`、`post_max_size`，以及 Nginx 的 `client_max_body_size`，
-三者都要不小于后台上传设置中的单文件上限。
-
-**在 phpStudy Pro（小皮面板）上部署时踩坑**
-三个高频问题：① 站点根目录要指向 `forum/public/`，指向 `forum/` 会走降级方案、URL 多出 `/public/`；
-② Apache 需要 `AllowOverride All`，否则 `.htaccess` 不生效、所有伪静态链接 404；
-③ `php.ini` 里 GD 若写成 `extension=gd2`，应改为 `extension=php_gd.dll`（phpStudy 自带的 DLL 名是后者）。
-完整步骤见上文「phpStudy Pro / 小皮面板（Windows 图形化）」。
-
-**打开就 404 Not Found，怎么快速定位是哪一层出的问题**
-先看 404 页面的**样子**，一眼就能分清：
-
-| 你看到的 | 谁返回的 | 含义与处理 |
-| --- | --- | --- |
-| 英文 **404 Not Found**（小皮/nginx 自带的错误页，通常带 `nginx` 或面板样式） | Nginx | 请求**根本没进 PHP**。典型原因：站点根目录指错、Nginx 缺伪静态规则（`nginx.htaccess` 为空）、或面板「伪静态」没配。 |
-| 中文 **404 页面不存在**（论坛自己的蓝白主题页面） | 本程序 | 请求**已经进 PHP**，只是路由没匹配上（URL 写错，或该内容已被删除）。此时伪静态是正常的。 |
-| 中文 **403 没有权限** | 本程序 | 伪静态正常，是权限判定拦下的（如版块不允许发帖）。 |
-
-用命令行判定更准（把域名换成你的）：
-
-```bash
-curl -sk -o /dev/null -w "%{http_code}\n" https://localhost/install
-# 200 -> 正常；404 -> 卡在 Nginx 层
-```
-
-若确认是 Nginx 层：首页能开、但 `/install`、`/login` 这类地址 404，
-**几乎一定是缺 `try_files`**。小皮面板用户到「网站 → 管理 → 伪静态」填一行
-`try_files $uri $uri/ /index.php?$query_string;` 保存即可（详见上文 phpStudy 一节）。
-
-**点击「开始安装」弹出「服务器返回了无法解析的内容」；控制台 POST 403，URL 是 `[object HTMLButtonElement]`**
-
-安装表单里的「测试数据库连接」按钮用了 `name="action" value="test"`，而 JS 旧代码
-用 `form.action` 取提交地址。HTML 表单控件会按 `name` 变成 `form` 的属性，于是
-`form.action` 返回的是那个**按钮元素**，而不是 `/install`，fetch 把它字符串化后就成了
-`[object HTMLButtonElement]`，POST 到了 `/[object HTMLButtonElement]` → 403。
-
-新版 `public/assets/js/app.js` 已改为 `form.getAttribute('action')`，并把提交按钮传给
-`FormData(form, submitter)`，确保 `action=test` 能正确送到后端。
-刷新页面加载新的 `app.js?v=...` 即可。
 
