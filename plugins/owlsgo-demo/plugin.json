@@ -1,0 +1,73 @@
+{
+    "name": "owlsgo 示例插件",
+    "version": "1.0.0",
+    "description": "演示 owlsgo 插件机制的最小可用插件：正文装饰、活动记录、前台路由、后台页面、导航菜单、用户中心标签页与计划任务。可直接作为自研插件的骨架，也可在后台「插件管理」中启用它以逐项验证插件能力。",
+    "author": "owlsgo Team",
+    "url": "https://example.com/owlsgo/owlsgo-demo",
+    "entry": "Plugin.php",
+    "namespace": "OwlsgoDemo",
+    "requires": "1.0.0",
+    "hooks": [
+        "content_rendered",
+        "before_thread_create",
+        "before_post_create",
+        "after_thread_create",
+        "after_post_create",
+        "head_assets",
+        "footer_assets",
+        "nav_links",
+        "user_profile_tabs"
+    ],
+    "assets": {
+        "css": ["assets/plugin.css"],
+        "js": ["assets/plugin.js"]
+    },
+    "settings": {
+        "greeting": {
+            "label": "问候语",
+            "type": "text",
+            "default": "你好，owlsgo！",
+            "hint": "展示在插件前台页面 /hello 的标题区。"
+        },
+        "welcome_style": {
+            "label": "前台页面样式",
+            "type": "select",
+            "default": "card",
+            "options": {
+                "card": "卡片式（推荐）",
+                "plain": "极简式"
+            },
+            "hint": "仅影响插件自己渲染的页面，用于演示 select 类型配置。"
+        },
+        "footnote": {
+            "label": "正文脚注",
+            "type": "text",
+            "default": "",
+            "hint": "留空表示不追加。填写后会在每篇帖子正文末尾追加一行说明文字，用于演示 content_rendered 钩子。"
+        },
+        "block_keywords": {
+            "label": "禁止词",
+            "type": "text",
+            "default": "",
+            "hint": "多个词用英文逗号分隔，留空表示不限制。命中时会在提交前拦截并给出提示，用于演示 before_thread_create / before_post_create 钩子。"
+        },
+        "enable_head_assets": {
+            "label": "向页面 <head> 注入插件样式",
+            "type": "checkbox",
+            "default": "1",
+            "hint": "关闭后前台与后台都不会加载本插件样式，用于演示 head_assets 钩子。"
+        },
+        "enable_footer_assets": {
+            "label": "在页面底部注入插件脚本",
+            "type": "checkbox",
+            "default": "1",
+            "hint": "关闭后不会加载本插件脚本，用于演示 footer_assets 钩子。"
+        },
+        "retention_days": {
+            "label": "活动日志保留天数",
+            "type": "number",
+            "default": "7",
+            "hint": "计划任务每天清理一次，超过该天数的插件活动日志会被删除。"
+        }
+    }
+}

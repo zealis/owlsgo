@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------
+# owlsgo 版本库忽略规则
+# 仓库根目录 = forum/（owlsgo 应用本身）
+#
+# 说明：storage/ 下的内容全部是「安装程序运行时生成」的（数据库、密钥、
+# 会话、缓存、上传、头像、日志）。bootstrap.php 会在每次请求开始时按需
+# 创建缺失的子目录，所以这些目录不需要入库——入库反而会把本地数据库、
+# 密钥、会话和日志带到别人机器上，存在安全隐患。
+# ---------------------------------------------------------------------------
+
+# ===== 运行时产物（由 Installer / bootstrap 按需生成，切勿入库）=====
+/storage/install.lock
+/storage/config/
+/storage/database/
+/storage/cache/
+/storage/logs/
+/storage/sessions/
+/storage/uploads/
+/storage/avatars/
+
+# 保留 storage 目录骨架，便于克隆后 bootstrap 直接可用
+!storage/.gitkeep
+
+# ===== 本地开发 / 构建工具（含浏览器缓存、数据库备份、密钥等，严禁入库）=====
+/.tools/
+/tools/
+
+# ===== 依赖（本项目零依赖，保留以防万一）=====
+/vendor/
+/node_modules/
+
+# ===== 编辑器 / IDE =====
+.idea/
+.vscode/
+*.iml
+/.fleet/
+/.zed/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== PHP =====
+composer.phar
+.phpunit.result.cache
+
+# ===== 日志 =====
+*.log

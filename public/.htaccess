@@ -1,0 +1,61 @@
+# ============================================================================
+#  owlsgo —— 站点根目录为 public/ 时的 Apache 配置
+# ============================================================================
+#  生效条件
+#    1. DocumentRoot 指向 forum/public/
+#    2. AllowOverride All（或至少 AllowOverride FileInfo），且已启用 mod_rewrite
+#
+#  若主机商不允许修改站点根目录，请改用 forum/.htaccess 的降级方案。
+# ============================================================================
+
+# 关闭目录浏览（防止 assets/ 等目录被列表）
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 部署在子目录时（如 https://example.com/forum/），解开下一行并填写实际路径
+    # RewriteBase /forum/
+
+    # 真实存在的文件与目录直接返回：静态资源、favicon、目录首页
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 其余请求全部交给唯一入口
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# 隐藏文件（.htaccess、.user.ini、.env 等）一律不可访问
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# nginx.htaccess 是给 phpStudy/小皮面板 用的伪静态片段（文件名不以 . 开头，
+# 上面那条盖不住），在 Apache 下没有任何用途，直接禁掉避免被下载。
+<FilesMatch "^nginx\.htaccess$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 兜底：禁止访问源码、配置与数据库文件（万一被误放进 public/）
+<FilesMatch "\.(md|sql|sqlite|sqlite3|db|ini|log|json|lock|yml|yaml|bak|tmp)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

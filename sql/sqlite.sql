@@ -1,0 +1,297 @@
+-- ============================================================================
+--  owlsgo Forum - SQLite 建表脚本
+--  说明：所有时间字段统一使用 INTEGER（Unix 时间戳，秒）以保证跨引擎一致
+--       所有删除均为软删除（deleted_at IS NULL 表示未删除）
+-- ============================================================================
+
+-- 用户组表 ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "usergroups" (
+    "id"          INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name"        TEXT    NOT NULL,
+    "slug"        TEXT    NOT NULL,
+    "description" TEXT    NOT NULL DEFAULT '',
+    "color"       TEXT    NOT NULL DEFAULT '',
+    "icon"        TEXT    NOT NULL DEFAULT '',
+    "permissions" TEXT    NOT NULL DEFAULT '{}',
+    "is_system"   INTEGER NOT NULL DEFAULT 0,
+    "sort_order"  INTEGER NOT NULL DEFAULT 0,
+    "created_at"  INTEGER NOT NULL DEFAULT 0,
+    "updated_at"  INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_usergroups_slug" ON "usergroups" ("slug");
+
+-- 用户表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "users" (
+    "id"             INTEGER PRIMARY KEY AUTOINCREMENT,
+    "username"       TEXT    NOT NULL,
+    "email"          TEXT    NOT NULL,
+    "password_hash"  TEXT    NOT NULL,
+    "group_id"       INTEGER NOT NULL DEFAULT 1,
+    "avatar"         TEXT    NOT NULL DEFAULT '',
+    "signature"      TEXT    NOT NULL DEFAULT '',
+    "bio"            TEXT    NOT NULL DEFAULT '',
+    "location"       TEXT    NOT NULL DEFAULT '',
+    "points"         INTEGER NOT NULL DEFAULT 0,
+    "thread_count"   INTEGER NOT NULL DEFAULT 0,
+    "post_count"     INTEGER NOT NULL DEFAULT 0,
+    "favorite_count" INTEGER NOT NULL DEFAULT 0,
+    "status"         INTEGER NOT NULL DEFAULT 1,
+    "register_ip"    TEXT    NOT NULL DEFAULT '',
+    "last_login_ip"  TEXT    NOT NULL DEFAULT '',
+    "last_login_at"  INTEGER NOT NULL DEFAULT 0,
+    "last_active_at" INTEGER NOT NULL DEFAULT 0,
+    "created_at"     INTEGER NOT NULL DEFAULT 0,
+    "updated_at"     INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"     INTEGER DEFAULT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_username" ON "users" ("username");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_users_email" ON "users" ("email");
+CREATE INDEX IF NOT EXISTS "idx_users_group" ON "users" ("group_id");
+
+-- 版块表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "forums" (
+    "id"               INTEGER PRIMARY KEY AUTOINCREMENT,
+    "parent_id"        INTEGER NOT NULL DEFAULT 0,
+    "name"             TEXT    NOT NULL,
+    "slug"             TEXT    NOT NULL DEFAULT '',
+    "description"      TEXT    NOT NULL DEFAULT '',
+    "icon"             TEXT    NOT NULL DEFAULT '',
+    "announcement"     TEXT    NOT NULL DEFAULT '',
+    "sort_order"       INTEGER NOT NULL DEFAULT 0,
+    "status"           INTEGER NOT NULL DEFAULT 1,
+    "allow_thread"     INTEGER NOT NULL DEFAULT 1,
+    "allow_reply"      INTEGER NOT NULL DEFAULT 1,
+    "allow_attachment" INTEGER NOT NULL DEFAULT 1,
+    "group_view"       TEXT    NOT NULL DEFAULT '',
+    "group_thread"     TEXT    NOT NULL DEFAULT '',
+    "group_reply"      TEXT    NOT NULL DEFAULT '',
+    "moderators"       TEXT    NOT NULL DEFAULT '',
+    "thread_count"     INTEGER NOT NULL DEFAULT 0,
+    "post_count"       INTEGER NOT NULL DEFAULT 0,
+    "last_thread_id"   INTEGER NOT NULL DEFAULT 0,
+    "last_thread_name" TEXT    NOT NULL DEFAULT '',
+    "last_reply_at"    INTEGER NOT NULL DEFAULT 0,
+    "created_at"       INTEGER NOT NULL DEFAULT 0,
+    "updated_at"       INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"       INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_forums_parent" ON "forums" ("parent_id", "sort_order");
+
+-- 主题表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "threads" (
+    "id"                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    "forum_id"           INTEGER NOT NULL,
+    "user_id"            INTEGER NOT NULL,
+    "title"              TEXT    NOT NULL,
+    "views"              INTEGER NOT NULL DEFAULT 0,
+    "reply_count"        INTEGER NOT NULL DEFAULT 0,
+    "like_count"         INTEGER NOT NULL DEFAULT 0,
+    "favorite_count"     INTEGER NOT NULL DEFAULT 0,
+    "is_pinned"          INTEGER NOT NULL DEFAULT 0,
+    "is_essence"         INTEGER NOT NULL DEFAULT 0,
+    "is_locked"          INTEGER NOT NULL DEFAULT 0,
+    "is_recommended"     INTEGER NOT NULL DEFAULT 0,
+    "status"             INTEGER NOT NULL DEFAULT 1,
+    "last_reply_at"      INTEGER NOT NULL DEFAULT 0,
+    "last_reply_user_id" INTEGER NOT NULL DEFAULT 0,
+    "created_at"         INTEGER NOT NULL DEFAULT 0,
+    "updated_at"         INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"         INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_threads_forum" ON "threads" ("forum_id", "is_pinned", "last_reply_at");
+CREATE INDEX IF NOT EXISTS "idx_threads_user" ON "threads" ("user_id", "created_at");
+CREATE INDEX IF NOT EXISTS "idx_threads_status" ON "threads" ("status", "deleted_at");
+
+-- 回帖表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "posts" (
+    "id"          INTEGER PRIMARY KEY AUTOINCREMENT,
+    "thread_id"   INTEGER NOT NULL,
+    "forum_id"    INTEGER NOT NULL DEFAULT 0,
+    "user_id"     INTEGER NOT NULL,
+    "parent_id"   INTEGER NOT NULL DEFAULT 0,
+    "floor"       INTEGER NOT NULL DEFAULT 1,
+    "is_first"    INTEGER NOT NULL DEFAULT 0,
+    "content"     TEXT    NOT NULL,
+    "content_html" TEXT   NOT NULL DEFAULT '',
+    "like_count"  INTEGER NOT NULL DEFAULT 0,
+    "status"      INTEGER NOT NULL DEFAULT 1,
+    "ip"          TEXT    NOT NULL DEFAULT '',
+    "device"      TEXT    NOT NULL DEFAULT '',
+    "user_agent"  TEXT    NOT NULL DEFAULT '',
+    "created_at"  INTEGER NOT NULL DEFAULT 0,
+    "updated_at"  INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"  INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_posts_thread" ON "posts" ("thread_id", "floor");
+CREATE INDEX IF NOT EXISTS "idx_posts_user" ON "posts" ("user_id", "created_at");
+CREATE INDEX IF NOT EXISTS "idx_posts_parent" ON "posts" ("parent_id");
+CREATE INDEX IF NOT EXISTS "idx_posts_status" ON "posts" ("status", "deleted_at");
+
+-- 收藏表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "favorites" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "user_id"    INTEGER NOT NULL,
+    "thread_id"  INTEGER NOT NULL,
+    "created_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_favorites_unique" ON "favorites" ("user_id", "thread_id");
+CREATE INDEX IF NOT EXISTS "idx_favorites_user" ON "favorites" ("user_id", "created_at");
+
+-- 点赞表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "likes" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "user_id"    INTEGER NOT NULL,
+    "target"     TEXT    NOT NULL,
+    "target_id"  INTEGER NOT NULL,
+    "created_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_likes_unique" ON "likes" ("user_id", "target", "target_id");
+
+-- 附件表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "attachments" (
+    "id"          INTEGER PRIMARY KEY AUTOINCREMENT,
+    "user_id"     INTEGER NOT NULL,
+    "thread_id"   INTEGER NOT NULL DEFAULT 0,
+    "post_id"     INTEGER NOT NULL DEFAULT 0,
+    "name"        TEXT    NOT NULL,
+    "path"        TEXT    NOT NULL,
+    "mime"        TEXT    NOT NULL DEFAULT '',
+    "size"        INTEGER NOT NULL DEFAULT 0,
+    "hash"        TEXT    NOT NULL DEFAULT '',
+    "is_image"    INTEGER NOT NULL DEFAULT 0,
+    "downloads"   INTEGER NOT NULL DEFAULT 0,
+    "status"      INTEGER NOT NULL DEFAULT 1,
+    "created_at"  INTEGER NOT NULL DEFAULT 0,
+    "updated_at"  INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"  INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_attachments_user" ON "attachments" ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_attachments_post" ON "attachments" ("post_id");
+CREATE INDEX IF NOT EXISTS "idx_attachments_hash" ON "attachments" ("hash");
+
+-- 站点设置表 ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "settings" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "key"        TEXT    NOT NULL,
+    "value"      TEXT    NOT NULL DEFAULT '',
+    "updated_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_settings_key" ON "settings" ("key");
+
+-- 插件表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "plugins" (
+    "id"           TEXT    NOT NULL,
+    "name"         TEXT    NOT NULL,
+    "version"      TEXT    NOT NULL DEFAULT '1.0.0',
+    "description"  TEXT    NOT NULL DEFAULT '',
+    "author"       TEXT    NOT NULL DEFAULT '',
+    "url"          TEXT    NOT NULL DEFAULT '',
+    "enabled"      INTEGER NOT NULL DEFAULT 0,
+    "is_system"    INTEGER NOT NULL DEFAULT 0,
+    "config"       TEXT    NOT NULL DEFAULT '{}',
+    "hooks"        TEXT    NOT NULL DEFAULT '',
+    "sort_order"   INTEGER NOT NULL DEFAULT 0,
+    "installed_at" INTEGER NOT NULL DEFAULT 0,
+    "created_at"   INTEGER NOT NULL DEFAULT 0,
+    "updated_at"   INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"   INTEGER DEFAULT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_plugins_id" ON "plugins" ("id");
+
+-- 封禁表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "bans" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "type"       TEXT    NOT NULL DEFAULT 'user',
+    "value"      TEXT    NOT NULL,
+    "reason"     TEXT    NOT NULL DEFAULT '',
+    "admin_id"   INTEGER NOT NULL DEFAULT 0,
+    "expires_at" INTEGER NOT NULL DEFAULT 0,
+    "created_at" INTEGER NOT NULL DEFAULT 0,
+    "updated_at" INTEGER NOT NULL DEFAULT 0,
+    "deleted_at" INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_bans_type_value" ON "bans" ("type", "value");
+
+-- 通知表 ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "notifications" (
+    "id"           INTEGER PRIMARY KEY AUTOINCREMENT,
+    "recipient_id" INTEGER NOT NULL,
+    "sender_id"    INTEGER NOT NULL DEFAULT 0,
+    "kind"         TEXT    NOT NULL DEFAULT 'system',
+    "content"      TEXT    NOT NULL DEFAULT '',
+    "thread_id"    INTEGER NOT NULL DEFAULT 0,
+    "post_id"      INTEGER NOT NULL DEFAULT 0,
+    "is_read"      INTEGER NOT NULL DEFAULT 0,
+    "created_at"   INTEGER NOT NULL DEFAULT 0,
+    "updated_at"   INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"   INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_notifications_recipient" ON "notifications" ("recipient_id", "is_read", "created_at");
+
+-- 限流表（接口防刷 / 登录失败计数）--------------------------------------
+CREATE TABLE IF NOT EXISTS "rate_limits" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "bucket"     TEXT    NOT NULL,
+    "hits"       INTEGER NOT NULL DEFAULT 0,
+    "expires_at" INTEGER NOT NULL DEFAULT 0,
+    "created_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_rate_limits_bucket" ON "rate_limits" ("bucket");
+
+-- 计划任务表 ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "cron_tasks" (
+    "id"           INTEGER PRIMARY KEY AUTOINCREMENT,
+    "plugin"       TEXT    NOT NULL DEFAULT '',
+    "name"         TEXT    NOT NULL,
+    "interval"     INTEGER NOT NULL DEFAULT 3600,
+    "last_run_at"  INTEGER NOT NULL DEFAULT 0,
+    "next_run_at"  INTEGER NOT NULL DEFAULT 0,
+    "last_status"  TEXT    NOT NULL DEFAULT '',
+    "run_count"    INTEGER NOT NULL DEFAULT 0,
+    "enabled"      INTEGER NOT NULL DEFAULT 1,
+    "created_at"   INTEGER NOT NULL DEFAULT 0,
+    "updated_at"   INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_cron_tasks_unique" ON "cron_tasks" ("plugin", "name");
+CREATE INDEX IF NOT EXISTS "idx_cron_tasks_next" ON "cron_tasks" ("enabled", "next_run_at");
+
+-- 计划任务日志表 --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "cron_logs" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name"       TEXT    NOT NULL DEFAULT '',
+    "status"     TEXT    NOT NULL DEFAULT 'ok',
+    "message"    TEXT    NOT NULL DEFAULT '',
+    "duration"   INTEGER NOT NULL DEFAULT 0,
+    "created_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS "idx_cron_logs_created" ON "cron_logs" ("created_at");
+
+-- 操作日志表（后台审计）------------------------------------------------
+CREATE TABLE IF NOT EXISTS "logs" (
+    "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+    "user_id"    INTEGER NOT NULL DEFAULT 0,
+    "action"     TEXT    NOT NULL DEFAULT '',
+    "target"     TEXT    NOT NULL DEFAULT '',
+    "detail"     TEXT    NOT NULL DEFAULT '',
+    "ip"         TEXT    NOT NULL DEFAULT '',
+    "created_at" INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS "idx_logs_user" ON "logs" ("user_id", "created_at");
+CREATE INDEX IF NOT EXISTS "idx_logs_action" ON "logs" ("action", "created_at");
+
+-- 全站通知（公告）表 -----------------------------------------------------
+-- 通知中心的内容载体：一个站点可有多条公告，由拥有 notice.manage 权限的用户维护。
+-- attachment_ids 存逗号分隔的附件 ID（"3,7,12"），附件管理页据此统计引用关系。
+CREATE TABLE IF NOT EXISTS "notices" (
+    "id"             INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name"           TEXT    NOT NULL DEFAULT '',
+    "title"          TEXT    NOT NULL DEFAULT '',
+    "body"           TEXT    NOT NULL DEFAULT '',
+    "attachment_ids" TEXT    NOT NULL DEFAULT '',
+    "enabled"        INTEGER NOT NULL DEFAULT 1,
+    "sort"           INTEGER NOT NULL DEFAULT 10,
+    "created_at"     INTEGER NOT NULL DEFAULT 0,
+    "updated_at"     INTEGER NOT NULL DEFAULT 0,
+    "deleted_at"     INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS "idx_notices_sort" ON "notices" ("sort");

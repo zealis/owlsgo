@@ -1,0 +1,72 @@
+/*
+ * owlsgo-demo 插件样式
+ *
+ * 由 PluginManager::mergeAssets() 合并进 /plugin-assets/css 后统一加载。
+ * 约定：
+ *  - 不写 @import（合并时会被自动剥离）
+ *  - 不使用全局元素选择器，避免污染站点其它页面
+ *  - 颜色与间距一律复用主题变量（theme.css 的 --qq-* 与 OATUI 的 --space-*）
+ */
+
+/* 通过 content_rendered 钩子追加到帖子正文末尾的脚注 */
+.owlsgo-demo-footnote {
+    margin: var(--space-3) 0 0;
+    padding: 8px 12px;
+    border-inline-start: 3px solid var(--qq-blue);
+    background: var(--qq-soft);
+    border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--qq-blue-deep);
+}
+
+/* 由插件脚本动态插入的角标 */
+.owlsgo-demo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-inline-start: 8px;
+    padding: 1px 8px;
+    border: 1px solid var(--qq-line);
+    border-radius: var(--radius-full);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--qq-ink-3);
+    vertical-align: middle;
+}
+
+.owlsgo-demo-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--owlsgo-demo-accent, var(--qq-blue));
+}
+
+/* 打字机光标，仅在不减少动效时显示 */
+.owlsgo-demo-typing::after {
+    content: "▍";
+    margin-inline-start: 2px;
+    color: var(--owlsgo-demo-accent, var(--qq-blue));
+    animation: owlsgo-demo-blink 1s steps(1, end) infinite;
+}
+
+@keyframes owlsgo-demo-blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+
+    50%,
+    100% {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .owlsgo-demo-typing::after {
+        animation: none;
+        content: "";
+    }
+}

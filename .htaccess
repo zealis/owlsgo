@@ -1,0 +1,49 @@
+# ============================================================================
+#  owlsgo —— 「降级方案」：站点根目录只能指向 forum/ 时使用
+# ============================================================================
+#  正常情况下请把 DocumentRoot 指向 forum/public/（见 public/.htaccess），
+#  那样 core/、storage/ 等目录天然位于站点根目录之外，最安全。
+#
+#  若主机商不允许修改站点根目录，可把根目录指向 forum/，由本文件：
+#    1. 挡住 core/、storage/ 等不应暴露的目录
+#    2. 把请求重写到 public/ 下
+#    3. 把 assets/ 等静态资源映射到 public/ 下
+#
+#  注意：此模式下自动探测出的基础路径是 /public，因此页面 URL 形如
+#        /public/t/12。想要干净的 URL，请在 config/app.php 中设置：
+#            'base_path' => '',
+# ============================================================================
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1) 绝不对外暴露的目录 —— 直接 403
+    RewriteRule ^(core|modules|templates|config|sql|plugins|storage|docs)(/|$) - [F,L]
+
+    # 2) 兜底拒绝源码、配置与数据文件
+    RewriteRule \.(md|sql|sqlite|sqlite3|db|ini|log|lock|yml|yaml)$ - [F,L]
+
+    # 3) 直接命中 public/ 下的真实文件或目录（静态资源）时放行
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^public/ - [L]
+
+    # 4) base_path 设为空串时的静态资源映射（/assets/css/theme.css → public/assets/...）
+    RewriteRule ^(assets|favicon\.[A-Za-z0-9]+)(/.*)?$ public/$1$2 [L]
+
+    # 5) 其余请求全部交给 public/index.php
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+# 隐藏文件一律不可访问
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
