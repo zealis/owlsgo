@@ -85,19 +85,23 @@ $hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
             $noticeBody = trim((string)($notice['body'] ?? ''));
             ?>
             <article class="notice-card" id="notice-<?= (int)($notice['id'] ?? 0) ?>">
-                <div class="notice-card__bar">
-                    <span class="notice-card__name">
-                        <?= e((string)($notice['name'] ?? '站点公告')) ?>
-                        <?php if (!$isPublic): ?>
-                            <span class="badge outline">未公开</span>
-                        <?php endif; ?>
-                    </span>
+                <?php
+                /*
+                 * 标题行：公告标题在左；「未公开」徽章与「编辑公告」贴在行的最右。
+                 * （原先标题上方还有一行灰字「站点公告」——那是公告名称，已去掉；
+                 *   未公开的提示合并到这一行，不再单独占一行。）
+                 */
+                ?>
+                <div class="notice-card__head">
+                    <h3 class="notice-card__title"><?= e((string)($notice['title'] ?? '')) ?></h3>
                     <span class="spacer"></span>
+                    <?php if (!$isPublic): ?>
+                        <span class="badge outline">未公开</span>
+                    <?php endif; ?>
                     <?php if ($canManage): ?>
                         <a class="notice-card__edit" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
                     <?php endif; ?>
                 </div>
-                <h3 class="notice-card__title"><?= e((string)($notice['title'] ?? '')) ?></h3>
                 <?php if ($noticeBody !== ''): ?>
                     <div class="notice-card__body"><?= \Core\Text::toHtml($noticeBody) ?></div>
                 <?php endif; ?>

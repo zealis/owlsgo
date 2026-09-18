@@ -601,6 +601,15 @@
       return;
     }
 
+    /*
+     * 已提交：内容已经交给服务端了。提交必然伴随页面卸载（跳转），
+     * 卸载时的补存若照常执行，就会把刚提交的内容又写回草稿
+     * —— 「点了提交，回来却又弹出草稿」就是这么来的。
+     */
+    if (form.__draftSubmitted) {
+      return;
+    }
+
     var data = collectDraft(form);
     if (draftIsEmpty(data)) {
       store.removeItem(draftKey(form));
@@ -753,8 +762,14 @@
         form.__draftResolved = false;
       }
 
-      /** 用户一旦自己动手输入，就视为「已处理」：撤掉待恢复提示并恢复自动保存 */
-      function resolveByTyping() {
+      /**
+       * 用户重新开始编辑（输入文字 / 点附件按钮）：
+       *  - 撤掉「待恢复草稿」提示，视为已处理；
+       *  - 解除「已提交」状态 —— 提交被打回（422）后继续修改，自动保存要能恢复。
+       */
+      function resumeEditing() {
+        form.__draftSubmitted = false;
+
         if (form.__draftPending && !form.__draftResolved) {
           form.__draftResolved = true;
           if (form.__draftNotice && form.__draftNotice.parentNode) {
@@ -768,7 +783,7 @@
       form.addEventListener('input', function (event) {
         if (event.target && event.target.matches
           && event.target.matches('input[name="title"], textarea[name="content"]')) {
-          resolveByTyping();
+          resumeEditing();
           scheduleDraft(form);
         }
       });
@@ -776,7 +791,7 @@
       // 附件的增删走事件委托，点击后补存一次
       form.addEventListener('click', function (event) {
         if (event.target && event.target.closest && event.target.closest('.attachment-icon-btn')) {
-          resolveByTyping();
+          resumeEditing();
           scheduleDraft(form);
         }
       });
@@ -792,10 +807,44 @@
         }
       });
 
-      // 提交后草稿就没用了（校验失败由服务端回填 old input，不在此处理）
+      /*
+       * 提交：草稿立刻作废，并置 __draftSubmitted 让随后的补存（pagehide /
+       * visibilitychange / 尚未触发的防抖定时器）全部跳过。
+       * 若提交被服务端打回（校验失败，页面留在原地），用户再次输入会复位该标志，
+       * 自动保存照常恢复（见 resumeEditing）。
+       */
       form.addEventListener('submit', function () {
+        form.__draftSubmitted = true;
+        form.__draftPending   = false;
         clearDraft(form);
+
+        if (form.__draftNotice && form.__draftNotice.parentNode) {
+          form.__draftNotice.parentNode.removeChild(form.__draftNotice);
+        }
+        form.__draftNotice = null;
       });
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  隐私开关：切换时同步旁边的状态文字（所有人可见 / 仅自己可见）      */
+  /* ------------------------------------------------------------------ */
+
+  function initSwitchStates() {
+    Array.prototype.forEach.call(document.querySelectorAll('.switch[data-state-text]'), function (input) {
+      var row   = input.closest ? input.closest('.privacy-row') : null;
+      var state = row ? row.querySelector('.privacy-row__state') : null;
+
+      if (!state) {
+        return;
+      }
+
+      var sync = function () {
+        state.textContent = input.checked ? '所有人可见' : '仅自己可见';
+      };
+
+      input.addEventListener('change', sync);
+      sync();
     });
   }
 
@@ -1549,6 +1598,7 @@
     initHistoryBack();
     initUploads();
     initDrafts();
+    initSwitchStates();
     syncInsertButtons();
   }
 

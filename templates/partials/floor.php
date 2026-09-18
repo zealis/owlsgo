@@ -48,7 +48,8 @@ $canDelete = $canManage && !$isFirst && ($canModerate || $isSelf);
 $editedAt  = (int)($post['updated_at'] ?? 0);
 $createdAt = (int)($post['created_at'] ?? 0);
 ?>
-<article class="floor<?= $isFirst ? ' floor--first' : '' ?>"
+<?php /* 自己发的回复加 .floor--self：不画卡片外框（见 theme.css） */ ?>
+<article class="floor<?= $isFirst ? ' floor--first' : '' ?><?= !$isFirst && $isSelf ? ' floor--self' : '' ?>"
          id="p<?= $postId ?>"
          <?= $highlight ? 'style="box-shadow:0 0 0 2px var(--qq-blue)"' : '' ?>>
     <div class="floor__side">
@@ -154,8 +155,9 @@ $createdAt = (int)($post['created_at'] ?? 0);
             </div>
         <?php endif; ?>
 
-        <?php if ((string)($author['signature'] ?? '') !== '' && !$isFirst): ?>
-            <div class="floor__sign"><?= e((string)$author['signature']) ?></div>
+        <?php /* 楼层签名即用户资料里的「个人简介」（首楼是主题正文，不重复展示） */ ?>
+        <?php if (trim((string)($author['bio'] ?? '')) !== '' && !$isFirst): ?>
+            <div class="floor__sign"><?= nl2br(e(trim((string)$author['bio']))) ?></div>
         <?php endif; ?>
 
         <div class="floor__actions">

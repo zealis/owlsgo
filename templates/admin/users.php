@@ -90,8 +90,8 @@ $groups   = is_array($groups ?? null) ? $groups : [];
                                     </span>
                                     <span class="text-light mono" style="display:block;font-size:11.5px">
                                         #<?= $userId ?>
-                                        <?php if ((string)($user['signature'] ?? '') !== ''): ?>
-                                            · <?= e(mb_substr((string)$user['signature'], 0, 24)) ?>
+                                        <?php if (trim((string)($user['bio'] ?? '')) !== ''): ?>
+                                            · <?= e(mb_substr(trim((string)$user['bio']), 0, 24)) ?>
                                         <?php endif; ?>
                                     </span>
                                 </span>

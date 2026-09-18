@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS "users" (
     "signature"      TEXT    NOT NULL DEFAULT '',
     "bio"            TEXT    NOT NULL DEFAULT '',
     "location"       TEXT    NOT NULL DEFAULT '',
+    "public_threads" INTEGER NOT NULL DEFAULT 1,
+    "public_posts"   INTEGER NOT NULL DEFAULT 1,
     "points"         INTEGER NOT NULL DEFAULT 0,
     "thread_count"   INTEGER NOT NULL DEFAULT 0,
     "post_count"     INTEGER NOT NULL DEFAULT 0,

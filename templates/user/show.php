@@ -2,7 +2,7 @@
 /**
  * 个人主页
  *
- * 变量：$profile、$isSelf、$canManage、$recentThreads、$recentPosts、$stats、$joinedAt、$lastActive
+ * 变量：$profile、$isSelf、$canManage、$recentThreads、$recentPosts
  */
 
 declare(strict_types=1);
@@ -14,19 +14,11 @@ $recentThreads = is_array($recentThreads ?? null) ? $recentThreads : [];
 $recentPosts   = is_array($recentPosts ?? null) ? $recentPosts : [];
 
 $userId    = (int)($profile['id'] ?? 0);
-$signature = trim((string)($profile['signature'] ?? ''));
 ?>
 
 <?= $view('partials/profile-hero', ['profile' => $profile]) ?>
 
 <?= $view('partials/user-nav', ['userNavProfile' => $profile, 'userNavActive' => 'home']) ?>
-
-<?php if ($signature !== ''): ?>
-    <section class="panel mt-4">
-        <div class="panel__head"><h3>个性签名</h3></div>
-        <div class="panel__body"><?= e($signature) ?></div>
-    </section>
-<?php endif; ?>
 
 <section class="panel mt-4">
     <div class="panel__head">

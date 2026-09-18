@@ -150,9 +150,8 @@ final class UserController extends AdminBaseController
             'group_id'  => $groupId,
             'status'    => $status,
             'points'    => max(0, $points),
-            'signature' => Request::string('signature', '', 120),
             'location'  => Request::string('location', '', 60),
-            'bio'       => Request::string('bio', '', 500),
+            'bio'       => Request::string('bio', '', 100),
         ]);
 
         $this->audit('user.update', 'user:' . $userId, '更新用户资料：' . $username);

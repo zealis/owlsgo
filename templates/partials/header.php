@@ -14,7 +14,8 @@
  *
  * 无障碍与安全：
  *  - 移动端导航由 [data-nav-toggle] + [data-site-nav] 控制（见 app.js）
- *  - 用户菜单使用原生 popover，不依赖任何第三方库
+ *  - 用户区不再使用下拉菜单：头像 + 用户名是一个指向个人主页的链接（无 title 提示，
+ *    避免悬浮气泡遮挡相邻元素）；「安全退出」位于账号设置页底部
  */
 
 declare(strict_types=1);
@@ -150,52 +151,17 @@ $navExtras = (array)hook('nav_links', $navExtras, ['user' => $navUser]);
         </button>
 
         <?php if ($navUser !== null): ?>
-            <ot-dropdown>
-                <button type="button" class="user-chip" popovertarget="user-menu" aria-haspopup="menu">
-                    <?= avatar_img($navUser, 26) ?>
-                    <span><?= e((string)($navUser['username'] ?? '')) ?></span>
-                    <?= $view('partials/icon', ['name' => 'chevron-down', 'size' => 14]) ?>
-                </button>
-
-                <menu id="user-menu" popover>
-                    <li>
-                        <a role="menuitem" href="<?= e(url('/u/' . (int)$navUser['id'])) ?>">
-                            <?= $view('partials/icon', ['name' => 'user']) ?>
-                            <span>我的主页</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a role="menuitem" href="<?= e(url('/u/' . (int)$navUser['id'] . '/favorites')) ?>">
-                            <?= $view('partials/icon', ['name' => 'bookmark']) ?>
-                            <span>我的收藏</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a role="menuitem" href="<?= e(url('/settings')) ?>">
-                            <?= $view('partials/icon', ['name' => 'settings']) ?>
-                            <span>账号设置</span>
-                        </a>
-                    </li>
-
-                    <?php if (can('admin.access')): ?>
-                        <hr>
-                        <li>
-                            <a role="menuitem" href="<?= e(url('/admin')) ?>">
-                                <?= $view('partials/icon', ['name' => 'dashboard']) ?>
-                                <span>管理后台</span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-
-                    <hr>
-                    <li>
-                        <a role="menuitem" href="<?= e(url('/logout')) ?>">
-                            <?= $view('partials/icon', ['name' => 'logout']) ?>
-                            <span>退出登录</span>
-                        </a>
-                    </li>
-                </menu>
-            </ot-dropdown>
+            <?php
+            /*
+             * 用户区：头像 + 用户名整块就是「我的主页」入口（已取消下拉菜单，也不加
+             * title 提示——悬浮气泡会挡住旁边的元素）。收藏 / 账号设置走个人主页顶部
+             * 的用户导航；「安全退出」在账号设置页底部。
+             */
+            ?>
+            <a class="user-chip" href="<?= e(url('/u/' . (int)$navUser['id'])) ?>">
+                <?= avatar_img($navUser, 26) ?>
+                <span><?= e((string)($navUser['username'] ?? '')) ?></span>
+            </a>
         <?php endif; ?>
     </div>
 </header>

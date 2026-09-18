@@ -120,33 +120,31 @@ a:not(.button) {
   text-decoration: none;
 }
 
-a:hover:not(.button) {
-  color: var(--qq-blue);
-  /*
-   * 悬停只做变色反馈，不加下划线。
-   * 标题、卡片标题、帖子正文里的链接往往是整行/整段文字，加下划线会让这些
-   * 长文本在指针划过时整片跳动，反而干扰阅读；变色已经足够表明可点击。
-   * 这里显式写 none 是为了压过 OATUI 自带的下划线规则。
-   */
-  text-decoration: none;
-}
-
 /*
- * 统一「悬停变色」的兜底规则。
+ * 全站链接的悬停反馈（兜底规则）。
  *
- * 为什么需要单独一条：下面有些规则会给特定容器里的 a 单独着色，例如
+ * 为什么需要单独一条：有些规则会给特定容器里的 a 单独着色，例如
  *   .crumbs a        → (0,1,1)
  *   .site-footer a   → (0,1,1)
  *   .badge > a       → (0,1,1)
- * 它们与上面的 a:hover 特异性**完全相同**，而它们写在文件后面，
+ * 它们与基础的 a:hover 特异性**完全相同**，而它们写在文件后面，
  * 按「同特异性看源码顺序」的规则就会赢 —— 结果是这些链接悬停时颜色不变，
  * 用户看起来就像「只有它们没有悬停反馈」。
- *
  * 写成 body a:hover（(0,1,2)）比它们高一档，能稳定压过；
- * 而已经自带 :hover 的（.filter-tabs a:hover、.widget__list a:hover、
- * [data-sidebar] nav a:hover、下拉菜单）特异性更高，不受这条影响，各自保留风格。
+ * 而自带 :hover 的（.filter-tabs a:hover、.widget__list a:hover、
+ * [data-sidebar] nav a:hover、下拉菜单）特异性更高，各自保留风格。
+ *
+ * ⚠️ 排除按钮必须写 :not(:where(.button))，不能写 :not(.button)：
+ * :not() 会把参数的特异性算进来，写成 :not(.button) 整条规则变成 (0,2,2)，
+ * 反而压过了 .filter-tabs a[aria-current="page"] 这类 (0,2,1) 的**选中态**
+ * 规则 —— 表现就是「选中的标签/按钮悬停时文字被染成主题蓝，与自己的蓝底
+ * 撞色，字看不见了」。:where() 的参数不计特异性，既排除了按钮，
+ * 又保持 (0,1,2) 只比 (0,1,1) 高一档的初衷。
+ *
+ * 悬停只做变色、不加下划线：标题与正文里的链接常是整行文字，加下划线会让
+ * 它们整片跳动、干扰阅读。显式 none 是为了压过 OATUI 自带的下划线。
  */
-body a:hover:not(.button) {
+body a:hover:not(:where(.button)) {
   color: var(--qq-blue);
   text-decoration: none;
 }
@@ -448,8 +446,14 @@ select:focus {
   font-weight: 600;
 }
 
-/* 用户区：高度与搜索框（38px）严格一致 —— 头像 26 + 上下内边距 10 + 描边 2 */
-.user-chip {
+/*
+ * 用户区：头像 + 用户名整块是一个指向「我的主页」的链接（原本是带下拉的按钮）。
+ * 高度与搜索框（38px）严格一致 —— 头像 26 + 上下内边距 10 + 描边 2。
+ *
+ * ⚠️ 选择器必须带元素名（a.user-chip）：它现在是 <a>，会被全局 `a:not(.button)`
+ *    （(0,1,1)）的链接色覆盖，`.user-chip`（(0,1,0)）压不回来。
+ */
+a.user-chip {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -459,14 +463,17 @@ select:focus {
   background: #fff;
   color: var(--qq-ink);
   font-size: 14px;
+  text-decoration: none;
+  flex: none;                          /* 窄屏不许被 flex 压缩（否则头像会被挤扁） */
 }
 
-.user-chip:hover {
+a.user-chip:hover {
   border-color: var(--qq-blue);
   background: var(--qq-soft);
   text-decoration: none;
   color: var(--qq-ink);
 }
+
 
 .user-chip img {
   width: 26px;
@@ -531,6 +538,7 @@ select:focus {
   display: none;
   align-items: center;
   justify-content: center;
+  flex: none;                          /* 窄屏不许被压缩 */
   width: 38px;
   height: 38px;
   border-radius: 8px;
@@ -557,17 +565,18 @@ select:focus {
   }
 
   /*
-   * 已登录：用户胶囊只显示头像（昵称与箭头隐藏、胶囊壳去掉），
+   * 已登录：用户胶囊只显示头像（昵称隐藏、胶囊壳去掉），
    * 排在汉堡按钮之后自然落到最右；点击区域保持 38px。
+   * 选择器带元素名，压过桌面端的 a.user-chip。
    */
-  .user-chip {
+  a.user-chip {
     padding: 6px;
     border: 0;
     background: transparent;
     gap: 0;
   }
 
-  .user-chip > span,
+  a.user-chip > span,
   .user-chip > svg {
     display: none;
   }
@@ -1165,6 +1174,17 @@ select:focus {
   box-shadow: 0 1px 0 #eaf6ff inset;
 }
 
+/*
+ * 自己发的回复：不画卡片外框。
+ *
+ * 用 border-color: transparent 而不是 border: 0 —— 保留那 1px 的占位，
+ * 自己楼层的宽度、正文起始位置才与其它楼层严格对齐（去掉 border 会宽 2px，
+ * 整列内容左右各偏 1px）。
+ */
+.floor--self {
+  border-color: transparent;
+}
+
 .floor__side {
   background: linear-gradient(180deg, #f7fbff 0%, #fdfeff 100%);
   border-right: 1px solid var(--qq-line-soft);
@@ -1618,10 +1638,19 @@ select:focus {
   min-width: 0;
 }
 
-/* 用户名与用户组标签同一行 */
+/*
+ * 用户名与用户组标签同一行。
+ *
+ * align-items 用 baseline 而不是 center：徽章里的小字与 22px 的用户名按**文字基线**
+ * 对齐才看起来齐；center 对齐的是两个盒子的中线，小字徽章会显得偏下。
+ *
+ * 行本身不带下边距：名片里只剩「用户名 + 组标签」与可选的简介，间距由简介自己承担
+ * （简介存在时才拉开 8px）。若把间距写在名字行的 margin-bottom 上，没简介时它会撑着
+ * 父容器，卡片下沿比上沿空。
+ */
 .profile-hero__name-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -1636,22 +1665,62 @@ select:focus {
 .profile-hero__bio {
   font-size: 13.5px;
   opacity: 0.92;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   max-width: 560px;
 }
 
-.profile-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-top: 12px;
-  font-size: 13px;
+/*
+ * 账号设置页：所有设置项合并在一个面板里，用 .setting-block 分区
+ * （每块一个小标题，块与块之间一条浅色分隔线）。
+ */
+.setting-block + .setting-block {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--qq-line-soft);
 }
 
-.profile-stats strong {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
+.setting-block__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--qq-ink);
+}
+
+/*
+ * 「我的隐私」：一行一个开关。
+ * 开关本身用 OATUI 的 .switch；右侧状态文字由 app.js 在 change 时同步。
+ */
+.privacy-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.privacy-row + .privacy-row {
+  border-top: 1px solid var(--qq-line-soft);
+}
+
+.privacy-row__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.privacy-row__label strong {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--qq-ink);
+}
+
+.privacy-row__state {
+  font-size: 13px;
+  color: var(--qq-ink-3);
 }
 
 .settings-tabs {
@@ -2910,19 +2979,22 @@ svg {
   border-bottom: 0;
 }
 
-.notice-card__bar {
+/*
+ * 标题行：标题在左，「未公开」徽章与「编辑公告」贴在行尾。
+ *
+ * 推右沿用项目里 .spacer 的约定写法 —— 它**没有全局样式**，每个容器各自定义
+ * （.panel__head .spacer、.floor__head .spacer、.site-footer__inner .spacer …），
+ * 新容器忘了写这一条，<span class="spacer"></span> 就是个推不动东西的空元素。
+ */
+.notice-card__head {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  align-items: baseline;              /* 大标题与右侧小字按文字基线对齐 */
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
-.notice-card__name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  color: var(--qq-ink-3);
+.notice-card__head .spacer {
+  margin-left: auto;
 }
 
 .notice-card__edit {
@@ -2932,7 +3004,7 @@ svg {
 }
 
 .notice-card__title {
-  margin: 0 0 8px;
+  margin: 0;                          /* 与正文的间距交给 .notice-card__head */
   font-size: 17px;
   font-weight: 700;
   color: var(--qq-ink);

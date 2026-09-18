@@ -141,6 +141,10 @@ final class UserModel extends Model
         $user['is_moderator'] = $groupId === 2;
         $user['avatar_url']   = \Core\Avatar::url($user, 96);
 
+        /* 「我的隐私」：规范成布尔，模板与导航可直接当开关状态用 */
+        $user['public_threads'] = (int)($user['public_threads'] ?? 1) === 1;
+        $user['public_posts']   = (int)($user['public_posts'] ?? 1) === 1;
+
         return $user;
     }
 
@@ -195,7 +199,10 @@ final class UserModel extends Model
     }
 
     /**
-     * 更新用户资料中的可编辑字段
+     * 更新个人资料（个人简介）
+     *
+     * 简介与签名已合并为同一个字段 `bio`：它既显示在个人主页，也显示在每个
+     * 回复楼层下方。users.signature 列保留在表结构中但不再读写。
      *
      * @param array<string, mixed> $input
      */
@@ -203,7 +210,7 @@ final class UserModel extends Model
     {
         $data = [];
 
-        foreach (['signature' => 120, 'location' => 60, 'bio' => 500] as $field => $limit) {
+        foreach (['bio' => 100] as $field => $limit) {
             if (array_key_exists($field, $input)) {
                 $data[$field] = mb_substr(trim((string)$input[$field]), 0, $limit);
             }
@@ -212,6 +219,120 @@ final class UserModel extends Model
         if ($data !== []) {
             static::updateById($userId, $data);
         }
+    }
+
+    /**
+     * 更新账号标识（用户名 / 邮箱）
+     *
+     * 与 updateProfile 分开：这两个字段是**账号标识**，调用前必须由控制器
+     * 完成格式校验、唯一性检查，以及（未来）验证码 / 人机验证，
+     * 所以不放进「随便传什么就存什么」的资料接口里。
+     */
+    public static function updateAccount(int $userId, string $username, string $email): void
+    {
+        static::updateById($userId, [
+            'username' => trim($username),
+            'email'    => strtolower(trim($email)),
+        ]);
+    }
+
+    /*
+     * ------------------------------------------------------------------
+     *  「我的隐私」：个人主页标签页的公开性
+     * ------------------------------------------------------------------
+     *
+     * public_threads / public_posts = 1 → 所有人可见，0 → 仅本人（与管理员）。
+     * 这两个字段是后加的，老站点的库里没有 → 写库前用 ensurePrivacyColumns() 惰性补列。
+     */
+
+    /** 后加的隐私字段（需要惰性补列） */
+    public const PRIVACY_FIELDS = ['public_threads', 'public_posts'];
+
+    /**
+     * 惰性补列：库里缺 public_threads / public_posts 时补上
+     *
+     * 项目没有通用迁移机制（参照 NoticeModel::migrate 的做法）。
+     * 注意这里**不复用 Model::columns()** —— 它带进程内静态缓存，ALTER 之后缓存里
+     * 仍是旧列表，会让 filterColumns() 把新字段滤掉；所以探测用下面的 hasColumn()，
+     * 写入也直接用 Database::update 绕开白名单。
+     */
+    private static function ensurePrivacyColumns(): void
+    {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        foreach (self::PRIVACY_FIELDS as $column) {
+            if (self::hasColumn('users', $column)) {
+                continue;
+            }
+
+            try {
+                Database::execute(
+                    'ALTER TABLE ' . Database::identifier('users')
+                    . ' ADD COLUMN ' . Database::identifier($column) . ' INTEGER NOT NULL DEFAULT 1'
+                );
+            } catch (\Throwable $e) {
+                // 并发请求可能同时补列，失败的一方忽略即可（列此时已由另一方建好）
+            }
+        }
+    }
+
+    /** 直接查库判断列是否存在（不经过 Model::columns 的缓存） */
+    private static function hasColumn(string $table, string $column): bool
+    {
+        try {
+            if (Database::driver() === 'sqlite') {
+                foreach (Database::select('PRAGMA table_info(' . Database::identifier($table) . ')') as $row) {
+                    if ((string)($row['name'] ?? '') === $column) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            $row = Database::first(
+                'SELECT column_name FROM information_schema.columns'
+                . ' WHERE table_schema = '
+                . (Database::driver() === 'mysql' ? 'DATABASE()' : 'current_schema()')
+                . ' AND table_name = ? AND column_name = ?',
+                [$table, $column]
+            );
+
+            return $row !== null;
+        } catch (\Throwable $e) {
+            return true;   // 探测不了就当作已存在，避免反复 ALTER 抛错
+        }
+    }
+
+    /**
+     * 某用户的标签页公开性（缺列时一律按「所有人可见」处理）
+     *
+     * @param array<string, mixed>|null $user
+     * @return array{threads: bool, posts: bool}
+     */
+    public static function privacyOf(?array $user): array
+    {
+        return [
+            'threads' => (int)($user['public_threads'] ?? 1) === 1,
+            'posts'   => (int)($user['public_posts'] ?? 1) === 1,
+        ];
+    }
+
+    /** 更新「我的隐私」（个人主页标签页的公开性） */
+    public static function updatePrivacy(int $userId, bool $publicThreads, bool $publicPosts): void
+    {
+        self::ensurePrivacyColumns();
+
+        Database::update('users', [
+            'public_threads' => $publicThreads ? 1 : 0,
+            'public_posts'   => $publicPosts ? 1 : 0,
+            'updated_at'     => time(),
+        ], Database::identifier('id') . ' = ?', [$userId]);
     }
 
     /** 统计各用户组人数 */

@@ -181,15 +181,10 @@ $createdAt   = (int)($profile['created_at'] ?? 0);
                 </div>
 
                 <div data-field>
-                    <label for="user-signature">个性签名</label>
-                    <input type="text" id="user-signature" name="signature" maxlength="120"
-                           value="<?= e((string)old('signature', (string)($profile['signature'] ?? ''))) ?>">
+                    <label for="user-bio">个人简介</label>
+                    <textarea id="user-bio" name="bio" rows="3" maxlength="100"><?= e((string)old('bio', (string)($profile['bio'] ?? ''))) ?></textarea>
+                    <span class="field-hint">显示在个人主页与楼层下方，最多 100 个字符。</span>
                 </div>
-            </div>
-
-            <div data-field>
-                <label for="user-bio">个人简介</label>
-                <textarea id="user-bio" name="bio" rows="3" maxlength="500"><?= e((string)old('bio', (string)($profile['bio'] ?? ''))) ?></textarea>
             </div>
 
             <label class="hstack" style="gap:8px;align-items:flex-start;margin-bottom:14px">

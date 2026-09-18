@@ -66,14 +66,6 @@ final class UserController extends Controller
             'canManage'     => Auth::can('user.manage'),
             'recentThreads' => $recentThreads['items'],
             'recentPosts'   => $recentPosts['items'],
-            'stats'         => [
-                'threads'   => (int)$user['thread_count'],
-                'posts'     => (int)$user['post_count'],
-                'favorites' => (int)$user['favorite_count'],
-                'points'    => (int)$user['points'],
-            ],
-            'joinedAt'   => (int)$user['created_at'],
-            'lastActive' => (int)$user['last_active_at'],
         ], 'layouts/main');
     }
 
@@ -82,6 +74,53 @@ final class UserController extends Controller
      *
      * @param array<string, string> $params
      */
+    /**
+     * 标签页可见性：作者把「发表的主题 / 发表的回复」设为「仅自己可见」时，
+     * 只有本人与有 user.manage 权限的人能访问。
+     *
+     * @param array<string, mixed> $user 目标用户（已 decorate）
+     * @param string $tab threads|posts
+     */
+    private function assertTabVisible(array $user, string $tab): void
+    {
+        $viewer   = Auth::user();
+        $viewerId = (int)($viewer['id'] ?? 0);
+
+        if ($viewerId === (int)($user['id'] ?? 0) || can('user.manage')) {
+            return;
+        }
+
+        $privacy = UserModel::privacyOf($user);
+        $visible = $tab === 'threads' ? $privacy['threads'] : $privacy['posts'];
+
+        if (!$visible) {
+            App::abort(403, (string)($user['username'] ?? '该用户') . ' 没有公开这一页。');
+        }
+    }
+
+    /**
+     * 保存「我的隐私」（个人主页两个标签页的公开性）
+     *
+     * 开关以「勾选 = 所有人可见」提交：复选框未勾选时浏览器根本不发这个字段，
+     * Request::bool 取到的就是 false（= 仅自己可见）。
+     *
+     * @param array<string, string> $params
+     */
+    public function updatePrivacy(array $params): never
+    {
+        $user = $this->requireLogin();
+
+        UserModel::updatePrivacy(
+            (int)$user['id'],
+            Request::bool('public_threads'),
+            Request::bool('public_posts')
+        );
+
+        Hook::action('after_privacy_update', ['user_id' => (int)$user['id']]);
+
+        $this->redirectWith(Router::url('/settings'), '隐私设置已保存。');
+    }
+
     public function threads(array $params): string
     {
         $userId = (int)($params['id'] ?? 0);
@@ -92,6 +131,8 @@ final class UserController extends Controller
         }
 
         $user   = UserModel::decorate($user);
+        $this->assertTabVisible($user, 'threads');
+
         $page   = $this->currentPage();
         $result = ThreadModel::byUser($userId, $page, (int)config('app.per_page', 20));
         $result['items'] = ThreadModel::decorate($result['items']);
@@ -119,6 +160,8 @@ final class UserController extends Controller
         }
 
         $user   = UserModel::decorate($user);
+        $this->assertTabVisible($user, 'posts');
+
         $page   = $this->currentPage();
         $result = PostModel::byUser($userId, $page, (int)config('app.per_page', 20));
         $result['items'] = PostModel::decorate($this->attachThreadTitles($result['items']));
@@ -176,8 +219,93 @@ final class UserController extends Controller
             'profile'   => UserModel::decorate($user),
             'uploadEnabled' => (bool)config('app.upload.enabled', true),
             'avatarMaxMb'   => (int)round((int)config('app.upload.avatar_size', 2097152) / 1048576),
-            'avatarStyles'  => \Core\Avatar::STYLES,
         ], 'layouts/main');
+    }
+
+    /**
+     * 保存账号信息（用户名 / 邮箱）
+     *
+     * 这两个字段是账号标识：修改前先做格式校验 + 唯一性检查，再走
+     * verifyAccountChange() 这个身份校验扩展点（验证码 / 人机验证的接入位）。
+     *
+     * @param array<string, string> $params
+     */
+    public function updateAccount(array $params): never
+    {
+        $user   = $this->requireLogin();
+        $userId = (int)$user['id'];
+
+        $username = trim(Request::string('username', '', 20));
+        $email    = trim(Request::string('email', '', 191));
+
+        $validator = $this->validate(
+            ['username' => $username, 'email' => $email],
+            ['username' => 'required|username', 'email' => 'required|email|max:191'],
+            ['username' => '用户名', 'email' => '邮箱']
+        );
+
+        $errors = $validator->errors();
+
+        // 唯一性：排除自己（改成原值不算占用）
+        if ($username !== '' && strcasecmp($username, (string)$user['username']) !== 0
+            && UserModel::usernameTaken($username, $userId)) {
+            $errors['username'] = '该用户名已被占用，换一个试试。';
+        }
+
+        if ($email !== '' && strcasecmp($email, (string)$user['email']) !== 0
+            && UserModel::emailTaken($email, $userId)) {
+            $errors['email'] = '该邮箱已被其他账号使用。';
+        }
+
+        if ($errors !== []) {
+            $this->backWithErrors($errors, Router::url('/settings'));
+        }
+
+        /*
+         * 身份校验扩展点 —— 接入图形验证码 / 人机验证（Turnstile、极验等）时
+         * 只需要在这里补校验，表单与调用链都不用动：
+         *   · 服务端：本方法或插件挂 before_account_change 钩子；
+         *   · 表单侧：settings 模板已用 hook('account_change_fields') 预留字段位。
+         */
+        $this->verifyAccountChange($user, ['username' => $username, 'email' => $email]);
+
+        UserModel::updateAccount($userId, $username, $email);
+
+        \Modules\Admin\LogModel::record(
+            $userId,
+            'account.update',
+            'user:' . $userId,
+            '更新账号信息：' . (string)$user['username'] . ' → ' . $username
+        );
+
+        Hook::action('after_account_update', [
+            'user_id'  => $userId,
+            'username' => $username,
+            'email'    => $email,
+        ]);
+
+        $message = '账号信息已更新。';
+
+        if (Request::wantsJson()) {
+            $this->json(['ok' => true, 'message' => $message, 'redirect' => Router::url('/settings')]);
+        }
+
+        $this->redirectWith(Router::url('/settings'), $message);
+    }
+
+    /**
+     * 账号信息变更前的身份校验（验证码 / 人机验证的接入位）
+     *
+     * 当前直接放行，只广播一个 action 钩子 —— 将来要加人机验证时，
+     * 在这里（或插件监听 before_account_change）校验失败抛异常/回跳即可，
+     * 不必改动控制器主流程与模板结构。
+     *
+     * @param array<string, mixed> $user
+     * @param array<string, string> $input
+     */
+    private function verifyAccountChange(array $user, array $input): void
+    {
+        Hook::action('before_account_change', ['user' => $user, 'input' => $input]);
     }
 
     /**
@@ -189,18 +317,15 @@ final class UserController extends Controller
     {
         $user = $this->requireLogin();
 
-        $signature = Request::string('signature', '', 100);
-        $bio       = Request::string('bio', '', 500);
+        // 个人简介会展示在个人主页与每个楼层下方，因此与签名合并为一个字段
+        $bio = Request::string('bio', '', 100);
 
-        // 个性签名不允许夹带链接，避免被当作外链广告位
-        if ($signature !== '' && preg_match('#(https?://|www\.)#i', $signature) === 1) {
-            $this->backWithErrors(['signature' => '个性签名中不允许包含网址。'], Router::url('/settings'));
+        // 它出现在帖子流里，不允许夹带链接，避免被当作外链广告位
+        if ($bio !== '' && preg_match('#(https?://|www\.)#i', $bio) === 1) {
+            $this->backWithErrors(['bio' => '个人简介中不允许包含网址。'], Router::url('/settings'));
         }
 
-        UserModel::updateProfile((int)$user['id'], [
-            'signature' => $signature,
-            'bio'       => $bio,
-        ]);
+        UserModel::updateProfile((int)$user['id'], ['bio' => $bio]);
 
         Hook::action('after_profile_update', ['user_id' => (int)$user['id']]);
 

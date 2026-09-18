@@ -17,13 +17,39 @@ $items = [
     ['key' => 'posts',     'label' => '发表的回复', 'url' => '/u/' . $navId . '/posts'],
 ];
 
+$viewer    = auth_user();
+$isOwner   = $viewer !== null && (int)($viewer['id'] ?? 0) === $navId;
+$canManage = can('user.manage');
+
+/*
+ * 「我的隐私」：作者把「发表的主题 / 发表的回复」设为仅自己可见时，
+ * 对他人（以及没有 user.manage 权限的人）隐藏这两个入口。
+ * 后端也有同样的把关（UserController::assertTabVisible），
+ * 这里只是不让入口露出来。
+ */
+$navPrivacy = \Modules\User\UserModel::privacyOf($navProfile);
+
+if (!$isOwner && !$canManage) {
+    $items = array_values(array_filter($items, static function (array $item) use ($navPrivacy): bool {
+        return match ((string)($item['key'] ?? '')) {
+            'threads' => $navPrivacy['threads'],
+            'posts'   => $navPrivacy['posts'],
+            default   => true,
+        };
+    }));
+}
+
 /* 收藏夹是私密内容，仅本人与管理员可见，因此只对本人展示入口 */
-$viewer = auth_user();
-if ($viewer !== null && ((int)($viewer['id'] ?? 0) === $navId || can('user.manage'))) {
+if ($isOwner || $canManage) {
     $items[] = ['key' => 'favorites', 'label' => '我的收藏', 'url' => '/u/' . $navId . '/favorites'];
 }
 
-if (is_logged_in()) {
+/*
+ * 「账号设置」是本人专属入口：只有访问自己的用户中心时才出现。
+ * 它固定指向当前登录者自己的 /settings，若在他人主页也渲染出来，
+ * 点一下就会「跳到自己的设置页」，既突兀又容易误解成在改别人的资料。
+ */
+if ($isOwner) {
     $items[] = ['key' => 'settings', 'label' => '账号设置', 'url' => '/settings'];
 }
 
