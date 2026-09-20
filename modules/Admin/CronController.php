@@ -17,7 +17,9 @@ declare(strict_types=1);
 namespace Modules\Admin;
 
 use Core\Auth;
+use Core\Database;
 use Core\Paginator;
+use Core\Plugin;
 use Core\PluginManager;
 use Core\Request;
 use Core\Response;
@@ -35,10 +37,32 @@ final class CronController extends AdminBaseController
     {
         $tasks = CronModel::tasks();
 
-        $lastRun = 0;
-        foreach ($tasks as $task) {
-            $lastRun = max($lastRun, (int)$task['last_run_at']);
+        /*
+         * 插件任务在注册表（Plugin::crons()）里带有中文描述，数据库表不存它 ——
+         * 按「插件::任务名」从注册表补齐，后台就能看到这个任务是干什么的。
+         * 插件停用时注册表里没有条目，description 留空（任务本身照常显示）。
+         */
+        $descriptions = [];
+        $activePlugins = [];
+        foreach (Plugin::crons() as $cron) {
+            $key = (string)$cron['plugin'] . '::' . (string)$cron['name'];
+            $descriptions[$key] = (string)($cron['description'] ?? '');
+            $activePlugins[(string)$cron['plugin']] = true;
         }
+        foreach ($tasks as &$task) {
+            $plugin = (string)($task['plugin'] ?? '');
+            $key = $plugin . '::' . (string)($task['name'] ?? '');
+            $task['description'] = $descriptions[$key] ?? '';
+            /*
+             * 插件停用后其任务仍留在 cron_tasks 表里，但每次执行都会因
+             * 「处理器未注册」被跳过 —— 对这种任务再提供「启用」按钮是误导，
+             * 模板据此显示「插件未启用」并隐藏启停开关。
+             */
+            $task['plugin_active'] = isset($activePlugins[$plugin]) || $plugin === '';
+        }
+        unset($task);
+
+        $lastRun = CronModel::lastRunAt();
 
         $logs = CronModel::paginateLogs($this->currentPage(), 30);
         $token = (string)Settings::get('cron_token', '');
@@ -76,11 +100,17 @@ final class CronController extends AdminBaseController
         $maintenance   = [];
 
         if (in_array($target, ['all', 'plugins'], true)) {
-            $pluginResults = PluginManager::runCron(50);
+            /*
+             * 后台手动执行传 force=true：忽略 next_run_at，把启用的插件任务全部跑一遍。
+             * 否则刚执行过的任务要等满整个间隔（如 1 天）才会再次到期，
+             * 连点「立即执行」永远是「插件任务执行 0 个」，最近一次执行时间也不动。
+             */
+            $pluginResults = PluginManager::runCron(50, true);
         }
 
         if (in_array($target, ['all', 'maintenance'], true)) {
             $maintenance = MaintenanceModel::runAll();
+            $this->recordMaintenance($maintenance);
         }
 
         $summary = $this->buildSummary($pluginResults, $maintenance);
@@ -164,6 +194,7 @@ final class CronController extends AdminBaseController
 
         $pluginResults = PluginManager::runCron(50);
         $maintenance   = MaintenanceModel::runAll();
+        $this->recordMaintenance($maintenance);
 
         Response::json([
             'ok'          => true,
@@ -201,6 +232,42 @@ final class CronController extends AdminBaseController
         $url = Router::url('/cron/run');
 
         return $token === '' ? $url : $url . '?token=' . rawurlencode($token);
+    }
+
+    /**
+     * 把维护任务的执行结果落到 cron_logs（一条汇总记录）
+     *
+     * 维护任务不写 cron_tasks.last_run_at，之前也不留任何痕迹 ——
+     * 「最近一次执行」卡片与任务日志都看不到它们，点完按钮页面毫无变化。
+     * 插件任务每次执行都会写一条 cron_logs，这里保持同一口径。
+     *
+     * @param list<array{job:string, ok:bool, message:string}> $maintenance
+     */
+    private function recordMaintenance(array $maintenance): void
+    {
+        if ($maintenance === []) {
+            return;
+        }
+
+        $parts = [];
+        $failures = 0;
+
+        foreach ($maintenance as $item) {
+            if (!$item['ok']) {
+                $failures++;
+            }
+            $parts[] = $item['job'] . '：' . $item['message'];
+        }
+
+        $now = time();
+
+        Database::insert('cron_logs', [
+            'name'       => 'maintenance',
+            'status'     => $failures > 0 ? 'error' : 'ok',
+            'message'    => mb_substr(implode('；', $parts), 0, 400),
+            'duration'   => 0,
+            'created_at' => $now,
+        ]);
     }
 
     /**

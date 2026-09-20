@@ -66,7 +66,7 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
                     'editorId'          => 'notice-body',
                     'editorValue'       => $val('body'),
                     'editorMax'         => 20000,
-                    'editorUpload'      => true,
+                    'editorUpload'      => (bool)($uploadEnabled ?? true),
                     'editorMaxMb'       => (int)($maxMb ?? 2),
                     'editorPlaceholder' => '支持与帖子相同的 Markdown 格式，可插入图片与附件…',
                 ]) ?>

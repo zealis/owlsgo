@@ -19,6 +19,7 @@ use Core\Auth;
 use Core\Controller;
 use Core\Hook;
 use Core\Plugin;
+use Core\Request;
 
 abstract class AdminBaseController extends Controller
 {
@@ -100,5 +101,30 @@ abstract class AdminBaseController extends Controller
     protected function audit(string $action, string $target = '', string $detail = ''): void
     {
         LogModel::record(Auth::id(), $action, $target, $detail);
+    }
+
+    /**
+     * 批量操作完成：AJAX 走 JSON（前端 notify + 自行刷新），无 JS 走整页提示
+     *
+     * 放在基类是因为「帖子 / 评论 / 回收站 / 用户 / 附件」五处批量操作要同一套响应约定，
+     * 各自实现一遍很容易在某处漏掉 `redirect`，前端就会停在原地不刷新。
+     */
+    protected function bulkOk(string $message, string $back): never
+    {
+        if (Request::wantsJson()) {
+            $this->json(['ok' => true, 'message' => $message, 'redirect' => $back]);
+        }
+
+        $this->redirectWith($back, $message);
+    }
+
+    /** 批量操作被拒（没勾选、动作不合法等）：**不改任何数据**，只回提示 */
+    protected function bulkFail(string $message, string $back): never
+    {
+        if (Request::wantsJson()) {
+            $this->json(['ok' => false, 'message' => $message]);
+        }
+
+        $this->redirectWith($back, $message, 'error');
     }
 }

@@ -42,7 +42,7 @@ final class Avatar
         return $presets;
     }
 
-    /** 配色板（QQ 经典蓝白 + 少量点缀色） */
+    /** 配色板（经典蓝白 + 少量点缀色） */
     private const PALETTE = [
         ['#00A0E9', '#E6F7FF'],
         ['#0078D4', '#E6F7FF'],

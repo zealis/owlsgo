@@ -3,7 +3,7 @@
  * HTTP 异常
  *
  * 用于在任意深度中断请求并返回指定状态码，例如：
- *   throw new HttpException(403, '你没有权限删除该主题。');
+ *   throw new HttpException(403, '你没有权限删除该帖子。');
  * 由 App 统一捕获并渲染错误页，绝不会把堆栈暴露给浏览器。
  */
 

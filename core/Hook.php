@@ -45,25 +45,26 @@ final class Hook
         'nav_links'             => ['type' => 'filter', 'desc' => '前台导航附加链接数组，可增删改', 'context' => 'user'],
         'admin_nav_links'       => ['type' => 'filter', 'desc' => '后台左侧导航链接数组，可增删改', 'context' => 'user'],
         'user_profile_tabs'     => ['type' => 'filter', 'desc' => '用户中心标签页数组', 'context' => 'profile, active'],
-        'thread_view_actions'   => ['type' => 'filter', 'desc' => '主题详情页操作区 HTML，可追加按钮', 'context' => 'thread, forum, user'],
+        'user_profile_stats'    => ['type' => 'filter', 'desc' => '个人主页头部数据卡数组（label 与 value 由模板统一转义，插件勿拼 HTML）', 'context' => 'profile'],
+        'thread_view_actions'   => ['type' => 'filter', 'desc' => '帖子详情页操作区 HTML，可追加按钮', 'context' => 'thread, forum, user'],
 
         /* ---------------- 内容与列表 ---------------- */
         'content_render'        => ['type' => 'filter', 'desc' => '正文「渲染前的原文」过滤（入库前）', 'context' => 'user, forum, thread'],
         'content_rendered'      => ['type' => 'filter', 'desc' => '正文「渲染后的 HTML」过滤（输出时）', 'context' => 'raw'],
         'forum_list'            => ['type' => 'filter', 'desc' => '首页版块列表过滤', 'context' => 'user'],
-        'thread_list'           => ['type' => 'filter', 'desc' => '版块内主题列表过滤', 'context' => 'forum'],
-        'post_list'             => ['type' => 'filter', 'desc' => '主题内回帖列表过滤', 'context' => 'thread'],
+        'thread_list'           => ['type' => 'filter', 'desc' => '版块内帖子列表过滤', 'context' => 'forum'],
+        'post_list'             => ['type' => 'filter', 'desc' => '帖子内评论列表过滤', 'context' => 'thread'],
 
-        /* ---------------- 主题 ---------------- */
-        'before_thread_create'  => ['type' => 'action', 'desc' => '发表主题前，可用 App::abort() 或 Response::redirect() 拦截', 'context' => 'user, forum, title, content'],
-        'after_thread_create'   => ['type' => 'action', 'desc' => '发表主题后', 'context' => 'user, forum, thread_id, post_id'],
-        'after_thread_update'   => ['type' => 'action', 'desc' => '编辑主题后', 'context' => 'thread_id, user'],
-        'after_thread_delete'   => ['type' => 'action', 'desc' => '删除主题后', 'context' => 'thread_id, user'],
+        /* ---------------- 帖子 ---------------- */
+        'before_thread_create'  => ['type' => 'action', 'desc' => '发表帖子前，可用 App::abort() 或 Response::redirect() 拦截', 'context' => 'user, forum, title, content'],
+        'after_thread_create'   => ['type' => 'action', 'desc' => '发表帖子后', 'context' => 'user, forum, thread_id, post_id'],
+        'after_thread_update'   => ['type' => 'action', 'desc' => '编辑帖子后', 'context' => 'thread_id, user'],
+        'after_thread_delete'   => ['type' => 'action', 'desc' => '删除帖子后', 'context' => 'thread_id, user'],
 
-        /* ---------------- 回帖 ---------------- */
-        'before_post_create'    => ['type' => 'action', 'desc' => '发表回复前，可抛异常阻止', 'context' => 'user, thread, forum, content'],
-        'after_post_create'     => ['type' => 'action', 'desc' => '发表回复后（待审核的回复不触发）', 'context' => 'user, thread_id, post_id, floor'],
-        'after_post_delete'     => ['type' => 'action', 'desc' => '删除回复后', 'context' => 'post_id, user'],
+        /* ---------------- 评论 ---------------- */
+        'before_post_create'    => ['type' => 'action', 'desc' => '发表评论前，可抛异常阻止', 'context' => 'user, thread, forum, content'],
+        'after_post_create'     => ['type' => 'action', 'desc' => '发表评论后（待审核的评论不触发）', 'context' => 'user, thread_id, post_id, floor'],
+        'after_post_delete'     => ['type' => 'action', 'desc' => '删除评论后', 'context' => 'post_id, user'],
 
         /* ---------------- 用户 ---------------- */
         'before_user_register'  => ['type' => 'action', 'desc' => '注册前，可用 App::abort() 或 Response::redirect() 拦截（如邀请码校验）', 'context' => 'username, email'],

@@ -1,9 +1,9 @@
 <?php
 /**
- * 搜索：主题 / 回复 / 用户（Preference 范围选择，默认主题）
+ * 搜索：帖子 / 评论 / 用户（Preference 范围选择，默认帖子）
  *
  * 变量：$keyword、$type（thread|post|user）、$result（items 已按范围组装）、
- *       $notices（主题范围内命中的公告）、$pagination
+ *       $notices（帖子范围内命中的公告）、$pagination
  */
 
 declare(strict_types=1);
@@ -16,8 +16,8 @@ $notices = is_array($notices ?? null) ? $notices : [];
 $total   = (int)($result['total'] ?? 0);
 
 $typeLabels = [
-    'thread' => '主题',
-    'post'   => '回复',
+    'thread' => '全文',
+    'post'   => '评论',
     'user'   => '用户',
 ];
 
@@ -62,11 +62,11 @@ $excerpt = static function (string $text): string {
     <div class="panel">
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'search', 'size' => 46]) ?>
-            <p>输入关键词以搜索站内<?= $typeLabels[$type] ?? '主题' ?>。</p>
+            <p>输入关键词以搜索站内<?= $typeLabels[$type] ?? '帖子' ?>。</p>
         </div>
     </div>
 <?php else: ?>
-    <?php /* 主题范围内命中的公告，单独成块展示 */ ?>
+    <?php /* 帖子范围内命中的公告，单独成块展示 */ ?>
     <?php if ($type === 'thread' && $notices !== []): ?>
         <section class="panel mb-4">
             <div class="panel__head">
@@ -94,13 +94,13 @@ $excerpt = static function (string $text): string {
         <div class="panel__head">
             <h3>“<?= e($keyword) ?>” 的搜索结果</h3>
             <span class="spacer"></span>
-            <span class="text-light" style="font-size:13px"><?= e($typeLabels[$type] ?? '主题') ?> · 共 <?= $total ?> 条</span>
+            <span class="text-light" style="font-size:13px"><?= e($typeLabels[$type] ?? '帖子') ?> · 共 <?= $total ?> 条</span>
         </div>
 
         <?php if ($items === []): ?>
             <div class="empty">
                 <?= $view('partials/icon', ['name' => 'info', 'size' => 46]) ?>
-                <p>没有找到与“<?= e($keyword) ?>”相关的<?= e($typeLabels[$type] ?? '主题') ?>，换个关键词试试。</p>
+                <p>没有找到与“<?= e($keyword) ?>”相关的<?= e($typeLabels[$type] ?? '帖子') ?>，换个关键词试试。</p>
             </div>
         <?php elseif ($type === 'user'): ?>
             <?php foreach ($items as $user): ?>
@@ -109,7 +109,9 @@ $excerpt = static function (string $text): string {
                     <span>
                         <span class="search-user__name"><?= e((string)($user['username'] ?? '')) ?></span><br>
                         <span class="search-user__meta">
-                            帖子 <?= format_number((int)($user['post_count'] ?? 0)) ?>
+                            <?php /* 这里原来写「帖子 post_count」——post_count 含评论，会虚高；两个数分开显示 */ ?>
+                            帖子 <?= format_number((int)($user['thread_count'] ?? 0)) ?>
+                            · 评论 <?= format_number(user_comment_count($user)) ?>
                             · 加入于 <?= date('Y-m-d', (int)($user['created_at'] ?? 0)) ?>
                         </span>
                     </span>
@@ -138,6 +140,6 @@ $excerpt = static function (string $text): string {
     </section>
 
     <?php if (($pagination ?? '') !== ''): ?>
-        <div class="mt-4"><?= (string)$pagination ?></div>
+        <div class="pager"><?= (string)$pagination ?></div>
     <?php endif; ?>
 <?php endif; ?>

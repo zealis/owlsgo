@@ -111,7 +111,8 @@ final class Installer
                 'current'  => class_exists('finfo') ? '已启用' : '未启用',
                 'required' => '建议',
                 'level'    => '建议',
-                'hint'     => '缺少时退化为基于 getimagesize 的 MIME 判断，附件类型校验会变宽松。',
+                'hint'     => '不装也能跑，但附件类型判定会失准：图片（走 getimagesize）正常，'
+                    . '.txt/.md/.zip/.pdf 这类会被误判成 application/octet-stream 而拒收。强烈建议启用。',
             ],
             [
                 'name'     => 'session 支持',
@@ -462,12 +463,20 @@ final class Installer
     {
         $now = time();
 
+        /*
+         * quota = 该组的附件空间上限（MB，0 = 不限制），落到 usergroups.attach_quota_mb。
+         *
+         * 只有「注册用户」给非 0 的默认值：它是唯一一个会长期累积附件的组，
+         * 给个 200MB 的起步上限，避免新站被单个用户把磁盘塞满；
+         * 管理员 / 版主不限（0），游客与禁言用户本来就没有「上传附件」权限，
+         * 配额留 0 即可（列表里会显示成「无上传权限」而不是「不限」）。
+         */
         $groups = [
-            ['id' => 1, 'name' => '管理员', 'slug' => 'administrators', 'color' => '#F5222D', 'description' => '拥有全部权限，可进入后台', 'is_system' => 1, 'sort' => 1],
-            ['id' => 2, 'name' => '版主', 'slug' => 'moderators', 'color' => '#FF7D00', 'description' => '负责版块内容管理与审核', 'is_system' => 1, 'sort' => 2],
-            ['id' => 3, 'name' => '注册用户', 'slug' => 'members', 'color' => '#00A0E9', 'description' => '通过注册的普通用户', 'is_system' => 1, 'sort' => 3],
-            ['id' => 4, 'name' => '游客', 'slug' => 'guests', 'color' => '#999999', 'description' => '未登录访客', 'is_system' => 1, 'sort' => 4],
-            ['id' => 5, 'name' => '禁言用户', 'slug' => 'muted', 'color' => '#666666', 'description' => '被限制发言的用户', 'is_system' => 1, 'sort' => 5],
+            ['id' => 1, 'name' => '管理员', 'slug' => 'administrators', 'color' => '#F5222D', 'description' => '拥有全部权限，可进入后台', 'is_system' => 1, 'sort' => 1, 'quota' => 0],
+            ['id' => 2, 'name' => '版主', 'slug' => 'moderators', 'color' => '#FF7D00', 'description' => '负责版块内容管理与审核', 'is_system' => 1, 'sort' => 2, 'quota' => 0],
+            ['id' => 3, 'name' => '注册用户', 'slug' => 'members', 'color' => '#00A0E9', 'description' => '通过注册的普通用户', 'is_system' => 1, 'sort' => 3, 'quota' => 200],
+            ['id' => 4, 'name' => '游客', 'slug' => 'guests', 'color' => '#999999', 'description' => '未登录访客', 'is_system' => 1, 'sort' => 4, 'quota' => 0],
+            ['id' => 5, 'name' => '禁言用户', 'slug' => 'muted', 'color' => '#666666', 'description' => '被限制发言的用户', 'is_system' => 1, 'sort' => 5, 'quota' => 0],
         ];
 
         foreach ($groups as $group) {
@@ -483,6 +492,7 @@ final class Installer
                 'permissions' => json_encode($permissions, JSON_UNESCAPED_UNICODE),
                 'is_system'   => $group['is_system'],
                 'sort_order'  => $group['sort'],
+                'attach_quota_mb' => (int)$group['quota'],
                 'created_at'  => $now,
                 'updated_at'  => $now,
             ], ['id']);
@@ -598,7 +608,7 @@ final class Installer
         ]);
     }
 
-    /** 发布欢迎主题，让首页不至于是空的 */
+    /** 发布欢迎帖子，让首页不至于是空的 */
     private static function seedWelcomeThread(int $adminId): void
     {
         $forum = Database::first(
@@ -618,7 +628,7 @@ final class Installer
             . "- 单核心代码架构，无 Composer 依赖，上传即用\n"
             . "- 同时支持 SQLite、MySQL 与 PostgreSQL\n"
             . "- 内置用户组权限、版块权限、插件机制与计划任务\n"
-            . "- 前端基于 OATUI，QQ 经典蓝白配色，完整适配移动端\n\n"
+            . "- 前端基于 OATUI，经典蓝白配色，完整适配移动端\n\n"
             . "请第一时间前往后台修改站点名称、关闭注册或调整权限：[进入后台](/admin)";
 
         $threadId = Database::insert('threads', [

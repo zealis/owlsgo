@@ -2,7 +2,7 @@
 /**
  * 用户中心控制器
  *
- * 覆盖：个人主页、Ta 的主题 / 回复 / 收藏、账号设置（资料 / 密码 / 头像）。
+ * 覆盖：个人主页、Ta 的帖子 / 评论 / 收藏、账号设置（资料 / 密码 / 头像）。
  *
  * 设计要点：
  *  - 所有列表都走「一次分页查询 + 批量补齐展示字段」，不产生 N+1
@@ -22,6 +22,7 @@ use Core\Paginator;
 use Core\Request;
 use Core\Router;
 use Core\Security;
+use Core\Settings;
 use Core\Upload;
 use Modules\Post\PostModel;
 use Modules\Thread\FavoriteModel;
@@ -53,6 +54,12 @@ final class UserController extends Controller
 
         $user = UserModel::decorate($user);
 
+        /*
+         * 头部数据卡要用的「收到的赞」：只在这里算一次（一条聚合查询），
+         * 不放进 decorate() —— 那是列表场景用的，加进去会变成每行一条查询。
+         */
+        $user['like_received'] = UserModel::receivedLikeCount($userId);
+
         $recentThreads = ThreadModel::byUser($userId, 1, 10);
         $recentThreads['items'] = ThreadModel::decorate($recentThreads['items']);
 
@@ -70,12 +77,12 @@ final class UserController extends Controller
     }
 
     /**
-     * Ta 发表的主题
+     * Ta 发表的帖子
      *
      * @param array<string, string> $params
      */
     /**
-     * 标签页可见性：作者把「发表的主题 / 发表的回复」设为「仅自己可见」时，
+     * 标签页可见性：作者把「发表的帖子 / 发表的评论」设为「仅自己可见」时，
      * 只有本人与有 user.manage 权限的人能访问。
      *
      * @param array<string, mixed> $user 目标用户（已 decorate）
@@ -138,7 +145,7 @@ final class UserController extends Controller
         $result['items'] = ThreadModel::decorate($result['items']);
 
         return $this->view('user/threads', [
-            'pageTitle'  => (string)$user['username'] . ' 发表的主题 - ' . (string)setting('site_name'),
+            'pageTitle'  => (string)$user['username'] . ' 发表的帖子 - ' . (string)setting('site_name'),
             'profile'    => $user,
             'result'     => $result,
             'pagination' => Paginator::render($result, '/u/' . $userId . '/threads'),
@@ -146,7 +153,7 @@ final class UserController extends Controller
     }
 
     /**
-     * Ta 发表的回复
+     * Ta 发表的评论
      *
      * @param array<string, string> $params
      */
@@ -167,7 +174,7 @@ final class UserController extends Controller
         $result['items'] = PostModel::decorate($this->attachThreadTitles($result['items']));
 
         return $this->view('user/posts', [
-            'pageTitle'  => (string)$user['username'] . ' 发表的回复 - ' . (string)setting('site_name'),
+            'pageTitle'  => (string)$user['username'] . ' 发表的评论 - ' . (string)setting('site_name'),
             'profile'    => $user,
             'result'     => $result,
             'pagination' => Paginator::render($result, '/u/' . $userId . '/posts'),
@@ -217,8 +224,35 @@ final class UserController extends Controller
         return $this->view('user/settings', [
             'pageTitle' => '账号设置 - ' . (string)setting('site_name'),
             'profile'   => UserModel::decorate($user),
-            'uploadEnabled' => (bool)config('app.upload.enabled', true),
-            'avatarMaxMb'   => (int)round((int)config('app.upload.avatar_size', 2097152) / 1048576),
+            /*
+             * 上传开关取**站点设置**（后台「附件 → 允许上传附件」）。
+             *
+             * 这里原本读的是 config('app.upload.enabled') —— 那是 config/app.php 里的
+             * 静态常量（恒为 true），跟后台开关根本不是同一个值，于是后台关掉上传后
+             * 设置页仍然渲染出上传表单，用户点进去才被 Upload::store 拦。
+             */
+            'uploadEnabled' => Settings::bool('upload_enabled', true),
+            'avatarMaxMb'   => Upload::maxSizeMb(true),
+        ], 'layouts/main');
+    }
+
+    /**
+     * 个性装扮页：夜间模式跟随系统等**个人外观偏好**。
+     *
+     * 这些偏好存在浏览器 localStorage（键 owlsgo_theme，见 public/assets/js/theme-boot.js），
+     * 不落库 —— 深浅色属于「这台设备/这个浏览器」的偏好而不是账号属性，
+     * 游客在顶栏齿轮里也能切换，服务端不参与读写。
+     * 因此页面没有 POST 表单，开关状态由 app.js 的 initThemeToggle() 按当前偏好回填。
+     *
+     * @param array<string, string> $params
+     */
+    public function appearance(array $params): string
+    {
+        $user = $this->requireLogin();
+
+        return $this->view('user/appearance', [
+            'pageTitle' => '个性装扮 - ' . (string)setting('site_name'),
+            'profile'   => UserModel::decorate($user),
         ], 'layouts/main');
     }
 
@@ -418,6 +452,17 @@ final class UserController extends Controller
     {
         $user = $this->requireLogin();
 
+        /*
+         * 站点关闭上传后，头像这条路也必须一起关。
+         *
+         * 头像走的是本方法（不是 UploadController），所以 UploadController 里那句
+         * upload_enabled 判断管不到这里 —— 关掉开关后仍能上传头像，就是这么来的。
+         * 两处都判一次，任一入口被单独调用时都不会漏。
+         */
+        if (!Settings::bool('upload_enabled', true)) {
+            $this->redirectWith(Router::url('/settings'), '站点当前已关闭文件上传，无法上传头像。', 'error');
+        }
+
         if (!isset($_FILES['avatar']) || !is_array($_FILES['avatar'])) {
             $this->redirectWith(Router::url('/settings'), '请选择要上传的图片。', 'error');
         }
@@ -464,7 +509,7 @@ final class UserController extends Controller
     /* ------------------------------------------------------------------ */
 
     /**
-     * 为回帖列表补齐所属主题标题（一次批量查询）
+     * 为评论列表补齐所属帖子标题（一次批量查询）
      *
      * @param list<array<string, mixed>> $posts
      * @return list<array<string, mixed>>
@@ -481,7 +526,7 @@ final class UserController extends Controller
         foreach ($posts as &$post) {
             $thread = $threads[(int)$post['thread_id']] ?? null;
 
-            $post['thread_title'] = (string)($thread['title'] ?? '主题已删除');
+            $post['thread_title'] = (string)($thread['title'] ?? '帖子已删除');
             $post['forum_id']     = (int)($thread['forum_id'] ?? 0);
         }
         unset($post);

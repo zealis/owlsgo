@@ -97,4 +97,25 @@ final class CronModel extends Model
             [time()]
         );
     }
+
+    /**
+     * 「最近一次执行」时间
+     *
+     * 同时看两处：插件任务表的 last_run_at（外部定时器/手动执行插件任务时写）
+     * 和 cron_logs 的最新记录（维护任务不写 cron_tasks，只落日志）——
+     * 只看前者的话，站点没有插件任务、或维护任务单独执行时，卡片永远显示「从未执行」。
+     */
+    public static function lastRunAt(): int
+    {
+        $task = (int)Database::value(
+            'SELECT COALESCE(MAX(' . Database::identifier('last_run_at') . '), 0)'
+            . ' FROM ' . Database::identifier('cron_tasks')
+        );
+        $log = (int)Database::value(
+            'SELECT COALESCE(MAX(' . Database::identifier('created_at') . '), 0)'
+            . ' FROM ' . Database::identifier('cron_logs')
+        );
+
+        return max($task, $log);
+    }
 }

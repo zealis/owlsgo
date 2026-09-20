@@ -1,6 +1,6 @@
 <?php
 /**
- * 主题控制器：列表/详情/发布/编辑/删除/版主操作/点赞/收藏/搜索
+ * 帖子控制器：列表/详情/发布/编辑/删除/版主操作/点赞/收藏/搜索
  */
 
 declare(strict_types=1);
@@ -19,7 +19,9 @@ use Core\Request;
 use Core\Response;
 use Core\Router;
 use Core\Session;
+use Core\Settings;
 use Core\Text;
+use Core\Upload;
 use Modules\Forum\ForumModel;
 use Modules\Notice\NoticeModel;
 use Modules\Post\PostModel;
@@ -31,7 +33,7 @@ use Modules\User\UserModel;
 final class ThreadController extends Controller
 {
     /**
-     * 主题详情
+     * 帖子详情
      *
      * @param array<string, string> $params
      */
@@ -41,7 +43,7 @@ final class ThreadController extends Controller
         $thread   = ThreadModel::find($threadId);
 
         if ($thread === null) {
-            \Core\App::abort(404, '主题不存在或已被删除。');
+            \Core\App::abort(404, '帖子不存在或已被删除。');
         }
 
         $forum = ForumModel::findOrFail((int)$thread['forum_id']);
@@ -59,7 +61,7 @@ final class ThreadController extends Controller
 
         // 待审核内容仅作者与有审核权限者可见
         if ((int)$thread['status'] !== 1 && !$isAuthor && !$canModerate) {
-            \Core\App::abort(404, '该主题正在审核中。');
+            \Core\App::abort(404, '该帖子正在审核中。');
         }
 
         ThreadModel::touchView($threadId);
@@ -104,14 +106,14 @@ final class ThreadController extends Controller
 
         $likedMap = LikeModel::likedMap(Auth::id(), 'thread', [$threadId]);
 
-        // 本页回帖 + 首帖的点赞状态，避免模板内逐个查询
+        // 本页评论 + 首帖的点赞状态，避免模板内逐个查询
         $postIds = array_map(static fn (array $p): int => (int)$p['id'], $replies['items']);
         if ($firstPost !== null) {
             $postIds[] = (int)$firstPost['id'];
         }
         $likedPosts = LikeModel::likedMap(Auth::id(), 'post', $postIds);
 
-        // 回复目标（楼中楼）
+        // 评论目标（楼中楼）
         $replyTo = null;
         $replyToId = Request::int('reply_to', 0);
         if ($replyToId > 0) {
@@ -121,7 +123,7 @@ final class ThreadController extends Controller
                 $replyTo   = [
                     'id'       => (int)$candidate['id'],
                     'floor'    => (int)$candidate['floor'],
-                    'username' => (string)($author['username'] ?? '已注销用户'),
+                    'username' => (string)($author['username'] ?? '用户已删除'),
                 ];
             }
         }
@@ -143,8 +145,8 @@ final class ThreadController extends Controller
                 && Permission::canManageContentOf($user, (int)$thread['user_id']),
             'canCreate'   => Permission::canCreateThread($user, $forum),
             'replyTo'     => $replyTo,
-            'uploadEnabled' => (bool)config('app.upload.enabled', true),
-            'maxUploadMb'   => (int)round((int)config('app.upload.max_size', 4194304) / 1048576),
+            'uploadEnabled' => Settings::bool('upload_enabled', true),
+            'maxUploadMb'   => Upload::maxSizeMb(),
             'siteNotice'  => '',
         ], 'layouts/main');
     }
@@ -165,7 +167,7 @@ final class ThreadController extends Controller
         ));
 
         if ($forums === []) {
-            \Core\App::abort(403, '当前没有任何版块允许你发表主题。');
+            \Core\App::abort(403, '当前没有任何版块允许你发表帖子。');
         }
 
         $forumId = Request::int('fid', (int)$forums[0]['id']);
@@ -177,17 +179,17 @@ final class ThreadController extends Controller
         }
 
         return $this->view('thread/create', [
-            'pageTitle'     => '发表新主题 - ' . (string)setting('site_name'),
+            'pageTitle'     => '发表新帖子 - ' . (string)setting('site_name'),
             'forums'        => $forums,
             'forum'         => $forum,
-            'uploadEnabled' => (bool)config('app.upload.enabled', true) && (int)$forum['allow_attachment'] === 1,
-            'maxUploadMb'   => (int)round((int)config('app.upload.max_size', 4194304) / 1048576),
+            'uploadEnabled' => Settings::bool('upload_enabled', true) && (int)$forum['allow_attachment'] === 1,
+            'maxUploadMb'   => Upload::maxSizeMb(),
             'formErrors'    => Session::errors(),
         ], 'layouts/main');
     }
 
     /**
-     * 提交新主题
+     * 提交新帖子
      *
      * @param array<string, string> $params
      */
@@ -201,7 +203,7 @@ final class ThreadController extends Controller
         $forum   = ForumModel::findOrFail($forumId);
 
         if (!Permission::canCreateThread($user, $forum)) {
-            \Core\App::abort(403, '你没有在该版块发表主题的权限。');
+            \Core\App::abort(403, '你没有在该版块发表帖子的权限。');
         }
 
         $title   = Request::string('title', '', 80);
@@ -213,7 +215,7 @@ final class ThreadController extends Controller
                 'title'   => 'required|between:' . (int)config('app.thread_title_min', 4) . ',' . (int)config('app.thread_title_max', 80),
                 'content' => 'required|min:' . (int)config('app.post_min_length', 2) . '|max:' . (int)config('app.post_max_length', 20000),
             ],
-            ['title' => '主题标题', 'content' => '正文内容']
+            ['title' => '帖子标题', 'content' => '正文内容']
         );
 
         if ($validator->fails()) {
@@ -255,10 +257,10 @@ final class ThreadController extends Controller
 
         // 通知版主有待审核内容
         if ($needAudit) {
-            $this->notifyModerators($forum, '有新的主题等待审核：' . $title, $result['thread_id'], $result['post_id']);
+            $this->notifyModerators($forum, '有新的帖子等待审核：' . $title, $result['thread_id'], $result['post_id']);
         }
 
-        $message = $needAudit ? '主题已提交，等待审核通过后展示。' : '主题发表成功。';
+        $message = $needAudit ? '帖子已提交，等待审核通过后展示。' : '帖子发表成功。';
 
         if (Request::wantsJson()) {
             $this->json([
@@ -272,7 +274,7 @@ final class ThreadController extends Controller
     }
 
     /**
-     * 编辑主题表单
+     * 编辑帖子表单
      *
      * @param array<string, string> $params
      */
@@ -283,7 +285,7 @@ final class ThreadController extends Controller
         $forum  = ForumModel::findOrFail((int)$thread['forum_id']);
 
         if (!$this->canEdit($user, $thread, $forum)) {
-            \Core\App::abort(403, '你没有编辑该主题的权限。');
+            \Core\App::abort(403, '你没有编辑该帖子的权限。');
         }
 
         $firstPost = PostModel::firstPost((int)$thread['id']);
@@ -297,19 +299,19 @@ final class ThreadController extends Controller
         }
 
         return $this->view('thread/edit', [
-            'pageTitle'         => '编辑主题 - ' . (string)setting('site_name'),
+            'pageTitle'         => '编辑帖子 - ' . (string)setting('site_name'),
             'thread'            => $thread,
             'forum'             => $forum,
             'firstPost'         => $firstPost,
             'formErrors'        => Session::errors(),
-            'editorUpload'      => (bool)config('app.upload.enabled', true),
-            'editorMaxMb'       => (int)round((int)config('app.upload.max_size', 20971520) / 1048576),
+            'editorUpload'      => Settings::bool('upload_enabled', true),
+            'editorMaxMb'       => Upload::maxSizeMb(),
             'editorAttachments' => $attachments,
         ], 'layouts/main');
     }
 
     /**
-     * 保存主题编辑
+     * 保存帖子编辑
      *
      * @param array<string, string> $params
      */
@@ -320,7 +322,7 @@ final class ThreadController extends Controller
         $forum  = ForumModel::findOrFail((int)$thread['forum_id']);
 
         if (!$this->canEdit($user, $thread, $forum)) {
-            \Core\App::abort(403, '你没有编辑该主题的权限。');
+            \Core\App::abort(403, '你没有编辑该帖子的权限。');
         }
 
         $title   = Request::string('title', '', 80);
@@ -332,7 +334,7 @@ final class ThreadController extends Controller
                 'title'   => 'required|between:' . (int)config('app.thread_title_min', 4) . ',' . (int)config('app.thread_title_max', 80),
                 'content' => 'required|min:' . (int)config('app.post_min_length', 2) . '|max:' . (int)config('app.post_max_length', 20000),
             ],
-            ['title' => '主题标题', 'content' => '正文内容']
+            ['title' => '帖子标题', 'content' => '正文内容']
         );
 
         if ($validator->fails()) {
@@ -364,7 +366,7 @@ final class ThreadController extends Controller
             );
         }
 
-        // 同步版块「最后主题名」
+        // 同步版块「最后帖子名」
         ForumModel::updateForum((int)$forum['id'], []);
         Database::update(
             'forums',
@@ -375,7 +377,7 @@ final class ThreadController extends Controller
 
         Hook::action('after_thread_update', ['thread_id' => (int)$thread['id'], 'user' => $user]);
 
-        $message = '主题已更新。';
+        $message = '帖子已更新。';
 
         if (Request::wantsJson()) {
             $this->json(['ok' => true, 'message' => $message, 'redirect' => Router::url('/t/' . $thread['id'])]);
@@ -385,7 +387,7 @@ final class ThreadController extends Controller
     }
 
     /**
-     * 删除主题
+     * 删除帖子
      *
      * @param array<string, string> $params
      */
@@ -397,21 +399,21 @@ final class ThreadController extends Controller
 
         $isAuthor = (int)$thread['user_id'] === (int)$user['id'];
 
-        // 作者可删自己的主题，版主/管理员可删任意主题
+        // 作者可删自己的帖子，版主/管理员可删任意帖子
         if (!$isAuthor && !Permission::allows($user, 'thread.delete', $forum)) {
-            \Core\App::abort(403, '你没有删除该主题的权限。');
+            \Core\App::abort(403, '你没有删除该帖子的权限。');
         }
 
         // 保护线：管理员发布的内容，版主也动不了
         if (!Permission::canManageContentOf($user, (int)$thread['user_id'])) {
-            \Core\App::abort(403, '这是管理员发布的主题，只有超级管理员可以删除。');
+            \Core\App::abort(403, '这是管理员发布的帖子，只有超级管理员可以删除。');
         }
 
         ThreadModel::destroy((int)$thread['id']);
 
         Hook::action('after_thread_delete', ['thread_id' => (int)$thread['id'], 'user' => $user]);
 
-        $message = '主题已删除。';
+        $message = '帖子已删除。';
 
         if (Request::wantsJson()) {
             $this->json(['ok' => true, 'message' => $message, 'redirect' => Router::url('/f/' . $forum['id'])]);
@@ -432,7 +434,7 @@ final class ThreadController extends Controller
         $forum  = ForumModel::findOrFail((int)$thread['forum_id']);
 
         if (!Permission::allows($user, 'thread.essence', $forum)) {
-            \Core\App::abort(403, '你没有管理该主题的权限。');
+            \Core\App::abort(403, '你没有管理该帖子的权限。');
         }
 
         $action = Request::string('action', '', 20);
@@ -450,7 +452,7 @@ final class ThreadController extends Controller
     }
 
     /**
-     * 主题点赞
+     * 帖子点赞
      *
      * @param array<string, string> $params
      */
@@ -505,7 +507,7 @@ final class ThreadController extends Controller
          *      （只拦新搜索，结果翻页不算）；
          *   3. 内容干净 —— 先掐掉控制字符/零宽字符再参与查询，长度由 Request::string 截到 60。
          *
-         * 搜索范围（type）：主题（默认，含公告命中）/ 回复 / 用户。
+         * 搜索范围（type）：帖子（默认，含公告命中）/ 评论 / 用户。
          * 搜索结果页是典型的动态参数页（?q=…&type=…&page=… 组合近乎无限），
          * 统一输出 X-Robots-Tag: noindex，避免搜索引擎把海量搜索结果都收进索引。
          */
@@ -530,7 +532,7 @@ final class ThreadController extends Controller
         if ($type === 'thread') {
             $result = ThreadModel::search($keyword, $page, (int)config('app.per_page', 20));
             $result['items'] = $keyword === '' ? [] : ThreadModel::decorate($result['items']);
-            // 主题范围内顺带命中公告（标题或正文），单独成块展示在主题结果上方
+            // 帖子范围内顺带命中公告（标题或正文），单独成块展示在帖子结果上方
             $notices = $keyword === '' ? [] : NoticeModel::search($keyword, 5);
         } elseif ($type === 'post') {
             $result = PostModel::searchPublished($keyword, $page, (int)config('app.per_page', 20));
@@ -605,7 +607,7 @@ final class ThreadController extends Controller
     /* ------------------------------------------------------------------ */
 
     /**
-     * 是否可编辑该主题
+     * 是否可编辑该帖子
      *
      * @param array<string, mixed> $thread
      * @param array<string, mixed> $forum
@@ -613,8 +615,8 @@ final class ThreadController extends Controller
     private function canEdit(array $user, array $thread, array $forum): bool
     {
         /*
-         * 保护线：超级管理员发布的主题，只有超级管理员能改。
-         * 作者编辑自己的主题不受影响（canManageContentOf 对本人直接放行）。
+         * 保护线：超级管理员发布的帖子，只有超级管理员能改。
+         * 作者编辑自己的帖子不受影响（canManageContentOf 对本人直接放行）。
          */
         if (!Permission::canManageContentOf($user, (int)$thread['user_id'])) {
             return false;
@@ -632,7 +634,7 @@ final class ThreadController extends Controller
             return false;
         }
 
-        // 锁定的主题普通作者不可编辑
+        // 锁定的帖子普通作者不可编辑
         return (int)$thread['is_locked'] !== 1;
     }
 

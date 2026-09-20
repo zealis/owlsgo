@@ -41,6 +41,22 @@ $stats   = is_array($stats ?? null) ? $stats : [];
         <?php endif; ?>
     </form>
 
+    <?php
+    /* 批量删除：附件删除会连磁盘文件一起移除，**没有回收站**，确认文案里明确写了 */
+    echo $view('partials/admin-bulk-bar', [
+        'bulkEndpoint' => url('/admin/attachments/bulk'),
+        'bulkNoun'     => '个附件',
+        'bulkOptions'  => [
+            [
+                'value'   => 'delete',
+                'label'   => '批量删除',
+                'confirm' => '确认删除选中的 {n} 个附件吗？磁盘文件会一并删除，不可恢复（附件没有回收站）。',
+                'danger'  => true,
+            ],
+        ],
+    ]);
+    ?>
+
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'paperclip', 'size' => 46]) ?>
@@ -51,6 +67,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
             <table>
                 <thead>
                 <tr>
+                    <th class="bulk-check"></th>
                     <th>文件</th>
                     <th style="width:190px">关联内容</th>
                     <th style="width:90px">大小</th>
@@ -72,6 +89,10 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                     $downloadUrl = url('/attachment/' . $fileId);
                     ?>
                     <tr>
+                        <td class="bulk-check">
+                            <input type="checkbox" data-bulk-item value="<?= $fileId ?>"
+                                   aria-label="选择附件：<?= e((string)($file['name'] ?? '')) ?>">
+                        </td>
                         <td>
                             <div class="hstack" style="gap:8px">
                                 <span class="text-light">
@@ -102,10 +123,10 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                             <?php elseif ($threadId > 0): ?>
                                 <a href="<?= e(url('/t/' . $threadId, $postId > 0 ? ['p' => $postId] : [])) ?>"
                                    target="_blank" rel="noopener">
-                                    主题 #<?= $threadId ?>
+                                    帖子 #<?= $threadId ?>
                                 </a>
                                 <?php if ($postId > 0): ?>
-                                    <span class="mono" style="display:block;font-size:11.5px">回复 #<?= $postId ?></span>
+                                    <span class="mono" style="display:block;font-size:11.5px">评论 #<?= $postId ?></span>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <span>未绑定</span>
@@ -121,7 +142,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                     <?= e((string)($uploader['username'] ?? '')) ?>
                                 </a>
                             <?php else: ?>
-                                <span class="text-light">已注销用户</span>
+                                <span class="text-light">用户已删除</span>
                             <?php endif; ?>
                         </td>
                         <td class="text-light"><?= number_format((int)($file['downloads'] ?? 0)) ?></td>

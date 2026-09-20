@@ -39,8 +39,8 @@ $total = (int)($total ?? count($rows));
                     <th>版块</th>
                     <th style="width:120px">标识</th>
                     <th style="width:130px">权限限制</th>
-                    <th style="width:80px">主题</th>
-                    <th style="width:80px">回复</th>
+                    <th style="width:80px">帖子</th>
+                    <th style="width:80px">评论</th>
                     <th style="width:70px">排序</th>
                     <th style="width:90px">状态</th>
                     <th style="width:150px">操作</th>
@@ -63,7 +63,7 @@ $total = (int)($total ?? count($rows));
                         $limits[] = '发帖受限';
                     }
                     if (group_ids_from_field((string)($forum['group_reply'] ?? '')) !== []) {
-                        $limits[] = '回复受限';
+                        $limits[] = '评论受限';
                     }
                     ?>
                     <tr>
@@ -80,7 +80,7 @@ $total = (int)($total ?? count($rows));
                                         <span class="badge outline" style="margin-left:6px">禁止发帖</span>
                                     <?php endif; ?>
                                     <?php if ((int)($forum['allow_reply'] ?? 1) !== 1): ?>
-                                        <span class="badge outline" style="margin-left:4px">禁止回复</span>
+                                        <span class="badge outline" style="margin-left:4px">禁止评论</span>
                                     <?php endif; ?>
                                     <?php if ((string)($forum['description'] ?? '') !== ''): ?>
                                         <span class="text-light" style="display:block;font-size:12.5px">
@@ -136,6 +136,6 @@ $total = (int)($total ?? count($rows));
     <?php endif; ?>
 
     <div class="panel__foot text-light" style="font-size:12.5px">
-        版块下仍有主题或子版块时无法删除；删除操作为软删除，数据可在数据库层面恢复。
+        版块下仍有帖子或子版块时无法删除；删除操作为软删除，数据可在数据库层面恢复。
     </div>
 </section>

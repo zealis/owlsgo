@@ -28,10 +28,21 @@ final class GroupController extends AdminBaseController
     {
         $groups = UsergroupModel::all();
         $counts = UserModel::countByGroups();
+        $quotaMap = UsergroupModel::quotaMap();
 
         $rows = [];
         foreach ($groups as $id => $group) {
-            $permissions = json_decode((string)$group['permissions'], true);
+            /*
+             * 权限计数用**生效权限**（Permission::ofGroup）而不是库里那份 JSON 的原始键。
+             *
+             * 原因：CATALOG 是会增长的（例如 attachment.download、notice.manage 都是后加的），
+             * 而用户组只在被保存时才会写入新键 —— 老站点的 JSON 里缺这些键，
+             * 按原始键统计就会少算，于是「管理员组明明全开却显示 23 项里少了 2 项」。
+             * ofGroup() 会把默认值并进来，反映的才是真正生效的权限。
+             */
+            $permissions = Permission::ofGroup($id);
+            $quotaMb     = (int)($quotaMap[$id] ?? 0);
+            $canUpload   = !empty($permissions['attachment.upload']);
 
             $rows[] = [
                 'id'          => $id,
@@ -42,9 +53,11 @@ final class GroupController extends AdminBaseController
                 'is_system'   => (int)$group['is_system'] === 1,
                 'sort_order'  => (int)$group['sort_order'],
                 'members'     => (int)($counts[$id] ?? 0),
-                'permissions' => is_array($permissions)
-                    ? count(array_filter($permissions))
-                    : 0,
+                'permissions' => count(array_filter($permissions)),
+                /* 列表里显示配额，方便横向比较各组的附件空间 */
+                'quota_mb'    => $quotaMb,
+                'can_upload'  => $canUpload,
+                'quota_text'  => UsergroupModel::quotaLabel($canUpload, $quotaMb),
             ];
         }
 
@@ -69,6 +82,8 @@ final class GroupController extends AdminBaseController
             'group'      => null,
             'catalog'    => Permission::CATALOG,
             'checked'    => $this->defaultChecked(3),
+            /* 新建时默认「不限制」，与字段默认值一致 */
+            'quotaMb'    => 0,
             'action'     => Router::url('/admin/groups'),
         ]);
     }
@@ -89,6 +104,8 @@ final class GroupController extends AdminBaseController
             'color'       => Request::string('color', '#00A0E9', 7),
             'sort_order'  => Request::int('sort_order', 0),
             'permissions' => Request::array('permissions'),
+            /* 附件空间配额（MB，0 = 不限制）；负数与超大值由模型侧夹紧 */
+            'attach_quota_mb' => Request::int('attach_quota_mb', 0),
         ];
 
         $validator = $this->validate(
@@ -139,6 +156,11 @@ final class GroupController extends AdminBaseController
             'catalog'    => Permission::CATALOG,
             'checked'    => $checked,
             'isSuper'    => $groupId === Permission::SUPER_GROUP,
+            /*
+             * 配额单独取：它可能是后加的列，而 $group 走的是模型查询（带进程内/文件缓存），
+             * 缓存里未必有这一列；quotaOf() 直读带默认回退，不会把旧缓存显示成空值。
+             */
+            'quotaMb'    => UsergroupModel::quotaOf($groupId),
             'action'     => Router::url('/admin/groups/' . $groupId),
         ]);
     }
@@ -165,6 +187,8 @@ final class GroupController extends AdminBaseController
             'color'       => Request::string('color', '#00A0E9', 7),
             'sort_order'  => Request::int('sort_order', 0),
             'permissions' => Request::array('permissions'),
+            /* 附件空间配额（MB，0 = 不限制）；负数与超大值由模型侧夹紧 */
+            'attach_quota_mb' => Request::int('attach_quota_mb', 0),
         ];
 
         $validator = $this->validate(

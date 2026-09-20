@@ -85,13 +85,13 @@ $createdAt   = (int)($profile['created_at'] ?? 0);
                 <div class="admin-card" style="padding:10px 12px">
                     <div>
                         <div class="admin-card__value" style="font-size:18px"><?= number_format((int)($stats['threads'] ?? 0)) ?></div>
-                        <div class="admin-card__label">主题</div>
+                        <div class="admin-card__label">帖子</div>
                     </div>
                 </div>
                 <div class="admin-card" style="padding:10px 12px">
                     <div>
-                        <div class="admin-card__value" style="font-size:18px"><?= number_format((int)($stats['posts'] ?? 0)) ?></div>
-                        <div class="admin-card__label">回复</div>
+                        <div class="admin-card__value" style="font-size:18px"><?= number_format((int)($stats['comments'] ?? 0)) ?></div>
+                        <div class="admin-card__label">评论</div>
                     </div>
                 </div>
                 <div class="admin-card" style="padding:10px 12px">
@@ -211,6 +211,48 @@ $createdAt   = (int)($profile['created_at'] ?? 0);
             </button>
         </form>
     </div>
+</section>
+
+<!-- 版主版块：版主指派的唯一入口（原来的版块表单多选已移除） -->
+<section class="panel">
+    <div class="panel__head">
+        <h3><?= $view('partials/icon', ['name' => 'users', 'size' => 16]) ?>版主版块</h3>
+        <span class="spacer"></span>
+        <span class="text-light" style="font-size:12.5px">勾选 <?= e((string)$profile['username']) ?> 担任版主的版块</span>
+    </div>
+    <form method="post" action="<?= e(url('/admin/users/' . (int)$profile['id'] . '/moderates')) ?>">
+        <?= csrf_field() ?>
+        <div class="panel__body">
+            <?php if (($moderateForums ?? []) === []): ?>
+                <p class="text-light" style="margin-top:0">站点还没有任何版块。</p>
+            <?php else: ?>
+                <p class="text-light" style="font-size:13px;margin-top:0">
+                    被指派的用户在对应版块内拥有加精、置顶、删帖与审核权限；取消勾选并保存即移除。
+                    保存后自动加入/移出「版主」用户组（管理员与超管不受影响）；版主组的用户未指派版块时不再拥有任何管理权。
+                </p>
+                <div style="display:flex;flex-direction:column;gap:8px;max-width:480px">
+                    <?php foreach ($moderateForums as $forum): ?>
+                        <label style="display:flex;align-items:center;gap:8px">
+                            <input type="checkbox" name="forum_ids[]" value="<?= (int)$forum['id'] ?>"
+                                <?= $forum['isModerating'] ? 'checked' : '' ?>>
+                            <span><?= e($forum['name']) ?>（#<?= (int)$forum['id'] ?>）</span>
+                            <?php if (!$forum['status']): ?>
+                                <span class="badge outline">已隐藏</span>
+                            <?php endif; ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="panel__foot">
+            <?php if (($moderateForums ?? []) !== []): ?>
+                <button type="submit" class="button">
+                    <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
+                    <span>保存版主版块</span>
+                </button>
+            <?php endif; ?>
+        </div>
+    </form>
 </section>
 
 <!-- 封禁 -->

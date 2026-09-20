@@ -19,9 +19,7 @@ $publicThreads = (bool)($profile['public_threads'] ?? true);
 $publicPosts   = (bool)($profile['public_posts'] ?? true);
 ?>
 
-<?= $view('partials/profile-hero', ['profile' => $profile]) ?>
-
-<?= $view('partials/user-nav', ['userNavProfile' => $profile, 'userNavActive' => 'settings']) ?>
+<?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'settings']) ?>
 
 <section class="panel mt-4">
     <div class="panel__head">
@@ -70,9 +68,20 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                                     </div>
                                 </form>
                             <?php else: ?>
-                                <div class="doc-note hstack" style="gap:10px;align-items:flex-start">
-                                    <?= $view('partials/icon', ['name' => 'info', 'size' => 18]) ?>
-                                    <div>站点当前已关闭文件上传，无法更换头像。</div>
+                                <?php /*
+                                        上传被站点关闭时，只收起「上传头像」。
+                                        「预置头像」是 SVG 实时生成的，不落盘、不占用上传通道，
+                                        所以不受上传开关影响（详见 Core\Avatar::presets()）。
+                                */ ?>
+                                <div data-field>
+                                    <button type="button" class="button ghost small" id="avatar-preset-open">
+                                        <?= $view('partials/icon', ['name' => 'image', 'size' => 15]) ?>
+                                        <span>预置头像</span>
+                                    </button>
+                                    <span data-hint>
+                                        站点当前已关闭文件上传，无法上传头像；
+                                        仍可选择预置头像（SVG 实时生成，不占用存储）。
+                                    </span>
                                 </div>
                             <?php endif; ?>
 
@@ -142,7 +151,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                             <textarea id="profile-bio" name="bio" rows="3" maxlength="100"
                                       placeholder="介绍一下自己"><?= e((string)old('bio', (string)($profile['bio'] ?? ''))) ?></textarea>
                             <span class="field-hint">
-                                显示在你的个人主页，以及你发表的每个主题和回复下方。最多 100 个字符，留空则不显示。
+                                显示在你的个人主页，以及你发表的每个帖子和评论下方。最多 100 个字符，留空则不显示。
                             </span>
                             <?php if (old_error('bio') !== ''): ?>
                                 <span class="field-error"><?= e(old_error('bio')) ?></span>
@@ -217,7 +226,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
             <?php /* 开关勾选 = 所有人可见；取消勾选 = 仅自己可见（后端 assertTabVisible 把关） */ ?>
             <div class="privacy-row">
                 <div class="privacy-row__label">
-                    <strong>主题</strong>
+                    <strong>帖子</strong>
                     <span class="privacy-row__state">所有人可见</span>
                 </div>
                 <input type="checkbox" class="switch" name="public_threads" value="1"
@@ -226,7 +235,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
 
             <div class="privacy-row">
                 <div class="privacy-row__label">
-                    <strong>回帖</strong>
+                    <strong>评论</strong>
                     <span class="privacy-row__state">所有人可见</span>
                 </div>
                 <input type="checkbox" class="switch" name="public_posts" value="1"
@@ -245,7 +254,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
 
 <section class="panel mt-4">
     <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'logout', 'size' => 16]) ?>安全退出</h3>
+        <h3><?= $view('partials/icon', ['name' => 'logout', 'size' => 16]) ?>安全</h3>
     </div>
     <div class="panel__body">
         <div class="hstack">

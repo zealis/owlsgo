@@ -1,6 +1,6 @@
 <?php
 /**
- * 主题列表行
+ * 帖子列表行
  *
  * 传入：$thread（ThreadModel::decorate 后的数组）、$favorited（可选，bool）、$showForum（可选，bool）
  *
@@ -21,7 +21,6 @@ $isPending  = (int)($thread['status'] ?? 1) !== 1;
 $replyCount = (int)($thread['reply_count'] ?? 0);
 $views      = (int)($thread['views'] ?? 0);
 $author     = is_array($thread['author'] ?? null) ? $thread['author'] : [];
-$groupColor = (string)($thread['author_group_color'] ?? '#86909c');
 $lastUser   = is_array($thread['last_reply_user'] ?? null) ? $thread['last_reply_user'] : null;
 $lastAt     = (int)($thread['last_reply_at'] ?? 0) ?: (int)($thread['created_at'] ?? 0);
 $title      = (string)($thread['title'] ?? '');
@@ -35,6 +34,8 @@ $title      = (string)($thread['title'] ?? '');
 
     <div style="min-width:0">
         <h3 style="margin:0;font-size:15px;font-weight:600;display:inline">
+            <a class="thread-item__title" href="<?= e(url('/t/' . $threadId)) ?>"><?= e($title) ?></a>
+            <?php /* 标记统一放在标题后面（与帖子详情页一致） */ ?>
             <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
                 <span class="tag tag--pin">置顶</span>
             <?php endif; ?>
@@ -50,7 +51,6 @@ $title      = (string)($thread['title'] ?? '');
             <?php if ($isPending): ?>
                 <span class="tag tag--pending">审核中</span>
             <?php endif; ?>
-            <a class="thread-item__title" href="<?= e(url('/t/' . $threadId)) ?>"><?= e($title) ?></a>
         </h3>
 
         <?php if ((string)($thread['excerpt'] ?? '') !== ''): ?>
@@ -59,8 +59,8 @@ $title      = (string)($thread['title'] ?? '');
 
         <div class="thread-item__sub">
             <a href="<?= e(url('/u/' . (int)($author['id'] ?? 0))) ?>"
-               style="color:<?= e($groupColor) ?>;font-weight:600">
-                <?= e((string)($author['username'] ?? '已注销用户')) ?>
+               style="font-weight:600">
+                <?= e((string)($author['username'] ?? '用户已删除')) ?>
             </a>
             <span class="dot">·</span>
             <time datetime="<?= e(date('c', (int)($thread['created_at'] ?? 0))) ?>">
@@ -81,7 +81,7 @@ $title      = (string)($thread['title'] ?? '');
 
             <?php if ($replyCount > 0 && $lastUser !== null): ?>
                 <span class="dot">·</span>
-                <span>最后回复
+                <span>最后评论
                     <a href="<?= e(url('/u/' . (int)$lastUser['id'])) ?>"><?= e((string)($lastUser['username'] ?? '')) ?></a>
                     <?= e(human_time($lastAt)) ?>
                 </span>
@@ -90,7 +90,7 @@ $title      = (string)($thread['title'] ?? '');
     </div>
 
     <div class="thread-item__stats">
-        <div><strong><?= format_number($replyCount) ?></strong> 回复</div>
         <div><strong><?= format_number($views) ?></strong> 浏览</div>
+        <div><strong><?= format_number($replyCount) ?></strong> 评论</div>
     </div>
 </article>

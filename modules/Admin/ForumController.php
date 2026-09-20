@@ -57,8 +57,6 @@ final class ForumController extends AdminBaseController
             'forum'      => null,
             'parents'    => ForumModel::options(false),
             'groups'     => UsergroupModel::options(),
-            // 版主名单从用户表中挑选，避免模板自行查库
-            'moderatorCandidates' => UserModel::options(),
             'action'     => Router::url('/admin/forums'),
         ]);
     }
@@ -120,8 +118,6 @@ final class ForumController extends AdminBaseController
             'forum'      => $forum,
             'parents'    => $this->parentOptions((int)$forum['id']),
             'groups'     => UsergroupModel::options(),
-            // 版主名单从用户表中挑选，避免模板自行查库
-            'moderatorCandidates' => UserModel::options(),
             'action'     => Router::url('/admin/forums/' . (int)$forum['id']),
         ]);
     }
@@ -234,7 +230,10 @@ final class ForumController extends AdminBaseController
             'group_view'       => Request::intArray('group_view'),
             'group_thread'     => Request::intArray('group_thread'),
             'group_reply'      => Request::intArray('group_reply'),
-            'moderators'       => Request::intArray('moderators'),
+            /*
+             * moderators 故意不在这里：版主指派已移到「用户编辑页」，
+             * 保存版块时不能碰这个字段（不提交 = 不修改，防止整字段被清空）。
+             */
         ];
     }
 

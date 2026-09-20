@@ -63,7 +63,7 @@ $latest = (int)($stats['latest'] ?? 0);
         <div class="admin-card__icon"><?= $view('partials/icon', ['name' => 'file', 'size' => 20]) ?></div>
         <div>
             <div class="admin-card__value"><?= format_number((int)($stats['threads'] ?? 0)) ?></div>
-            <div class="admin-card__label">来自主题</div>
+            <div class="admin-card__label">来自帖子</div>
         </div>
     </div>
 
@@ -71,7 +71,7 @@ $latest = (int)($stats['latest'] ?? 0);
         <div class="admin-card__icon"><?= $view('partials/icon', ['name' => 'reply', 'size' => 20]) ?></div>
         <div>
             <div class="admin-card__value"><?= format_number((int)($stats['posts'] ?? 0)) ?></div>
-            <div class="admin-card__label">来自回复</div>
+            <div class="admin-card__label">来自评论</div>
         </div>
     </div>
 
@@ -95,7 +95,7 @@ $latest = (int)($stats['latest'] ?? 0);
 
     <?php if ($records === []): ?>
         <div class="empty" style="padding:34px 16px">
-            <p>还没有活动记录。发一个主题或回复一下，就会出现在这里。</p>
+            <p>还没有活动记录。发一个帖子或评论一下，就会出现在这里。</p>
         </div>
     <?php else: ?>
         <?php foreach ($records as $record): ?>
@@ -132,7 +132,7 @@ $latest = (int)($stats['latest'] ?? 0);
                 <p style="margin:0 0 6px"><strong>内容钩子</strong>：<code>content_rendered</code> 会在正文渲染完成后追加脚注（需在插件配置中填写「正文脚注」）。</p>
                 <p style="margin:0 0 6px"><strong>动作钩子</strong>：<code>after_thread_create</code> / <code>after_post_create</code> 把发帖行为记录进插件自建表。</p>
                 <p style="margin:0 0 6px"><strong>资源钩子</strong>：<code>head_assets</code> / <code>footer_assets</code> 注入插件元信息与前端配置。</p>
-                <p style="margin:0 0 6px"><strong>导航钩子</strong>：<code>nav_links</code> 为登录用户追加「打招呼」入口，<code>user_profile_tabs</code> 为个人中心追加标签页。</p>
+                <p style="margin:0 0 6px"><strong>导航钩子</strong>：<code>nav_links</code> 为登录用户追加「打招呼」入口，<code>user_profile_tabs</code> 为个人中心追加标签页，<code>user_profile_stats</code> 为个人主页头部追加「积分（示例）」数据卡。</p>
                 <p style="margin:0"><strong>路由 / 后台页 / 计划任务</strong>：<code>/hello</code>、<code>/admin/plugin/owlsgo-demo</code> 与每日清理任务。</p>
             </div>
         </div>

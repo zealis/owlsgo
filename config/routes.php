@@ -23,7 +23,7 @@ return [
     ['GET', '/f/{id}',  'Modules\Forum\ForumController@show'],
     ['GET', '/f/{id}/page/{page:\d+}', 'Modules\Forum\ForumController@show'],
 
-    /* ==================== 主题 ==================== */
+    /* ==================== 帖子 ==================== */
     ['GET',  '/t/{id}',                 'Modules\Thread\ThreadController@show'],
     ['GET',  '/t/{id}/page/{page:\d+}', 'Modules\Thread\ThreadController@show'],
     ['GET',  '/new',                    'Modules\Thread\ThreadController@create'],
@@ -36,7 +36,7 @@ return [
     ['POST', '/t/{id}/favorite',        'Modules\Thread\ThreadController@toggleFavorite'],
     ['GET',  '/search',                 'Modules\Thread\ThreadController@search'],
 
-    /* ==================== 回帖 ==================== */
+    /* ==================== 评论 ==================== */
     ['POST', '/t/{id}/reply',  'Modules\Post\PostController@store'],
     ['GET',  '/p/{id}/edit',   'Modules\Post\PostController@edit'],
     ['POST', '/p/{id}/edit',   'Modules\Post\PostController@update'],
@@ -57,6 +57,7 @@ return [
     ['GET',  '/u/{id:\d+}/posts',      'Modules\User\UserController@posts'],
     ['GET',  '/u/{id:\d+}/favorites',  'Modules\User\UserController@favorites'],
     ['GET',  '/settings',              'Modules\User\UserController@settings'],
+    ['GET',  '/settings/appearance',   'Modules\User\UserController@appearance'],
     ['POST', '/settings/account',      'Modules\User\UserController@updateAccount'],
     ['POST', '/settings/profile',      'Modules\User\UserController@updateProfile'],
     ['POST', '/settings/privacy',      'Modules\User\UserController@updatePrivacy'],
@@ -111,19 +112,27 @@ return [
 
     /* ==================== 后台：用户 ==================== */
     ['GET',  '/admin/users',                 'Modules\Admin\UserController@index',  'admin.user'],
+    ['POST', '/admin/users/bulk',            'Modules\Admin\UserController@bulk',   'admin.user'],
     ['GET',  '/admin/users/{id:\d+}',        'Modules\Admin\UserController@edit',   'admin.user'],
     ['POST', '/admin/users/{id:\d+}',        'Modules\Admin\UserController@update', 'admin.user'],
+    ['POST', '/admin/users/{id:\d+}/moderates', 'Modules\Admin\UserController@moderates', 'admin.user'],
     ['POST', '/admin/users/{id:\d+}/ban',    'Modules\Admin\UserController@ban',    'user.ban'],
     ['POST', '/admin/users/{id:\d+}/unban',  'Modules\Admin\UserController@unban',  'user.ban'],
 
     /* ==================== 后台：内容与附件 ==================== */
     ['GET',  '/admin/threads',               'Modules\Admin\ContentController@threads',      'admin.content'],
+    ['POST', '/admin/threads/bulk',          'Modules\Admin\ContentController@bulkThreads',  'admin.content'],
     ['POST', '/admin/threads/{id:\d+}/delete',  'Modules\Admin\ContentController@deleteThread', 'admin.content'],
     ['POST', '/admin/threads/{id:\d+}/approve', 'Modules\Admin\ContentController@approveThread', 'post.approve'],
     ['GET',  '/admin/posts',                 'Modules\Admin\ContentController@posts',        'admin.content'],
+    ['POST', '/admin/posts/bulk',            'Modules\Admin\ContentController@bulkPosts',    'admin.content'],
     ['POST', '/admin/posts/{id:\d+}/delete',    'Modules\Admin\ContentController@deletePost',   'admin.content'],
     ['POST', '/admin/posts/{id:\d+}/approve',   'Modules\Admin\ContentController@approve',      'post.approve'],
+    /* 回收站：与帖子/评论同属「内容管理」，权限沿用 admin.content */
+    ['GET',  '/admin/recycle',               'Modules\Admin\ContentController@recycle',      'admin.content'],
+    ['POST', '/admin/recycle/bulk',          'Modules\Admin\ContentController@bulkRecycle',  'admin.content'],
     ['GET',  '/admin/attachments',           'Modules\Admin\AttachmentController@index',     'attachment.manage'],
+    ['POST', '/admin/attachments/bulk',      'Modules\Admin\AttachmentController@bulk',      'attachment.manage'],
     ['POST', '/admin/attachments/{id:\d+}/delete', 'Modules\Admin\AttachmentController@destroy', 'attachment.manage'],
 
     /* ==================== 后台：插件 ==================== */
@@ -133,6 +142,7 @@ return [
     ['POST', '/admin/plugins/{id}/uninstall',     'Modules\Admin\PluginController@uninstall',  'admin.plugin'],
     ['GET',  '/admin/plugins/{id}/config',        'Modules\Admin\PluginController@config',     'admin.plugin'],
     ['POST', '/admin/plugins/{id}/config',        'Modules\Admin\PluginController@saveConfig', 'admin.plugin'],
+    ['POST', '/admin/plugins/upload',             'Modules\Admin\PluginController@upload',     'admin.plugin'],
     ['GET',  '/admin/plugin/{slug}',              'Modules\Admin\PluginController@page',       'admin.access'],
     ['GET',  '/plugin-file/{id}/{path:.+}',       'Modules\Admin\PluginController@asset'],
 

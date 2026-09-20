@@ -1,6 +1,6 @@
 <?php
 /**
- * 编辑主题（标题 + 首帖内容）
+ * 编辑帖子（标题 + 首帖内容）
  *
  * 变量：$thread、$forum、$firstPost（原始记录，含 content）、
  */
@@ -23,7 +23,7 @@ $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
 
 <section class="panel">
     <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑主题</h2>
+        <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑帖子</h2>
     </div>
 
     <div class="panel__body">
@@ -33,7 +33,7 @@ $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
             <?= csrf_field() ?>
 
             <div data-field>
-                <label for="edit-title">主题标题</label>
+                <label for="edit-title">帖子标题</label>
                 <input type="text" id="edit-title" name="title" required
                        maxlength="<?= $titleMax ?>" autocomplete="off"
                        value="<?= e($titleValue) ?>">

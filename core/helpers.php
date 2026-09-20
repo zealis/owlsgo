@@ -254,6 +254,25 @@ if (!function_exists('human_time')) {
     }
 }
 
+if (!function_exists('user_comment_count')) {
+    /**
+     * 用户发表的**评论数**（不含他发的帖子本身）
+     *
+     * ⚠️ users.post_count 的口径是「帖子数 + 评论数」—— 发帖时首帖也算一条 post
+     * （见 ThreadModel::publish 与 PostModel::reply），所以这个数不能直接当「评论数」显示，
+     * 否则会比他实际评论数多出「帖子数」。凡是界面上写「评论 N」的地方都要走这里。
+     *
+     * @param array<string, mixed>|null $user
+     */
+    function user_comment_count(?array $user): int
+    {
+        $posts   = (int)($user['post_count'] ?? 0);
+        $threads = (int)($user['thread_count'] ?? 0);
+
+        return max(0, $posts - $threads);
+    }
+}
+
 if (!function_exists('format_number')) {
     /** 大数字缩写：1234 -> 1.2k */
     function format_number(int $number): string

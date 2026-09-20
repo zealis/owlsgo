@@ -1,6 +1,6 @@
 <?php
 /**
- * Ta 发表的回复
+ * Ta 发表的评论
  *
  * 变量：$profile、$result（items 已 decorate，含 thread_title）、$pagination
  */
@@ -12,20 +12,18 @@ $result  = is_array($result ?? null) ? $result : ['items' => []];
 $items   = is_array($result['items'] ?? null) ? $result['items'] : [];
 ?>
 
-<?= $view('partials/profile-hero', ['profile' => $profile]) ?>
-
-<?= $view('partials/user-nav', ['userNavProfile' => $profile, 'userNavActive' => 'posts']) ?>
+<?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'posts']) ?>
 
 <section class="panel mt-4">
     <div class="panel__head">
-        <h3>发表的回复</h3>
+        <h3>发表的评论</h3>
         <span class="spacer"></span>
         <span class="text-light" style="font-size:13px">共 <?= (int)($result['total'] ?? 0) ?> 条</span>
     </div>
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'reply', 'size' => 46]) ?>
-            <p>该用户还没有发表过回复。</p>
+            <p>该用户还没有发表过评论。</p>
         </div>
     <?php else: ?>
         <?php foreach ($items as $post): ?>
@@ -37,7 +35,7 @@ $items   = is_array($result['items'] ?? null) ? $result['items'] : [];
                 <div class="notice-item__body">
                     <div class="notice-item__text">
                         <a href="<?= e(url('/t/' . $threadId, ['p' => (int)($post['id'] ?? 0)])) ?>">
-                            <?= e((string)($post['thread_title'] ?? '主题已删除')) ?>
+                            <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                         </a>
                         <?php if ((int)($post['floor'] ?? 0) > 0): ?>
                             <span class="text-light" style="font-size:12.5px">· <?= (int)$post['floor'] ?> 楼</span>
@@ -58,5 +56,5 @@ $items   = is_array($result['items'] ?? null) ? $result['items'] : [];
 </section>
 
 <?php if (($pagination ?? '') !== ''): ?>
-    <div class="mt-4"><?= (string)$pagination ?></div>
+    <div class="pager"><?= (string)$pagination ?></div>
 <?php endif; ?>

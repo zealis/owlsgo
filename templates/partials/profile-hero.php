@@ -1,6 +1,6 @@
 <?php
 /**
- * 用户中心个人名片 —— 个人主页 / 发表的主题 / 发表的回复 / 我的收藏 / 账号设置 共用
+ * 用户中心个人名片 —— 个人主页 / 发表的帖子 / 发表的评论 / 我的收藏 / 账号设置 共用
  *
  * 传入：$profile（用户行，需含 group_name；简介 bio 可选）
  */
@@ -19,7 +19,7 @@ $heroBio   = trim((string)($hero['bio'] ?? ''));
     <div class="profile-hero__main">
         <?php /* 用户名与用户组标签同一行 */ ?>
         <div class="profile-hero__name-row">
-            <h1 class="profile-hero__name"><?= e((string)($hero['username'] ?? '已注销用户')) ?></h1>
+            <h1 class="profile-hero__name"><?= e((string)($hero['username'] ?? '用户已删除')) ?></h1>
             <span class="badge" style="background:rgb(255 255 255 / 0.22);color:#fff"><?= e($heroGroup) ?></span>
         </div>
 

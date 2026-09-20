@@ -45,7 +45,7 @@ $configRows = [
         <div class="admin-card__icon"><?= $view('partials/icon', ['name' => 'file', 'size' => 20]) ?></div>
         <div>
             <div class="admin-card__value"><?= format_number((int)($stats['threads'] ?? 0)) ?></div>
-            <div class="admin-card__label">发表主题</div>
+            <div class="admin-card__label">发表帖子</div>
         </div>
     </div>
 
@@ -53,7 +53,7 @@ $configRows = [
         <div class="admin-card__icon"><?= $view('partials/icon', ['name' => 'reply', 'size' => 20]) ?></div>
         <div>
             <div class="admin-card__value"><?= format_number((int)($stats['posts'] ?? 0)) ?></div>
-            <div class="admin-card__label">发表回复</div>
+            <div class="admin-card__label">发表评论</div>
         </div>
     </div>
 
@@ -86,7 +86,7 @@ $configRows = [
 
         <?php if ($records === []): ?>
             <div class="empty" style="padding:34px 16px">
-                <p>暂无活动记录。发表一个主题或回复后即可在此看到。</p>
+                <p>暂无活动记录。发表一个帖子或评论后即可在此看到。</p>
             </div>
         <?php else: ?>
             <div class="table-scroll">

@@ -1,12 +1,12 @@
 <?php
 /**
- * 楼层（首帖与回复共用）
+ * 楼层（首帖与评论共用）
  *
  * 传入：
  *   $post          已 decorate 的帖子数组
- *   $thread        所属主题
+ *   $thread        所属帖子
  *   $canModerate   是否有该版块的版主权限（bool）
- *   $canReply      当前用户是否可回复（bool）
+ *   $canReply      当前用户是否可评论（bool）
  *   $likedPosts    当前用户已点赞的帖子 ID 映射（array<int,bool>）
  *   $highlight     是否高亮（跳转目标楼层，bool，可选）
  */
@@ -33,7 +33,6 @@ $highlight   = (bool)($highlight ?? false);
 $author      = is_array($post['author'] ?? null) ? $post['author'] : [];
 $authorId    = (int)($author['id'] ?? 0);
 $isSelf      = $myId > 0 && $myId === $authorId;
-$groupColor  = (string)($post['author_group_color'] ?? '#86909c');
 $likeCount   = (int)($post['like_count'] ?? 0);
 $liked       = isset($likedPosts[$postId]);
 $attachments = is_array($post['attachments'] ?? null) ? $post['attachments'] : [];
@@ -48,7 +47,7 @@ $canDelete = $canManage && !$isFirst && ($canModerate || $isSelf);
 $editedAt  = (int)($post['updated_at'] ?? 0);
 $createdAt = (int)($post['created_at'] ?? 0);
 ?>
-<?php /* 自己发的回复加 .floor--self：不画卡片外框（见 theme.css） */ ?>
+<?php /* 自己发的评论加 .floor--self：不画卡片外框（见 theme.css） */ ?>
 <article class="floor<?= $isFirst ? ' floor--first' : '' ?><?= !$isFirst && $isSelf ? ' floor--self' : '' ?>"
          id="p<?= $postId ?>"
          <?= $highlight ? 'style="box-shadow:0 0 0 2px var(--qq-blue)"' : '' ?>>
@@ -56,14 +55,16 @@ $createdAt = (int)($post['created_at'] ?? 0);
         <a href="<?= e(url('/u/' . $authorId)) ?>" aria-label="查看作者主页">
             <?= avatar_img($author, 68) ?>
         </a>
-        <div class="floor__name" style="color:<?= e($groupColor) ?>">
-            <?= e((string)($author['username'] ?? '已注销用户')) ?>
+        <?php /* 用户名统一颜色（用户要求取消按用户组着色）；用户组名仍以文字展示 */ ?>
+        <div class="floor__name">
+            <?= e((string)($author['username'] ?? '用户已删除')) ?>
         </div>
         <div><?= e((string)($post['author_group_name'] ?? '游客')) ?></div>
 
         <div class="floor__stats">
-            <span title="发表主题数">主题 <?= (int)($author['thread_count'] ?? 0) ?></span>
-            <span title="发表回复数">回复 <?= (int)($author['post_count'] ?? 0) ?></span>
+            <span title="发表帖子数">帖子 <?= (int)($author['thread_count'] ?? 0) ?></span>
+            <?php /* 用 user_comment_count()：post_count 含本人首帖，直接显示会多出「帖子数」 */ ?>
+            <span title="发表评论数">评论 <?= (int)user_comment_count($author) ?></span>
         </div>
     </div>
 
@@ -94,7 +95,7 @@ $createdAt = (int)($post['created_at'] ?? 0);
 
         <?php if ((int)($post['parent_id'] ?? 0) > 0): ?>
             <div class="reply-to">
-                回复 <strong><?= e((string)($post['parent_username'] ?? '')) ?></strong>
+                评论 <strong><?= e((string)($post['parent_username'] ?? '')) ?></strong>
                 <?php if ((int)($post['parent_floor'] ?? 0) > 0): ?>
                     （<?= (int)$post['parent_floor'] ?> 楼）
                 <?php endif; ?>
@@ -155,7 +156,7 @@ $createdAt = (int)($post['created_at'] ?? 0);
             </div>
         <?php endif; ?>
 
-        <?php /* 楼层签名即用户资料里的「个人简介」（首楼是主题正文，不重复展示） */ ?>
+        <?php /* 楼层签名即用户资料里的「个人简介」（首楼是帖子正文，不重复展示） */ ?>
         <?php if (trim((string)($author['bio'] ?? '')) !== '' && !$isFirst): ?>
             <div class="floor__sign"><?= nl2br(e(trim((string)$author['bio']))) ?></div>
         <?php endif; ?>
@@ -164,7 +165,7 @@ $createdAt = (int)($post['created_at'] ?? 0);
             <form method="post" action="<?= e(url('/p/' . $postId . '/like')) ?>" data-ajax
                   data-state-field="liked" data-active="<?= $liked ? '1' : '0' ?>">
                 <?= csrf_field() ?>
-                <button type="submit" class="<?= $liked ? 'button small' : 'button outline small' ?>">
+                <button type="submit" class="button ghost small">
                     <?= $view('partials/icon', ['name' => 'heart', 'size' => 15]) ?>
                     <span>赞 <span data-count><?= (int)$likeCount ?></span></span>
                 </button>
@@ -174,7 +175,7 @@ $createdAt = (int)($post['created_at'] ?? 0);
                 <a class="button ghost small"
                    href="<?= e(url('/t/' . $threadId, ['reply_to' => $postId])) ?>#respond">
                     <?= $view('partials/icon', ['name' => 'reply', 'size' => 15]) ?>
-                    <span>回复</span>
+                    <span>评论</span>
                 </a>
             <?php endif; ?>
 
@@ -190,7 +191,7 @@ $createdAt = (int)($post['created_at'] ?? 0);
                 <span class="spacer"></span>
                 <form method="post" action="<?= e(url('/p/' . $postId . '/delete')) ?>"
                       data-ajax data-ajax-redirect
-                      data-confirm="确定要删除这条回复吗？删除后无法自行恢复。">
+                      data-confirm="确定要删除这条评论吗？删除后无法自行恢复。">
                     <?= csrf_field() ?>
                     <button type="submit" class="button outline small" data-variant="danger">
                         <?= $view('partials/icon', ['name' => 'trash', 'size' => 15]) ?>

@@ -1,6 +1,6 @@
 <?php
 /**
- * 编辑回复
+ * 编辑评论
  *
  * 变量：$post（原始记录）、$thread、$forum
  */
@@ -21,7 +21,7 @@ $contentValue = (string)old('content', (string)($post['content'] ?? ''));
 
 <section class="panel">
     <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑回复</h2>
+        <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑评论</h2>
         <?php if ((int)($post['floor'] ?? 0) > 0): ?>
             <span class="spacer"></span>
             <span class="text-light" style="font-size:13px">#<?= (int)$post['floor'] ?> 楼</span>
@@ -29,13 +29,13 @@ $contentValue = (string)old('content', (string)($post['content'] ?? ''));
     </div>
 
     <div class="panel__body">
-        <?php /* data-draft：按回复 id 区分草稿 */ ?>
+        <?php /* data-draft：按评论 id 区分草稿 */ ?>
         <form method="post" action="<?= e(url('/p/' . $postId . '/edit')) ?>"
               data-ajax data-ajax-redirect data-draft="post-edit-<?= (int)$postId ?>">
             <?= csrf_field() ?>
 
             <div data-field>
-                <label for="post-content">回复内容</label>
+                <label for="post-content">评论内容</label>
                 <?= $view('partials/editor', [
                     'editorId'    => 'post-content',
                     'editorValue' => $contentValue,

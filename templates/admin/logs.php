@@ -20,6 +20,46 @@ $total    = (int)($total ?? 0);
 $exportUrl = (string)($exportUrl ?? url('/admin/logs/export'));
 
 $hasFilter = $action !== '' || $keyword !== '';
+
+/** 动作类型 → 中文（未收录的动作原样展示，筛选下拉同样使用） */
+$actionLabels = [
+    'user.login'         => '登录成功',
+    'user.login.fail'    => '登录失败',
+    'user.logout'        => '退出登录',
+    'user.register'      => '注册账号',
+    'user.update'        => '更新用户资料',
+    'account.update'     => '更新账号设置',
+    'user.moderates'     => '调整版主版块',
+    'user.unban'         => '解除封禁',
+    'user.ban'           => '封禁用户',
+    'forum.create'       => '创建版块',
+    'forum.update'       => '更新版块',
+    'forum.delete'       => '删除版块',
+    'group.create'       => '创建用户组',
+    'group.update'       => '更新用户组',
+    'group.delete'       => '删除用户组',
+    'thread.approve'     => '审核通过帖子',
+    'thread.delete'      => '删除帖子',
+    'post.approve'       => '审核通过评论',
+    'post.delete'        => '删除评论',
+    'attachment.delete'  => '删除附件',
+    'plugin.enable'      => '启用插件',
+    'plugin.disable'     => '停用插件',
+    'plugin.uninstall'   => '卸载插件',
+    'plugin.upload'      => '上传安装插件',
+    'plugin.config'      => '保存插件配置',
+    'cron.run'           => '执行计划任务',
+    'cron.toggle'        => '切换计划任务',
+    'cron.token'         => '重置触发令牌',
+    'settings.save'      => '保存站点设置',
+    'log.export'         => '导出日志',
+    'system.log.clear'   => '清空系统日志',
+    'notice.create'      => '发布公告',
+    'notice.update'      => '更新公告',
+    'notice.delete'      => '删除公告',
+    'notice.settings'    => '更新通知中心设置',
+];
+$actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
 ?>
 
 <section class="panel">
@@ -49,7 +89,7 @@ $hasFilter = $action !== '' || $keyword !== '';
                 <option value="">全部动作</option>
                 <?php foreach ($actions as $name): ?>
                     <option value="<?= e((string)$name) ?>" <?= selected($action, (string)$name) ?>>
-                        <?= e((string)$name) ?>
+                        <?= e($actionText((string)$name)) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -115,7 +155,7 @@ $hasFilter = $action !== '' || $keyword !== '';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="badge outline"><?= e($actionName !== '' ? $actionName : '—') ?></span>
+                            <span class="badge outline"><?= e($actionText((string)($actionName ?? '')) !== '' ? $actionText((string)($actionName ?? '')) : '—') ?></span>
                         </td>
                         <td class="mono text-light" style="font-size:12.5px">
                             <?= e((string)($log['target'] ?? '') !== '' ? (string)$log['target'] : '—') ?>

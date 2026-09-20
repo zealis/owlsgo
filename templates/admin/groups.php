@@ -38,6 +38,7 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                     <th style="width:120px">标识</th>
                     <th style="width:90px">成员</th>
                     <th style="width:220px">权限开启情况</th>
+                    <th style="width:110px">附件空间</th>
                     <th style="width:70px">排序</th>
                     <th style="width:90px">类型</th>
                     <th style="width:150px">操作</th>
@@ -59,9 +60,6 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                             <?php if ($isSystem): ?>
                                 <span class="badge outline" style="margin-left:6px">内置</span>
                             <?php endif; ?>
-                            <?php if ($groupId === \Core\Permission::SUPER_GROUP): ?>
-                                <span class="badge" style="margin-left:4px">最高权限</span>
-                            <?php endif; ?>
                             <?php if ((string)($row['description'] ?? '') !== ''): ?>
                                 <span class="text-light" style="display:block;font-size:12.5px">
                                     <?= e((string)$row['description']) ?>
@@ -81,6 +79,16 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                                     <?= $enabledRights ?>/<?= $totalRights ?>
                                 </span>
                             </div>
+                        </td>
+                        <?php /*
+                                附件空间配额：
+                                  · 该组没有「上传附件」权限 → 显示「无上传权限」（配额对它无意义，
+                                    显示「不限」会被误读成可以随便传）；
+                                  · 有权限且配额 > 0 → 显示具体大小；
+                                  · 有权限且配额 = 0 → 显示「不限」（不是「0 字节」）。
+                        */ ?>
+                        <td class="<?= !empty($row['can_upload']) && (int)($row['quota_mb'] ?? 0) > 0 ? 'mono' : 'text-light' ?>">
+                            <?= e((string)($row['quota_text'] ?? \Modules\User\UsergroupModel::quotaText((int)($row['quota_mb'] ?? 0)))) ?>
                         </td>
                         <td class="text-light"><?= (int)($row['sort_order'] ?? 0) ?></td>
                         <td>

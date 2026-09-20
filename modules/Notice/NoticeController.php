@@ -24,6 +24,7 @@ use Core\Permission;
 use Core\Request;
 use Core\Router;
 use Core\Settings;
+use Core\Upload;
 use Modules\Admin\LogModel;
 use Modules\User\NotificationModel;
 
@@ -80,7 +81,10 @@ final class NoticeController extends Controller
             'notice'    => null,
             'action'    => Router::url('/notices'),
             'heading'   => '发布公告',
-            'maxMb'     => (int)setting('upload_max_mb', 2),
+            /* 尺寸上限与开关都取真实生效值：原来是写死的 upload_max_mb（不存在的设置键，
+               永远返回 2）和模板里写死的 editorUpload=true */
+            'maxMb'         => Upload::maxSizeMb(),
+            'uploadEnabled' => Settings::bool('upload_enabled', true),
         ], 'layouts/main');
     }
 
@@ -127,7 +131,10 @@ final class NoticeController extends Controller
             'notice'    => $notice,
             'action'    => Router::url('/notices/' . (int)$notice['id']),
             'heading'   => '编辑公告',
-            'maxMb'     => (int)setting('upload_max_mb', 2),
+            /* 尺寸上限与开关都取真实生效值：原来是写死的 upload_max_mb（不存在的设置键，
+               永远返回 2）和模板里写死的 editorUpload=true */
+            'maxMb'         => Upload::maxSizeMb(),
+            'uploadEnabled' => Settings::bool('upload_enabled', true),
         ], 'layouts/main');
     }
 

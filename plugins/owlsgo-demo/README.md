@@ -31,11 +31,12 @@ owlsgo-demo/
 | 能力 | 实现位置 | 观察方式 |
 | --- | --- | --- |
 | 内容过滤钩子 | `content_rendered` | 后台填写「正文脚注」后查看任意帖子正文末尾 |
-| 前置拦截钩子 | `before_thread_create`、`before_post_create` | 后台填写「禁止词」后尝试发帖 / 回复 |
-| 业务动作钩子 | `after_thread_create`、`after_post_create` | 发帖 / 回复后到插件首页或后台页看记录 |
+| 前置拦截钩子 | `before_thread_create`、`before_post_create` | 后台填写「禁止词」后尝试发帖 / 评论 |
+| 业务动作钩子 | `after_thread_create`、`after_post_create` | 发帖 / 评论后到插件首页或后台页看记录 |
 | 页面资源钩子 | `head_assets`、`footer_assets` | 查看页面源码中的 `<meta name="owlsgo-plugin">`、`window.OwlsgoDemoPlugin` |
 | 导航钩子 | `nav_links` | 登录后顶部导航出现「打招呼」 |
 | 用户中心钩子 | `user_profile_tabs` | 个人主页标签栏出现「插件标签页」 |
+| 个人主页数据卡钩子 | `user_profile_stats` | 个人主页头部多一张「积分（示例）」卡 |
 | 前台路由（含参数） | `/hello`、`/hello/{name}` | 直接访问地址 |
 | 带权限的写路由 | `POST /hello/clear` | 后台页「清空记录」按钮 |
 | 后台页面 | `/admin/plugin/owlsgo-demo` | 后台侧栏「示例插件」 |

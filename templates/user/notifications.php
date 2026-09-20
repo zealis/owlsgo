@@ -4,7 +4,7 @@
  *
  * 变量：$result（items 已 decorate）、$unread、$pagination
  *
- * 每条通知携带 link 字段（指向主题楼层），kind 决定图标。
+ * 每条通知携带 link 字段（指向帖子楼层），kind 决定图标。
  * 控制器在非 AJAX 请求下会 redirectWith 回本页并附带 flash 提示，
  * 因此这里的表单采用普通 POST 提交，保证列表与未读状态能同步刷新。
  *
@@ -32,22 +32,30 @@ $kindIcons = [
  *  - 所有登录用户都能看到「公开显示」的公告；
  *  - 拥有 notice.manage（用户组里的「发布公告」）的用户额外看到：
  *    发布公告 / 通知中心设置，以及每条公告上的「编辑公告」；
- *  - 「附件设置」入口直接跳到后台设置的附件分区（附件总空间、允许的扩展名都在那儿），
- *    所以它看的是 admin.settings —— 与目标页的准入保持一致，点过去不会撞 403。
+ *  - 「附件管理」指向通知中心自己的附件页 /notices/resources（查看公告引用/未引用的
+ *    附件资源），所以它看的是 attachment.manage —— 与目标页 NoticeController::resources()
+ *    的准入一致，点过去不会撞 403。
+ *    （附件总空间、允许的扩展名这类**配置**在后台「站点设置」里，属于后台范畴，
+ *      从后台左侧导航进，不在通知中心里放跳转入口。）
  * 公告正文与帖子共用 Markdown 渲染，正文为空时不输出空容器。
  */
-$canManage       = \Core\Permission::allows(auth_user(), 'notice.manage');
-$canAttachConfig = \Core\Permission::allows(auth_user(), 'admin.settings');
-$notices   = \Modules\Notice\NoticeModel::published();
-$noticeIntro = trim((string)setting('notice_center_intro', ''));
-$hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
+$canManage         = \Core\Permission::allows(auth_user(), 'notice.manage');
+$canAttachManage   = \Core\Permission::allows(auth_user(), 'attachment.manage');
+/*
+ * 公告由控制器按「站点统一的每页条数」分页后传进来（$notices 是当前页的条目）。
+ * 公告条数没超过每页上限时 $noticePagination 是空字符串，界面与不分页时一致。
+ */
+$notices           = is_array($notices ?? null) ? $notices : [];
+$noticeTotal       = (int)($noticeTotal ?? 0);
+$noticeIntro       = trim((string)setting('notice_center_intro', ''));
+$hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
 ?>
 
 <section class="panel mb-4">
     <div class="panel__head">
         <h2><?= $view('partials/icon', ['name' => 'megaphone', 'size' => 17]) ?>全站通知</h2>
         <span class="spacer"></span>
-        <?php if ($canManage || $canAttachConfig): ?>
+        <?php if ($canManage || $canAttachManage): ?>
             <?php if ($canManage && $hiddenCount > 0): ?>
                 <span class="badge outline" title="未公开的公告只有拥有发布权限的用户能看到"><?= $hiddenCount ?> 条未公开</span>
             <?php endif; ?>
@@ -57,8 +65,8 @@ $hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
                     <span>发布公告</span>
                 </a>
             <?php endif; ?>
-            <?php if ($canAttachConfig): ?>
-                <a class="button ghost small" href="<?= e(url('/admin/settings')) ?>">附件设置</a>
+            <?php if ($canAttachManage): ?>
+                <a class="button ghost small" href="<?= e(url('/notices/resources')) ?>">附件管理</a>
             <?php endif; ?>
             <?php if ($canManage): ?>
                 <a class="button ghost small" href="<?= e(url('/notices/settings')) ?>">通知中心设置</a>
@@ -138,6 +146,14 @@ $hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
             </article>
         <?php endforeach; ?>
     <?php endif; ?>
+
+    <?php /*
+      公告分页：条数超过每页上限（config app.per_page）时才出现，
+      与下方「我的通知」共用 .pager —— 全站分页同一个样式。
+    */ ?>
+    <?php if (($noticePagination ?? '') !== ''): ?>
+        <div class="pager"><?= (string)$noticePagination ?></div>
+    <?php endif; ?>
 </section>
 
 <section class="panel">
@@ -164,7 +180,7 @@ $hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
             <?= $view('partials/icon', ['name' => 'bell', 'size' => 46]) ?>
             <p>暂时没有任何通知。</p>
             <p class="text-light" style="font-size:13px">
-                当有人回复你的主题、引用你的回复，或在帖子里 @ 你时，这里会出现提醒。
+                当有人评论你的帖子、引用你的评论，或在帖子里 @ 你时，这里会出现提醒。
             </p>
         </div>
     <?php else: ?>
@@ -228,5 +244,5 @@ $hiddenCount = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
 </section>
 
 <?php if (($pagination ?? '') !== ''): ?>
-    <div class="mt-4"><?= (string)$pagination ?></div>
+    <div class="pager"><?= (string)$pagination ?></div>
 <?php endif; ?>

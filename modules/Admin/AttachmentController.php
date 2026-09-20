@@ -68,6 +68,42 @@ final class AttachmentController extends AdminBaseController
     }
 
     /**
+     * 批量操作：删除附件
+     *
+     * 逐条走 AttachmentModel::destroy（磁盘文件 + 记录成对处理），
+     * 也就是说**没有**「回收站」这一步 —— 附件删除本来就是不可恢复的，
+     * 界面上会明确提示这一点。
+     *
+     * @param array<string, string> $params
+     */
+    public function bulk(array $params): never
+    {
+        $ids    = Request::intArray('items');
+        $action = (string)Request::post('action', '');
+        $back   = Request::referer() !== '' ? Request::referer() : Router::url('/admin/attachments');
+
+        if ($ids === []) {
+            $this->bulkFail('请先勾选要删除的附件。', $back);
+        }
+
+        if ($action !== 'delete') {
+            $this->bulkFail('未知的批量操作。', $back);
+        }
+
+        $done = AttachmentModel::destroyMany($ids);
+
+        $this->audit('attachment.delete', 'bulk', '批量删除 ' . $done . ' 个附件');
+
+        $message = '已删除 ' . $done . ' 个附件（文件已从磁盘移除，不可恢复）。';
+
+        if (Request::wantsJson()) {
+            $this->json(['ok' => true, 'message' => $message, 'redirect' => $back]);
+        }
+
+        $this->redirectWith($back, $message);
+    }
+
+    /**
      * 删除附件
      *
      * @param array<string, string> $params

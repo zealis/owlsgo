@@ -54,7 +54,49 @@ foreach ($rows as $row) {
         </span>
     </div>
 
-    <?php if ($rows === []): ?>
+    <?php /* 筛选（名称 / 介绍 / 插件 ID）+ 本地上传安装：与用户列表同一套 admin-filter 结构 */ ?>
+    <div class="admin-filter">
+        <form class="inline-form" method="get" action="<?= e(url('/admin/plugins')) ?>">
+            <div class="search-box search-box--admin">
+                <input type="search" name="q" value="<?= e($keyword ?? '') ?>" maxlength="50"
+                       placeholder="插件名称 / 介绍 / ID" aria-label="搜索插件">
+                <button type="submit" aria-label="搜索">
+                    <?= $view('partials/icon', ['name' => 'search', 'size' => 16]) ?>
+                </button>
+            </div>
+        </form>
+
+        <?php if (($keyword ?? '') !== ''): ?>
+            <a class="button small ghost" href="<?= e(url('/admin/plugins')) ?>">重置</a>
+        <?php endif; ?>
+
+        <span class="spacer"></span>
+
+        <form class="inline-form" method="post" enctype="multipart/form-data"
+              action="<?= e(url('/admin/plugins/upload')) ?>" data-plugin-upload>
+            <?= csrf_field() ?>
+            <?php /*
+             * 文件输入保持 hidden，由右边的按钮代它打开系统选择框（见 app.js initPluginUpload）。
+             *
+             * ⚠️ 按钮必须是 type="button"、**不能**是 submit：
+             * 写成 submit 时点击会直接提交表单，而此时用户还没机会选文件，
+             * 结果只弹出「请先选择插件 zip 包」——看起来像「点了没反应，只会报错」。
+             */ ?>
+            <input type="file" name="package" accept=".zip" hidden data-plugin-file>
+            <button type="button" class="button small ghost" data-plugin-trigger>
+                <?= $view('partials/icon', ['name' => 'upload', 'size' => 14]) ?>
+                <span>本地上传安装</span>
+            </button>
+        </form>
+    </div>
+
+    <?php if ($rows === [] && ($keyword ?? '') !== ''): ?>
+        <div class="empty">
+            <?= $view('partials/icon', ['name' => 'search', 'size' => 46]) ?>
+            <p>没有匹配「<?= e($keyword) ?>」的插件。</p>
+            <p class="text-light" style="font-size:13px"><a href="<?= e(url('/admin/plugins')) ?>">清除搜索条件</a></p>
+        </div>
+    <?php elseif ($rows === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'plug', 'size' => 46]) ?>
             <p>还没有发现任何插件。</p>

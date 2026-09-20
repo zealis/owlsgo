@@ -39,6 +39,10 @@ $intervalText = static function (int $seconds): string {
 
     return intdiv($seconds, 86400) . ' 天';
 };
+
+/** 执行状态 → 中文 + 徽章配色（skip = 任务停用/处理器未注册，跑之前被跳过，不算失败） */
+$statusText    = static fn (string $s): string => ['ok' => '成功', 'skip' => '跳过', 'error' => '失败'][$s] ?? $s;
+$statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 'warning', 'error' => 'danger'][$s] ?? 'danger';
 ?>
 
 <div class="admin-cards">
@@ -166,17 +170,17 @@ $intervalText = static function (int $seconds): string {
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
-                    <table>
+                    <table class="cron-table">
                         <thead>
                         <tr>
                             <th>任务</th>
-                            <th style="width:110px">所属插件</th>
-                            <th style="width:100px">间隔</th>
-                            <th style="width:90px">执行次数</th>
-                            <th style="width:130px">下次执行</th>
-                            <th style="width:100px">上次状态</th>
-                            <th style="width:100px">状态</th>
-                            <th style="width:110px">操作</th>
+                            <th>所属插件</th>
+                            <th>间隔</th>
+                            <th>执行次数</th>
+                            <th>下次执行</th>
+                            <th>上次状态</th>
+                            <th>状态</th>
+                            <th>操作</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -191,10 +195,10 @@ $intervalText = static function (int $seconds): string {
                             <tr>
                                 <td>
                                     <strong><?= e((string)($task['name'] ?? '')) ?></strong>
-                                    <?php if ((int)($task['id'] ?? 0) > 0): ?>
-                                        <span class="text-light mono" style="display:block;font-size:11.5px">
-                                            #<?= $taskId ?>
-                                        </span>
+                                    <?php if ((string)($task['description'] ?? '') !== ''): ?>
+                                        <div class="text-light" style="font-weight:400;font-size:12.5px;margin-top:3px;white-space:normal;max-width:420px">
+                                            <?= e((string)$task['description']) ?>
+                                        </div>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-light mono">
@@ -214,10 +218,8 @@ $intervalText = static function (int $seconds): string {
                                 <td>
                                     <?php if ($lastStat === ''): ?>
                                         <span class="text-light">—</span>
-                                    <?php elseif ($lastStat === 'ok'): ?>
-                                        <span class="badge outline">成功</span>
                                     <?php else: ?>
-                                        <span class="badge" data-variant="danger"><?= e($lastStat) ?></span>
+                                        <span class="badge" data-variant="<?= e($statusVariant($lastStat)) ?>"><?= e($statusText($lastStat)) ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -228,14 +230,20 @@ $intervalText = static function (int $seconds): string {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <form class="inline-form" method="post"
-                                          action="<?= e(url('/admin/cron/' . $taskId . '/toggle')) ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="button small ghost">
-                                            <?= $view('partials/icon', ['name' => $enabled ? 'pause' : 'play', 'size' => 14]) ?>
-                                            <span><?= $enabled ? '停用' : '启用' ?></span>
-                                        </button>
-                                    </form>
+                                    <?php if (!$enabled): ?>
+                                        <span class="text-light">已停用</span>
+                                    <?php elseif (empty($task['plugin_active'])): ?>
+                                        <span class="text-light" title="插件当前未启用，任务无法执行">插件未启用</span>
+                                    <?php else: ?>
+                                        <form class="inline-form" method="post"
+                                              action="<?= e(url('/admin/cron/' . $taskId . '/toggle')) ?>">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="button small ghost">
+                                                <?= $view('partials/icon', ['name' => $enabled ? 'pause' : 'play', 'size' => 14]) ?>
+                                                <span><?= $enabled ? '停用' : '启用' ?></span>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -314,8 +322,9 @@ $intervalText = static function (int $seconds): string {
                             <div class="notice-item__body">
                                 <div class="notice-item__text">
                                     <strong><?= e((string)($log['name'] ?? '')) ?></strong>
-                                    <span class="badge outline" style="margin-left:6px">
-                                        <?= $ok ? '成功' : e((string)($log['status'] ?? '')) ?>
+                                    <?php $logStat = (string)($log['status'] ?? 'ok'); ?>
+                                    <span class="badge" data-variant="<?= e($statusVariant($logStat)) ?>" style="margin-left:6px">
+                                        <?= e($statusText($logStat)) ?>
                                     </span>
                                 </div>
                                 <?php if ((string)($log['message'] ?? '') !== ''): ?>

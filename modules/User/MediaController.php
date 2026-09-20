@@ -8,7 +8,7 @@
  *  3. 响应头固定 nosniff，并且只对「真实图片」内联展示
  *  4. SVG 与所有非图片类型一律以 application/octet-stream 强制下载，
  *     从根本上消除「上传文件被当作页面脚本执行」的可能
- *  5. 附件下载前按所属主题/版块做可见性校验，防止猜到 ID 就下载
+ *  5. 附件下载前按所属帖子/版块做可见性校验，防止猜到 ID 就下载
  */
 
 declare(strict_types=1);
@@ -108,7 +108,7 @@ final class MediaController extends Controller
             App::abort(404, '附件不存在或已被删除。');
         }
 
-        // 可见性校验：附件跟随所属主题/版块，避免凭 ID 盲猜下载私有内容
+        // 可见性校验：附件跟随所属帖子/版块，避免凭 ID 盲猜下载私有内容
         $postId = (int)$attachment['post_id'];
         if ($postId > 0) {
             $context = PostModel::withContext($postId);

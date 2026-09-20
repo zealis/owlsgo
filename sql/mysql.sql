@@ -6,17 +6,18 @@
 
 -- 用户组表 ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `usergroups` (
-    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `name`        VARCHAR(191) NOT NULL,
-    `slug`        VARCHAR(191) NOT NULL,
-    `description` VARCHAR(255) NOT NULL DEFAULT '',
-    `color`       VARCHAR(32)  NOT NULL DEFAULT '',
-    `icon`        VARCHAR(64)  NOT NULL DEFAULT '',
-    `permissions` LONGTEXT     NULL,
-    `is_system`   TINYINT      NOT NULL DEFAULT 0,
-    `sort_order`  INT          NOT NULL DEFAULT 0,
-    `created_at`  INT UNSIGNED NOT NULL DEFAULT 0,
-    `updated_at`  INT UNSIGNED NOT NULL DEFAULT 0,
+    `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`            VARCHAR(191) NOT NULL,
+    `slug`            VARCHAR(191) NOT NULL,
+    `description`     VARCHAR(255) NOT NULL DEFAULT '',
+    `color`           VARCHAR(32)  NOT NULL DEFAULT '',
+    `icon`            VARCHAR(64)  NOT NULL DEFAULT '',
+    `permissions`     LONGTEXT     NULL,
+    `attach_quota_mb` INT UNSIGNED NOT NULL DEFAULT 0,
+    `is_system`       TINYINT      NOT NULL DEFAULT 0,
+    `sort_order`      INT          NOT NULL DEFAULT 0,
+    `created_at`      INT UNSIGNED NOT NULL DEFAULT 0,
+    `updated_at`      INT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (`id`),
     UNIQUE KEY `idx_usergroups_slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -82,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `forums` (
     KEY `idx_forums_parent` (`parent_id`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 主题表 ----------------------------------------------------------------
+-- 帖子表 ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `threads` (
     `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `forum_id`           INT UNSIGNED NOT NULL,
@@ -108,7 +109,7 @@ CREATE TABLE IF NOT EXISTS `threads` (
     KEY `idx_threads_status` (`status`, `deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 回帖表 ----------------------------------------------------------------
+-- 评论表 ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `posts` (
     `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `thread_id`    INT UNSIGNED NOT NULL,

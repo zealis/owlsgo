@@ -54,7 +54,7 @@ final class FavoriteModel extends Model
             $favorited = true;
         }
 
-        // 同步主题冗余计数
+        // 同步帖子冗余计数
         $column = Database::identifier('favorite_count');
         Database::execute(
             'UPDATE ' . Database::identifier('threads')
@@ -84,7 +84,7 @@ final class FavoriteModel extends Model
     }
 
     /**
-     * 用户收藏的主题（含主题数据）
+     * 用户收藏的帖子（含帖子数据）
      *
      * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
      */
@@ -111,7 +111,7 @@ final class FavoriteModel extends Model
             }
         }
 
-        // 保持收藏时间倒序，过滤掉已被删除的主题
+        // 保持收藏时间倒序，过滤掉已被删除的帖子
         $items = [];
         foreach ($result['items'] as $row) {
             $threadId = (int)$row['thread_id'];
@@ -130,7 +130,7 @@ final class FavoriteModel extends Model
     }
 
     /**
-     * 判断用户是否已收藏若干主题
+     * 判断用户是否已收藏若干帖子
      *
      * @param list<int> $threadIds
      * @return array<int, bool>

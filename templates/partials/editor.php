@@ -67,6 +67,12 @@ $targetId = 'attachments-' . preg_replace('/[^A-Za-z0-9_-]/', '', $id);
                 <?= $view('partials/icon', ['name' => 'upload', 'size' => 15]) ?>
                 <span>上传附件</span>
             </button>
+            <?php /*
+                   把上限显式告诉用户。
+                   $editorMaxMb 一直由 5 个调用点传进来（值来自后台「单个文件上限」），
+                   但这里从来没渲染过 —— 于是用户只能在上传被拒之后才知道有限制。
+            */ ?>
+            <span class="text-light" style="font-size:12px">单个文件 ≤ <?= (int)$maxMb ?> MB</span>
             <span class="spacer"></span>
             <button type="button" class="button ghost small" data-insert-all="#<?= e($targetId) ?>"
                     title="把已上传的全部附件以 Markdown 形式插入正文">
@@ -92,6 +98,7 @@ $targetId = 'attachments-' . preg_replace('/[^A-Za-z0-9_-]/', '', $id);
                      data-attachment="<?= $attId ?>"
                      data-att-name="<?= e($attName) ?>"
                      data-att-size="<?= e((string)($att['size_text'] ?? '')) ?>"
+                     data-att-key="<?= e($attName) ?>:<?= (int)($att['size'] ?? 0) ?>"
                      data-att-image="<?= $attIsImage ? '1' : '0' ?>"
                      data-att-url="<?= e($attUrl) ?>">
                     <div class="attachment-row__name" title="<?= e($attName) ?>">

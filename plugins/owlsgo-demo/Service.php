@@ -245,7 +245,7 @@ final class Service
             return;
         }
 
-        // 主题有标题，回复没有，统一拼成待检查文本
+        // 帖子有标题，评论没有，统一拼成待检查文本
         $haystack = (string)($context['title'] ?? '') . "\n" . (string)($context['content'] ?? '');
 
         foreach ($keywords as $word) {
@@ -378,7 +378,39 @@ final class Service
     }
 
     /**
-     * after_thread_create：记录一条主题活动
+     * user_profile_stats：为个人主页头部追加一张数据卡
+     *
+     * 与 user_profile_tabs 的关键差别：本钩子的 label / value 由模板统一 e() 转义后输出，
+     * 这里**只给纯文本**，不要拼 HTML（拼了会被当成字串原样显示）。
+     * 想做富文本卡片请改用 thread_view_actions 那类「返回 HTML」的钩子。
+     *
+     * @param array<int, mixed>    $stats
+     * @param array<string, mixed> $context
+     * @return array<int, mixed>
+     */
+    public static function profileStats(array $stats, array $context = []): array
+    {
+        $profile = $context['profile'] ?? null;
+        $userId  = is_array($profile) ? (int)($profile['id'] ?? 0) : 0;
+
+        if ($userId <= 0) {
+            return $stats;
+        }
+
+        $stats[] = [
+            'key'   => 'owlsgo-demo-points',
+            'label' => '积分（示例）',
+            'value' => (string)(int)($profile['points'] ?? 0),
+            'icon'  => 'star',
+            'url'   => '/u/' . $userId . '/threads',
+            'title' => '由示例插件通过 user_profile_stats 钩子追加',
+        ];
+
+        return $stats;
+    }
+
+    /**
+     * after_thread_create：记录一条帖子活动
      *
      * @param array<string, mixed> $context
      */
@@ -389,14 +421,14 @@ final class Service
 
         self::record(
             'thread',
-            '在「' . (string)($forum['name'] ?? '未知版块') . '」发表了主题 #' . (int)($context['thread_id'] ?? 0),
+            '在「' . (string)($forum['name'] ?? '未知版块') . '」发表了帖子 #' . (int)($context['thread_id'] ?? 0),
             (int)($user['id'] ?? 0),
             (string)($user['username'] ?? '')
         );
     }
 
     /**
-     * after_post_create：记录一条回复活动
+     * after_post_create：记录一条评论活动
      *
      * @param array<string, mixed> $context
      */
@@ -406,7 +438,7 @@ final class Service
 
         self::record(
             'post',
-            '在主题 #' . (int)($context['thread_id'] ?? 0) . ' 发表了第 ' . (int)($context['floor'] ?? 0) . ' 楼',
+            '在帖子 #' . (int)($context['thread_id'] ?? 0) . ' 发表了第 ' . (int)($context['floor'] ?? 0) . ' 楼',
             (int)($user['id'] ?? 0),
             (string)($user['username'] ?? '')
         );
@@ -436,8 +468,8 @@ final class Service
     public static function kindLabel(string $kind): string
     {
         return match ($kind) {
-            'thread' => '发表主题',
-            'post'   => '发表回复',
+            'thread' => '发表帖子',
+            'post'   => '发表评论',
             default  => $kind === '' ? '其它' : $kind,
         };
     }

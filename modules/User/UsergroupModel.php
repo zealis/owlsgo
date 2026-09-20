@@ -21,8 +21,133 @@ final class UsergroupModel extends Model
     /** 用户组没有软删除 */
     protected static bool $softDelete = false;
 
+    /**
+     * 附件空间配额（单位 MB，0 = 不限制）
+     *
+     * 这是**后加字段**，项目没有迁移机制，老站点靠 ensureQuotaColumn() 惰性补列。
+     */
+    public const QUOTA_COLUMN = 'attach_quota_mb';
+
+    /** 配额上限（MB）：纯粹是防手滑填天文数字，1 TB */
+    public const QUOTA_MAX = 1048576;
+
     /** @var array<int, array<string, mixed>>|null 进程内缓存 */
     private static ?array $cache = null;
+
+    /**
+     * 保证配额字段存在（老站点惰性补列）
+     *
+     * ⚠️ 补列后**不能**指望 `Model::columns()` 立刻认得它：那是进程内静态缓存，
+     * 同一次请求里拿到的仍是旧列表，`filterColumns()` 会把新字段静默丢掉。
+     * 所以本类的配额读写一律走 `Database` 的裸 SQL，不经过模型白名单。
+     */
+    public static function ensureQuotaColumn(): void
+    {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        if (Database::hasColumn('usergroups', self::QUOTA_COLUMN)) {
+            return;
+        }
+
+        try {
+            Database::execute(
+                'ALTER TABLE ' . Database::identifier('usergroups')
+                . ' ADD COLUMN ' . Database::identifier(self::QUOTA_COLUMN) . ' INTEGER NOT NULL DEFAULT 0'
+            );
+        } catch (\Throwable) {
+            // 并发请求可能同时补列，失败的一方忽略即可（列此时已由另一方建好）
+        }
+    }
+
+    /**
+     * 取某个用户组的附件配额（MB，0 = 不限制）
+     */
+    public static function quotaOf(int $groupId): int
+    {
+        if ($groupId <= 0) {
+            return 0;
+        }
+
+        self::ensureQuotaColumn();
+
+        return max(0, (int)Database::value(
+            'SELECT ' . Database::identifier(self::QUOTA_COLUMN) . ' FROM ' . Database::identifier('usergroups')
+            . ' WHERE ' . Database::identifier('id') . ' = ?',
+            [$groupId]
+        ));
+    }
+
+    /**
+     * 写入某个用户组的附件配额（MB）
+     *
+     * 走 Database::update 而不是 updateById()：见 ensureQuotaColumn() 的说明，
+     * 新建的列可能还不在模型的字段白名单里。
+     */
+    public static function setQuota(int $groupId, int $quotaMb): void
+    {
+        self::ensureQuotaColumn();
+
+        Database::update(
+            'usergroups',
+            [self::QUOTA_COLUMN => max(0, min(self::QUOTA_MAX, $quotaMb))],
+            Database::identifier('id') . ' = ?',
+            [$groupId]
+        );
+
+        self::flush();
+    }
+
+    /**
+     * 全部用户组的配额（ID => MB），供用户组列表一次性取回，避免逐行查询
+     *
+     * @return array<int, int>
+     */
+    public static function quotaMap(): array
+    {
+        self::ensureQuotaColumn();
+
+        $map = [];
+
+        foreach (Database::select(
+            'SELECT ' . Database::identifier('id') . ', ' . Database::identifier(self::QUOTA_COLUMN)
+            . ' FROM ' . Database::identifier('usergroups')
+        ) as $row) {
+            $map[(int)$row['id']] = max(0, (int)$row[self::QUOTA_COLUMN]);
+        }
+
+        return $map;
+    }
+
+    /** 把表单里传来的配额值规范成合法的 MB 整数（0 = 不限制） */
+    public static function normalizeQuota(mixed $value): int
+    {
+        $mb = (int)trim((string)$value);
+
+        return max(0, min(self::QUOTA_MAX, $mb));
+    }
+
+    /** 配额的可读文案：0 显示为「不限」 */
+    public static function quotaText(int $quotaMb): string
+    {
+        return $quotaMb <= 0 ? '不限' : format_size($quotaMb * 1048576);
+    }
+
+    /**
+     * 用户组列表里的配额文案
+     *
+     * 配额是「能传多少」，上传权限是「能不能传」——前者只对后者为真的组有意义。
+     * 游客、禁言用户这类没有 `attachment.upload` 的组，配额留 0 是「用不上」而不是
+     * 「不限制」，若照常显示「不限」，会被读成「这个组可以随便上传」，所以直接标出来。
+     */
+    public static function quotaLabel(bool $canUpload, int $quotaMb): string
+    {
+        return $canUpload ? self::quotaText($quotaMb) : '无上传权限';
+    }
 
     /**
      * 全部用户组（按排序）
@@ -130,6 +255,12 @@ final class UsergroupModel extends Model
             'sort_order'  => (int)($input['sort_order'] ?? 0),
         ]);
 
+        /*
+         * 附件配额单独写：它可能在模型字段白名单之外（见 ensureQuotaColumn()），
+         * 混在 create() 的数组里会被 filterColumns() 静默丢掉。
+         */
+        self::setQuota($id, self::normalizeQuota($input['attach_quota_mb'] ?? 0));
+
         self::flush();
 
         return ['ok' => true, 'message' => '用户组已创建。', 'id' => $id];
@@ -183,6 +314,11 @@ final class UsergroupModel extends Model
 
         if ($data !== []) {
             static::updateById($id, $data);
+        }
+
+        /* 附件配额单独写（可能不在模型白名单里，理由同 createGroup） */
+        if (array_key_exists('attach_quota_mb', $input)) {
+            self::setQuota($id, self::normalizeQuota($input['attach_quota_mb']));
         }
 
         self::flush();

@@ -176,7 +176,7 @@ final class UserModel extends Model
     /**
      * 搜索用户（后台）
      *
-     * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
+     * 关键词为纯数字时同时精确匹配用户 ID —— 后台经常按 ID 找人。
      */
     public static function search(string $keyword, int $groupId, int $page, int $perPage = 20): array
     {
@@ -184,6 +184,9 @@ final class UserModel extends Model
 
         if ($keyword !== '') {
             $query->orGroup(static function ($q) use ($keyword): void {
+                if (ctype_digit($keyword)) {
+                    $q->whereRaw(\Core\Database::identifier('id') . ' = ?', [(int)$keyword]);
+                }
                 $q->whereContains('username', $keyword);
                 $q->whereRaw(\Core\Database::identifier('email') . ' ' . \Core\Database::likeOperator() . ' ?', ['%' . $keyword . '%']);
             });
@@ -202,7 +205,7 @@ final class UserModel extends Model
      * 更新个人资料（个人简介）
      *
      * 简介与签名已合并为同一个字段 `bio`：它既显示在个人主页，也显示在每个
-     * 回复楼层下方。users.signature 列保留在表结构中但不再读写。
+     * 评论楼层下方。users.signature 列保留在表结构中但不再读写。
      *
      * @param array<string, mixed> $input
      */
@@ -282,31 +285,15 @@ final class UserModel extends Model
     }
 
     /** 直接查库判断列是否存在（不经过 Model::columns 的缓存） */
+    /**
+     * 字段是否存在（实时探测）
+     *
+     * 实现已收敛到 Database::hasColumn()，这里保留同名私有方法只是为了让
+     * ensurePrivacyColumns() 的调用点保持可读；不要再在这里重写一份探测逻辑。
+     */
     private static function hasColumn(string $table, string $column): bool
     {
-        try {
-            if (Database::driver() === 'sqlite') {
-                foreach (Database::select('PRAGMA table_info(' . Database::identifier($table) . ')') as $row) {
-                    if ((string)($row['name'] ?? '') === $column) {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            $row = Database::first(
-                'SELECT column_name FROM information_schema.columns'
-                . ' WHERE table_schema = '
-                . (Database::driver() === 'mysql' ? 'DATABASE()' : 'current_schema()')
-                . ' AND table_name = ? AND column_name = ?',
-                [$table, $column]
-            );
-
-            return $row !== null;
-        } catch (\Throwable $e) {
-            return true;   // 探测不了就当作已存在，避免反复 ALTER 抛错
-        }
+        return Database::hasColumn($table, $column);
     }
 
     /**
@@ -395,6 +382,36 @@ final class UserModel extends Model
         return $result;
     }
 
+    /**
+     * 按 ID 集合取用户名映射（版主指派回显用）
+     *
+     * @param list<int> $ids
+     * @return array<int, string>
+     */
+    public static function usernamesByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = Database::select(
+            'SELECT ' . Database::identifier('id') . ', ' . Database::identifier('username')
+            . ' FROM ' . Database::identifier('users')
+            . ' WHERE ' . Database::identifier('deleted_at') . ' IS NULL'
+            . ' AND ' . Database::identifier('id') . ' IN (' . $placeholders . ')',
+            $ids
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int)$row['id']] = (string)$row['username'];
+        }
+
+        return $result;
+    }
+
     /** 指定时间点之后注册的用户数（后台概览「今日新增」） */
     public static function countSince(int $timestamp): int
     {
@@ -406,7 +423,78 @@ final class UserModel extends Model
         );
     }
 
-    /** 后台按 ID 列表取用户（保留传入顺序） */
+    /**
+     * 某用户**收到**的赞总数（个人主页头部数据卡用）
+     *
+     * 口径：他名下所有未删除帖子的 like_count ＋ 他名下所有未删除楼层的 like_count。
+     *
+     * 为什么两块都要加：点赞的目标有两种（见 LikeModel::TARGETS）——
+     *   - 帖子详情页标题下的「赞」→ target=thread，计在 threads.like_count
+     *   - 每个楼层下方的「赞」（含 1 楼）→ target=post，计在 posts.like_count
+     * 两个 target 互不重叠（同一个内容只会被其中一种按钮点到），所以直接相加不会重复计。
+     *
+     * 注意：likes 表里的 user_id 是**点赞的人**，不是被赞的人，
+     * 所以「收到的赞」不能查 likes 表，必须按内容作者聚合 like_count。
+     * 不缓存到 users 表：点赞分散在两类内容上，维护同步的收益不抵复杂度
+     * （每次进个人主页一条聚合查询，有 user_id 索引）。
+     */
+    public static function receivedLikeCount(int $userId): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        $liked = 'SELECT COALESCE(SUM(' . Database::identifier('like_count') . '), 0)'
+            . ' FROM %s WHERE ' . Database::identifier('user_id') . ' = ?'
+            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL';
+
+        $sql = 'SELECT (' . sprintf($liked, Database::identifier('threads')) . ')'
+            . ' + (' . sprintf($liked, Database::identifier('posts')) . ')';
+
+        return (int)Database::value($sql, [$userId, $userId]);
+    }
+
+    /**
+     * 某用户**未删除**的帖子 ID 列表（批量删账号用）
+     *
+     * @return list<int>
+     */
+    public static function threadIdsOf(int $userId): array
+    {
+        $rows = Database::select(
+            'SELECT ' . Database::identifier('id') . ' FROM ' . Database::identifier('threads')
+            . ' WHERE ' . Database::identifier('user_id') . ' = ?'
+            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL',
+            [$userId]
+        );
+
+        return array_map(static fn (array $r): int => (int)$r['id'], $rows);
+    }
+
+    /**
+     * 某用户**未删除**的评论 ID 列表（批量删账号用）
+     *
+     * 排除 `is_first = 1`：首帖是帖子的正文，删它必须走「删整个帖子」，
+     * 否则会留下一个没有正文的空帖子。
+     *
+     * @return list<int>
+     */
+    public static function replyIdsOf(int $userId): array
+    {
+        $rows = Database::select(
+            'SELECT ' . Database::identifier('id') . ' FROM ' . Database::identifier('posts')
+            . ' WHERE ' . Database::identifier('user_id') . ' = ?'
+            . ' AND ' . Database::identifier('is_first') . ' = 0'
+            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL',
+            [$userId]
+        );
+
+        return array_map(static fn (array $r): int => (int)$r['id'], $rows);
+    }
+
+    /**
+     * 后台按 ID 列表取用户（保留传入顺序）
+     */
     public static function byIds(array $ids): array
     {
         $map = static::mapByIds($ids);

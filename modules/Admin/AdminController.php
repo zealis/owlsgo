@@ -180,18 +180,11 @@ final class AdminController extends AdminBaseController
          * 「管理员邮箱」与「全站公告」已下线：
          * 前者的校验与保存一并移除，后者改造成「全站通知」并迁到通知中心管理
          * （见 Modules\Notice\NoticeController），这里不再接收这两个字段。
+         *
+         * 「外观」三个颜色键（theme_primary / theme_primary_dark / theme_highlight）
+         * 也已随后台设置页的「外观」区块一并下线：站点配色由 theme.css 固定令牌控制，
+         * 表单不再提交、这里不再校验与保存。
          */
-
-        /* ---------- 主题色 ---------- */
-        foreach (['theme_primary', 'theme_primary_dark', 'theme_highlight'] as $key) {
-            $color = strtolower(trim((string)($input[$key] ?? (string)($current[$key] ?? ''))));
-
-            if (preg_match('/^#[0-9a-f]{6}$/', $color) !== 1) {
-                $this->backWithErrors([$key => '颜色值必须是 #RRGGBB 格式。'], $back);
-            }
-
-            $values[$key] = $color;
-        }
 
         /* ---------- 允许上传的扩展名（白名单化） ---------- */
         $values['upload_allow_ext'] = $this->normalizeExtensions((string)($input['upload_allow_ext'] ?? ''));

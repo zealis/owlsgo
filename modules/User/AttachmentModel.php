@@ -9,11 +9,68 @@ namespace Modules\User;
 
 use Core\Database;
 use Core\Model;
+use Core\Permission;
 use Core\Upload;
 
 final class AttachmentModel extends Model
 {
     protected static string $table = 'attachments';
+
+    /**
+     * 某用户已占用的附件空间（字节）
+     *
+     * 只算**未删除**的附件：软删除后空间立刻释放，不需要额外的回收动作。
+     * 头像不在 attachments 表里（走 avatars/ 目录），因此不占这里的配额。
+     */
+    public static function usedBytes(int $userId): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        return max(0, (int)Database::value(
+            'SELECT COALESCE(SUM(' . Database::identifier('size') . '), 0)'
+            . ' FROM ' . Database::identifier('attachments')
+            . ' WHERE ' . Database::identifier('user_id') . ' = ?'
+            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL',
+            [$userId]
+        ));
+    }
+
+    /**
+     * 某用户的附件空间配额（字节，0 = 不限制）
+     *
+     * 配额挂在**用户组**上（`usergroups.attach_quota_mb`），跟着用户当前的用户组走，
+     * 所以管理员调整用户组、或把用户换组，额度立刻生效。
+     *
+     * @param array<string, mixed>|null $user 用户行（可空，空则视为无配额）
+     */
+    public static function quotaBytes(?array $user): int
+    {
+        $mb = UsergroupModel::quotaOf(Permission::groupOf($user));
+
+        return $mb <= 0 ? 0 : $mb * 1048576;
+    }
+
+    /**
+     * 配额状态快照，供上传校验与界面展示复用
+     *
+     * @param array<string, mixed>|null $user
+     * @return array{used:int, quota:int, remaining:int, unlimited:bool}
+     */
+    public static function quotaState(?array $user): array
+    {
+        $userId = (int)($user['id'] ?? 0);
+        $used   = self::usedBytes($userId);
+        $quota  = self::quotaBytes($user);
+
+        return [
+            'used'      => $used,
+            'quota'     => $quota,
+            'remaining' => $quota <= 0 ? 0 : max(0, $quota - $used),
+            'unlimited' => $quota <= 0,
+        ];
+    }
 
     /**
      * 记录一次上传
@@ -98,6 +155,7 @@ final class AttachmentModel extends Model
                 'id'        => (int)($row['id'] ?? 0),
                 'name'      => (string)($row['name'] ?? ''),
                 'is_image'  => !empty($row['is_image']),
+                'size'      => (int)($row['size'] ?? 0),
                 'size_text' => format_size((int)($row['size'] ?? 0)),
             ];
         }
@@ -173,6 +231,90 @@ final class AttachmentModel extends Model
         static::deleteById($id);
 
         return true;
+    }
+
+    /**
+     * 批量删除附件（后台批量操作）
+     *
+     * 逐条走 destroy()，保证「磁盘文件 + 数据库记录」两处成对处理；
+     * 单条失败不影响其它条目，返回成功条数。
+     *
+     * @param list<int> $ids
+     */
+    public static function destroyMany(array $ids): int
+    {
+        $done = 0;
+
+        foreach ($ids as $id) {
+            if (static::destroy((int)$id)) {
+                $done++;
+            }
+        }
+
+        return $done;
+    }
+
+    /**
+     * 彻底删除附件（硬删行，同时删磁盘文件）
+     *
+     * 与 destroy() 的区别：destroy() 是软删（行留着、只删文件），用于后台「删除附件」；
+     * 这里是**回收站彻底删除**，行也要一并清掉，否则会留下指向不存在内容的孤儿记录。
+     */
+    private static function hardDeleteWhere(string $where, array $bindings): int
+    {
+        $rows = Database::select(
+            'SELECT ' . Database::identifier('id') . ', ' . Database::identifier('path')
+            . ' FROM ' . Database::identifier('attachments')
+            . ' WHERE ' . $where,
+            $bindings
+        );
+
+        foreach ($rows as $row) {
+            Upload::remove((string)$row['path']);
+        }
+
+        $removed = Database::delete('attachments', $where, $bindings);
+
+        Model::flushRowCache();
+
+        return $removed;
+    }
+
+    /** 彻底删除某个帖子名下的全部附件（含它下面所有楼层的附件） */
+    public static function purgeForThread(int $threadId): int
+    {
+        if ($threadId <= 0) {
+            return 0;
+        }
+
+        $q = static fn (string $name): string => Database::identifier($name);
+
+        $removed = self::hardDeleteWhere($q('thread_id') . ' = ?', [$threadId]);
+
+        // 楼层附件：先取该帖下全部楼层 ID，再按 post_id 清（不写成子查询，避免驱动差异）
+        $postIds = Database::select(
+            'SELECT ' . $q('id') . ' FROM ' . $q('posts') . ' WHERE ' . $q('thread_id') . ' = ?',
+            [$threadId]
+        );
+
+        $ids = array_map(static fn (array $r): int => (int)$r['id'], $postIds);
+
+        if ($ids !== []) {
+            $marks = implode(',', array_fill(0, count($ids), '?'));
+            $removed += self::hardDeleteWhere($q('post_id') . ' IN (' . $marks . ')', $ids);
+        }
+
+        return $removed;
+    }
+
+    /** 彻底删除某条评论名下的附件 */
+    public static function purgeForPost(int $postId): int
+    {
+        if ($postId <= 0) {
+            return 0;
+        }
+
+        return self::hardDeleteWhere(Database::identifier('post_id') . ' = ?', [$postId]);
     }
 
     /**

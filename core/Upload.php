@@ -133,6 +133,33 @@ final class Upload
     }
 
     /**
+     * 单个文件的体积上限（字节）
+     *
+     * 附件的上限以后台「附件 → 单个文件上限（MB）」为准 —— 站长改了这个设置就该生效，
+     * 而不是被 config/app.php 里的静态值盖住（这是曾经的实际问题：设置页能填、
+     * 界面也照它显示，实际判的却是 config 的值）。设置缺失或为 0 时回落到 config 默认。
+     *
+     * 头像始终用 config 的 avatar_size：它和「附件上限」是两个量级，
+     * 站长调大附件上限时不该顺带放开头像。
+     */
+    public static function maxSize(bool $isAvatar = false): int
+    {
+        if ($isAvatar) {
+            return (int)config('app.upload.avatar_size', 2097152);
+        }
+
+        $mb = (int)setting('upload_max_size', '0');
+
+        return $mb > 0 ? $mb * 1048576 : (int)config('app.upload.max_size', 4194304);
+    }
+
+    /** 单个文件的体积上限（MB，至少 1），供界面文案使用 */
+    public static function maxSizeMb(bool $isAvatar = false): int
+    {
+        return (int)max(1, (int)round(self::maxSize($isAvatar) / 1048576));
+    }
+
+    /**
      * 处理一个上传文件
      *
      * @param array<string, mixed> $file   $_FILES 中的单个条目
@@ -143,7 +170,15 @@ final class Upload
      */
     public static function store(array $file, bool $isAvatar = false): array
     {
-        if (!(bool)config('app.upload.enabled', true)) {
+        /*
+         * 站点是否允许上传 —— 取**后台设置**（「附件 → 允许上传附件」）。
+         *
+         * 这里原本读的是 config('app.upload.enabled')，那是 config/app.php 里的静态值
+         * （恒为 true），跟后台那个开关不是同一个东西，所以这道总闸从来没真正拦过谁。
+         * 放在本方法里而不是各控制器里，是为了让所有入口（附件、头像、以后新增的）
+         * 默认就受控，而不是每个入口各判一次、漏一个就漏一条路。
+         */
+        if (!Settings::bool('upload_enabled', true)) {
             throw new RuntimeException('站点已关闭附件上传功能。');
         }
 
@@ -162,9 +197,7 @@ final class Upload
             }
         }
 
-        $maxSize = $isAvatar
-            ? (int)config('app.upload.avatar_size', 2097152)
-            : (int)config('app.upload.max_size', 4194304);
+        $maxSize = self::maxSize($isAvatar);
 
         $size = (int)(@filesize($tmpPath) ?: 0);
         if ($size <= 0) {

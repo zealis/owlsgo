@@ -13,8 +13,8 @@ $navId      = (int)($navProfile['id'] ?? 0);
 
 $items = [
     ['key' => 'home',      'label' => '个人主页', 'url' => '/u/' . $navId],
-    ['key' => 'threads',   'label' => '发表的主题', 'url' => '/u/' . $navId . '/threads'],
-    ['key' => 'posts',     'label' => '发表的回复', 'url' => '/u/' . $navId . '/posts'],
+    ['key' => 'threads',   'label' => '发表的帖子', 'url' => '/u/' . $navId . '/threads'],
+    ['key' => 'posts',     'label' => '发表的评论', 'url' => '/u/' . $navId . '/posts'],
 ];
 
 $viewer    = auth_user();
@@ -22,7 +22,7 @@ $isOwner   = $viewer !== null && (int)($viewer['id'] ?? 0) === $navId;
 $canManage = can('user.manage');
 
 /*
- * 「我的隐私」：作者把「发表的主题 / 发表的回复」设为仅自己可见时，
+ * 「我的隐私」：作者把「发表的帖子 / 发表的评论」设为仅自己可见时，
  * 对他人（以及没有 user.manage 权限的人）隐藏这两个入口。
  * 后端也有同样的把关（UserController::assertTabVisible），
  * 这里只是不让入口露出来。
@@ -45,6 +45,14 @@ if ($isOwner || $canManage) {
 }
 
 /*
+ * 「个性装扮」：夜间模式跟随系统等个人外观偏好（存浏览器 localStorage，与账号无关），
+ * 是本人专属入口，排在「我的收藏」之后、「账号设置」之前（用户拍板的顺序）。
+ */
+if ($isOwner) {
+    $items[] = ['key' => 'appearance', 'label' => '个性装扮', 'url' => '/settings/appearance'];
+}
+
+/*
  * 「账号设置」是本人专属入口：只有访问自己的用户中心时才出现。
  * 它固定指向当前登录者自己的 /settings，若在他人主页也渲染出来，
  * 点一下就会「跳到自己的设置页」，既突兀又容易误解成在改别人的资料。
@@ -58,26 +66,29 @@ if ($isOwner) {
  * 结构：[['key' => 唯一键, 'label' => 文案, 'url' => 站内路径或完整地址], ...]
  */
 $items = (array)hook('user_profile_tabs', $items, ['profile' => $navProfile, 'active' => $navActive]);
+
+/*
+ * 用户中心导航：与首页三页签共用同一套 .tabbar 样式（panel 当框、白底、选中灰底）。
+ * 这是页面级跳转链接而非 JS 页签，所以用 aria-current="page" 标记当前项。
+ */
 ?>
-<nav class="settings-tabs" aria-label="用户中心导航">
-    <div class="filter-tabs">
-        <?php foreach ($items as $item): ?>
-            <?php
-            if (!is_array($item)) {
-                continue;
-            }
+<nav class="panel tabbar tabbar--nav" aria-label="用户中心导航">
+    <?php foreach ($items as $item): ?>
+        <?php
+        if (!is_array($item)) {
+            continue;
+        }
 
-            $itemLabel = (string)($item['label'] ?? '');
-            $itemUrl   = (string)($item['url'] ?? '');
+        $itemLabel = (string)($item['label'] ?? '');
+        $itemUrl   = (string)($item['url'] ?? '');
 
-            if ($itemLabel === '' || $itemUrl === '') {
-                continue;
-            }
-            ?>
-            <a href="<?= e(url($itemUrl)) ?>"
-               <?= $navActive === (string)($item['key'] ?? '') ? 'aria-current="page"' : '' ?>>
-                <?= e($itemLabel) ?>
-            </a>
-        <?php endforeach; ?>
-    </div>
+        if ($itemLabel === '' || $itemUrl === '') {
+            continue;
+        }
+        ?>
+        <a href="<?= e(url($itemUrl)) ?>"
+           <?= $navActive === (string)($item['key'] ?? '') ? 'aria-current="page"' : '' ?>>
+            <?= e($itemLabel) ?>
+        </a>
+    <?php endforeach; ?>
 </nav>

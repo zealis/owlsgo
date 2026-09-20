@@ -18,11 +18,20 @@ final class Paginator
      * 渲染分页控件
      *
      * @param array{total:int,page:int,pages:int,per_page:int} $pagination
-     * @param string                                           $path  基础路径，如 /f/3
-     * @param array<string, mixed>                             $query 附加查询参数
+     * @param string                                           $path     基础路径，如 /f/3
+     * @param array<string, mixed>                             $query    附加查询参数
+     * @param string                                           $pageKey  页码参数名，默认 page。
+     *                                                                  同一页上有两个独立列表时（如通知中心
+     *                                                                  的「公告」与「我的通知」）必须给其中一个
+     *                                                                  换名字，否则两者共用 ?page 会互相覆盖 ——
+     *                                                                  翻其中一个会把另一个也翻页。
      */
-    public static function render(array $pagination, string $path, array $query = []): string
-    {
+    public static function render(
+        array $pagination,
+        string $path,
+        array $query = [],
+        string $pageKey = 'page'
+    ): string {
         $page  = max(1, (int)($pagination['page'] ?? 1));
         $pages = max(1, (int)($pagination['pages'] ?? 1));
         $total = max(0, (int)($pagination['total'] ?? 0));
@@ -31,7 +40,8 @@ final class Paginator
             return '';
         }
 
-        $link = static fn (int $target): string => e(Router::url($path, array_merge($query, ['page' => $target])));
+        $link = static fn (int $target): string
+            => e(Router::url($path, array_merge($query, [$pageKey => $target])));
 
         $items = [];
 

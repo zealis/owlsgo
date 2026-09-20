@@ -13,6 +13,7 @@ use Core\Controller;
 use Core\Paginator;
 use Core\Request;
 use Core\Router;
+use Modules\Notice\NoticeModel;
 
 final class NotificationController extends Controller
 {
@@ -26,14 +27,41 @@ final class NotificationController extends Controller
         $user = $this->requireLogin();
         $page = $this->currentPage();
 
-        $result = NotificationModel::forUser((int)$user['id'], $page, 20);
+        /*
+         * 每页条数与首页 / 版块页 / 用户主页用同一套配置（config app.per_page），
+         * 不再各写各的数字 —— 改一处就能统一调整全站列表长度。
+         */
+        $perPage = (int)config('app.per_page', 20);
+
+        $result = NotificationModel::forUser((int)$user['id'], $page, $perPage);
         $result['items'] = $this->decorate($result['items']);
 
+        /*
+         * 公告区同样按这个条数分页：公告本来就不多，条数没超限时 Paginator
+         * 不会输出分页条，界面跟不分页时一模一样；超限后才出现翻页。
+         * 页码参数用 npage —— 与「我的通知」的 page 分开，互不干扰，
+         * 两个分页各自带上对方的页码，翻其中一个不会把另一个重置回第一页。
+         */
+        $noticePage   = Paginator::page(Request::int('npage', 1));
+        $noticeResult = NoticeModel::paginatePublished($noticePage, $perPage);
+
         return $this->view('user/notifications', [
-            'pageTitle'  => '通知 - ' . (string)setting('site_name'),
-            'result'     => $result,
-            'unread'     => NotificationModel::unreadCount((int)$user['id']),
-            'pagination' => Paginator::render($result, '/notifications'),
+            'pageTitle'         => '通知 - ' . (string)setting('site_name'),
+            'result'            => $result,
+            'notices'           => $noticeResult['items'],
+            'noticeTotal'       => (int)$noticeResult['total'],
+            'noticePagination'  => Paginator::render(
+                $noticeResult,
+                '/notifications',
+                $page > 1 ? ['page' => $page] : [],
+                'npage'          // 公告自己的页码参数，避免与「我的通知」的 ?page 打架
+            ),
+            'unread'            => NotificationModel::unreadCount((int)$user['id']),
+            'pagination'        => Paginator::render(
+                $result,
+                '/notifications',
+                $noticePage > 1 ? ['npage' => $noticePage] : []
+            ),
         ], 'layouts/main');
     }
 

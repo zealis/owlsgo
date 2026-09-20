@@ -577,18 +577,25 @@ final class PluginManager
     /**
      * 执行所有到期的计划任务
      *
+     * @param  bool $force true = 忽略 next_run_at，强制执行全部已启用任务（后台「立即执行」用）；
+     *                     false = 只跑到期任务（外部定时器触发用，保持调度节奏）
      * @return list<array{name:string, status:string, message:string, duration:int}>
      */
-    public static function runCron(int $limit = 10): array
+    public static function runCron(int $limit = 10, bool $force = false): array
     {
         $results = [];
         $now     = time();
 
+        $sql = 'SELECT * FROM ' . Database::identifier('cron_tasks')
+            . ' WHERE ' . Database::identifier('enabled') . ' = 1';
+
+        if (!$force) {
+            $sql .= ' AND ' . Database::identifier('next_run_at') . ' <= ?';
+        }
+
         $tasks = Database::select(
-            'SELECT * FROM ' . Database::identifier('cron_tasks')
-            . ' WHERE ' . Database::identifier('enabled') . ' = 1 AND ' . Database::identifier('next_run_at') . ' <= ?'
-            . ' ORDER BY ' . Database::identifier('next_run_at') . ' ASC LIMIT ' . max(1, min(50, $limit)),
-            [$now]
+            $sql . ' ORDER BY ' . Database::identifier('next_run_at') . ' ASC LIMIT ' . max(1, min(50, $limit)),
+            $force ? [] : [$now]
         );
 
         // 以「任务名 => 处理器」建立索引

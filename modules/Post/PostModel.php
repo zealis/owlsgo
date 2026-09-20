@@ -1,8 +1,8 @@
 <?php
 /**
- * 回帖模型
+ * 评论模型
  *
- * 楼层号 floor 在同一主题内唯一，通过「事务内取 MAX(floor)+1」保证不会重复。
+ * 楼层号 floor 在同一帖子内唯一，通过「事务内取 MAX(floor)+1」保证不会重复。
  */
 
 declare(strict_types=1);
@@ -18,7 +18,7 @@ final class PostModel extends Model
     protected static string $table = 'posts';
 
     /**
-     * 主题内回帖分页（不含首帖）
+     * 帖子内评论分页（不含首帖）
      *
      * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
      */
@@ -33,7 +33,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 取主题的首帖
+     * 取帖子的首帖
      *
      * @return array<string, mixed>|null
      */
@@ -46,7 +46,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 发表回复
+     * 发表评论
      *
      * @param array<int, int> $attachmentIds
      * @return array{post_id:int, floor:int}
@@ -94,7 +94,7 @@ final class PostModel extends Model
                 \Modules\User\AttachmentModel::bindToPost($attachmentIds, $userId, $threadId, $postId);
             }
 
-            // 只有审核通过的回复才计入统计，避免待审核内容影响展示
+            // 只有审核通过的评论才计入统计，避免待审核内容影响展示
             if ($status === 1) {
                 Database::execute(
                     'UPDATE ' . Database::identifier('threads')
@@ -108,24 +108,40 @@ final class PostModel extends Model
                     [$now, $userId, $now, $threadId]
                 );
 
+                /*
+                 * 版块「最后发表」同步。
+                 * ⚠️ last_thread_name 必须跟着 last_thread_id 一起写：只写 id 会让
+                 * 冗余列自相矛盾 —— 首页显示的标题还是上一条帖子的，链接却指向新帖，
+                 * 点进去就是「另一篇文章」（这个 bug 已经出现过一次）。
+                 */
                 Database::execute(
                     'UPDATE ' . Database::identifier('forums')
                     . ' SET ' . Database::identifier('post_count') . ' = ' . Database::identifier('post_count') . ' + 1, '
                     . Database::identifier('last_reply_at') . ' = ?, '
                     . Database::identifier('last_thread_id') . ' = ?, '
+                    . Database::identifier('last_thread_name') . ' = ?, '
                     . Database::identifier('updated_at') . ' = ?'
                     . ' WHERE ' . Database::identifier('id') . ' = ?',
-                    [$now, $threadId, $now, (int)$thread['forum_id']]
+                    [$now, $threadId, (string)($thread['title'] ?? ''), $now, (int)$thread['forum_id']]
+                );
+
+                /*
+                 * 作者的评论数 +1 —— **必须待审核通过之后才算**，所以放在这个 if 里面。
+                 *
+                 * ⚠️ 原来这行写在 if 外面（待审核也先 +1），而 PostModel::approve 通过时又 +1，
+                 *    结果一条「待审核 → 通过」的评论会让作者评论数 +2（帖子/版块只 +1）；
+                 *    若那条待审核评论被直接删除，PostModel::destroy 又只在 status===1 时回滚，
+                 *    那 +1 就永久留在作者头上。
+                 *    两条路都会漂，2026-09-19 用 .tools/ab-test-post-audit.php 复现并修掉。
+                 */
+                Database::execute(
+                    'UPDATE ' . Database::identifier('users')
+                    . ' SET ' . Database::identifier('post_count') . ' = ' . Database::identifier('post_count') . ' + 1, '
+                    . Database::identifier('updated_at') . ' = ?'
+                    . ' WHERE ' . Database::identifier('id') . ' = ?',
+                    [$now, $userId]
                 );
             }
-
-            Database::execute(
-                'UPDATE ' . Database::identifier('users')
-                . ' SET ' . Database::identifier('post_count') . ' = ' . Database::identifier('post_count') . ' + 1, '
-                . Database::identifier('updated_at') . ' = ?'
-                . ' WHERE ' . Database::identifier('id') . ' = ?',
-                [$now, $userId]
-            );
 
             Model::flushRowCache();
             \Modules\Forum\ForumModel::flush();
@@ -136,7 +152,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 为回帖列表补齐作者信息与附件
+     * 为评论列表补齐作者信息与附件
      *
      * @param list<array<string, mixed>> $posts
      * @return list<array<string, mixed>>
@@ -157,7 +173,7 @@ final class PostModel extends Model
         foreach ($posts as &$post) {
             $author = $users[(int)$post['user_id']] ?? [
                 'id'       => 0,
-                'username' => '已注销用户',
+                'username' => '用户已删除',
                 'avatar'   => '',
                 'group_id' => \Core\Permission::GUEST_GROUP,
             ];
@@ -175,7 +191,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 取帖子及其所属主题与版块（用于权限判定）
+     * 取帖子及其所属帖子与版块（用于权限判定）
      *
      * @return array{post:array<string,mixed>, thread:array<string,mixed>, forum:array<string,mixed>}|null
      */
@@ -203,7 +219,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 软删除回帖，并同步计数
+     * 软删除评论，并同步计数
      */
     public static function destroy(int $postId): bool
     {
@@ -213,7 +229,7 @@ final class PostModel extends Model
             return false;
         }
 
-        // 首帖不允许单独删除，应删除整个主题
+        // 首帖不允许单独删除，应删除整个帖子
         if ((int)$post['is_first'] === 1) {
             return false;
         }
@@ -256,8 +272,150 @@ final class PostModel extends Model
         });
     }
 
+    /** 后台搜索范围（下拉菜单用） */
+    public const ADMIN_SCOPES = [
+        'content' => '回帖内容',
+        'user'    => '作者',
+        'id'      => '回帖Id',
+        'thread'  => '帖子Id',
+    ];
+
     /**
-     * 更新回帖内容（同时刷新渲染缓存）
+     * 后台评论列表（支持搜索范围）
+     *
+     * @param string $scope content=评论内容｜user=作者名｜id=评论 ID｜thread=所属帖子 ID
+     */
+    public static function adminPaginate(
+        string $keyword,
+        int $status,
+        int $page,
+        int $perPage = 20,
+        string $scope = 'content'
+    ): array {
+        $query = static::query();
+
+        if ($keyword !== '') {
+            self::applyAdminSearch($query, $keyword, $scope);
+        }
+
+        if ($status !== -1) {
+            $query->where('status', $status);
+        }
+
+        return $query->orderBy('id', 'desc')->paginate($perPage, $page);
+    }
+
+    /** 按范围给后台查询加搜索条件（用 EXISTS 而非 JOIN，理由见 ThreadModel::applyAdminSearch） */
+    private static function applyAdminSearch(\Core\Query $query, string $keyword, string $scope): void
+    {
+        $q    = static fn (string $name): string => Database::identifier($name);
+        $like = Database::likeOperator();
+        $esc  = Database::likeEscapeClause();
+
+        if ($scope === 'id') {
+            /* 回帖 ID 精确匹配 */
+            $query->where('id', '=', (int)$keyword);
+
+            return;
+        }
+
+        if ($scope === 'thread') {
+            /* 帖子 ID 精确匹配：列出该帖下的楼层 */
+            $query->where('thread_id', '=', (int)$keyword);
+
+            return;
+        }
+
+        if ($scope === 'user') {
+            $query->whereRaw(
+                'EXISTS (SELECT 1 FROM ' . $q('users') . ' u WHERE u.' . $q('id') . ' = '
+                . $q('posts') . '.' . $q('user_id')
+                . ' AND u.' . $q('username') . ' ' . $like . ' ?' . $esc . ')',
+                [Database::likePattern($keyword)]
+            );
+
+            return;
+        }
+
+        $query->whereContains('content', $keyword);
+    }
+
+    /**
+     * 从回收站恢复评论 —— destroy() 的**严格逆操作**
+     *
+     * 首帖不能单独恢复（它跟着帖子走，恢复帖子时一起回来）；
+     * 计数与 destroy() 对称：只有「已通过」的评论才需要把三处计数加回去。
+     */
+    public static function restore(int $postId): bool
+    {
+        $post = static::withTrashed()->where('id', '=', $postId)->first();
+
+        if ($post === null || (int)$post['is_first'] === 1 || $post['deleted_at'] === null) {
+            return false;
+        }
+
+        return (bool)Database::transaction(static function () use ($post, $postId): bool {
+            $now = time();
+            $q   = static fn (string $name): string => Database::identifier($name);
+
+            Database::update(
+                'posts',
+                ['deleted_at' => null, 'updated_at' => $now],
+                $q('id') . ' = ?',
+                [$postId]
+            );
+
+            if ((int)$post['status'] === 1) {
+                Database::execute(
+                    'UPDATE ' . $q('threads') . ' SET ' . $q('reply_count') . ' = ' . $q('reply_count') . ' + 1, '
+                    . $q('updated_at') . ' = ? WHERE ' . $q('id') . ' = ?',
+                    [$now, (int)$post['thread_id']]
+                );
+
+                Database::execute(
+                    'UPDATE ' . $q('forums') . ' SET ' . $q('post_count') . ' = ' . $q('post_count') . ' + 1, '
+                    . $q('updated_at') . ' = ? WHERE ' . $q('id') . ' = ?',
+                    [$now, (int)$post['forum_id']]
+                );
+
+                Database::execute(
+                    'UPDATE ' . $q('users') . ' SET ' . $q('post_count') . ' = ' . $q('post_count') . ' + 1, '
+                    . $q('updated_at') . ' = ? WHERE ' . $q('id') . ' = ?',
+                    [$now, (int)$post['user_id']]
+                );
+            }
+
+            Model::flushRowCache();
+            \Modules\Forum\ForumModel::flush();
+
+            return true;
+        });
+    }
+
+    /**
+     * 彻底删除评论（从回收站清除，不可恢复）
+     *
+     * 硬删行 + 它上面的附件；计数不再变动（软删那一步已经减过）。
+     */
+    public static function purge(int $postId): bool
+    {
+        $post = static::withTrashed()->where('id', '=', $postId)->first();
+
+        if ($post === null || $post['deleted_at'] === null) {
+            return false;
+        }
+
+        return (bool)Database::transaction(static function () use ($postId): bool {
+            \Modules\User\AttachmentModel::purgeForPost($postId);
+            Database::delete('posts', Database::identifier('id') . ' = ?', [$postId]);
+            Model::flushRowCache();
+
+            return true;
+        });
+    }
+
+    /**
+     * 更新评论内容（同时刷新渲染缓存）
      */
     public static function updateContent(int $postId, string $content): void
     {
@@ -279,9 +437,9 @@ final class PostModel extends Model
      * 审核通过一条待审核内容
      *
      * 计数规则要与 PostModel::reply 保持一致：
-     *  - 非首帖通过审核时才把回复计入主题 reply_count 与版块 post_count
-     *    （等待审核的回复在发表时并没有计入）
-     *  - 首帖通过审核时把所属主题一并放行，且不重复计数
+     *  - 非首帖通过审核时才把评论计入帖子 reply_count 与版块 post_count
+     *    （等待审核的评论在发表时并没有计入）
+     *  - 首帖通过审核时把所属帖子一并放行，且不重复计数
      *
      * @return array{ok:bool, message:string, thread_id:int, user_id:int, is_thread:bool}
      */
@@ -312,7 +470,7 @@ final class PostModel extends Model
             static::updateById($postId, ['status' => 1]);
 
             if ($isFirst) {
-                // 首帖放行时主题随之通过
+                // 首帖放行时帖子随之通过
                 Database::execute(
                     'UPDATE ' . Database::identifier('threads')
                     . ' SET ' . Database::identifier('status') . ' = 1, ' . Database::identifier('updated_at') . ' = ?'
@@ -340,6 +498,18 @@ final class PostModel extends Model
                 . ' WHERE ' . Database::identifier('id') . ' = ?',
                 [$now, (int)$post['forum_id']]
             );
+
+            /*
+             * 作者的评论数也要 +1 —— reply() 里是加的，审核通过这条路径原来漏了，
+             * 于是「审核通过」与「直接发表」两条路的计数口径不一致。
+             */
+            Database::execute(
+                'UPDATE ' . Database::identifier('users')
+                . ' SET ' . Database::identifier('post_count') . ' = ' . Database::identifier('post_count') . ' + 1, '
+                . Database::identifier('updated_at') . ' = ?'
+                . ' WHERE ' . Database::identifier('id') . ' = ?',
+                [$now, (int)$post['user_id']]
+            );
         });
 
         Model::flushRowCache();
@@ -348,17 +518,17 @@ final class PostModel extends Model
 
         return [
             'ok'        => true,
-            'message'   => $isFirst ? '主题已通过审核。' : '回复已通过审核。',
+            'message'   => $isFirst ? '帖子已通过审核。' : '评论已通过审核。',
             'thread_id' => $threadId,
             'user_id'   => (int)$post['user_id'],
             'is_thread' => $isFirst,
         ];
     }
 
-    /** 某用户发表的回复 */
+    /** 某用户发表的评论 */
     public static function byUser(int $userId, int $page, int $perPage = 20): array
     {
-        // 排除首帖，只展示「回复」
+        // 排除首帖，只展示「评论」
         return static::query()
             ->where('user_id', $userId)
             ->where('is_first', 0)
@@ -367,7 +537,7 @@ final class PostModel extends Model
             ->paginate($perPage, $page);
     }
 
-    /** 回帖总数 */
+    /** 评论总数 */
     public static function totalCount(): int
     {
         return (int)Database::value(
@@ -376,7 +546,7 @@ final class PostModel extends Model
         );
     }
 
-    /** 待审核回帖数量 */
+    /** 待审核评论数量 */
     public static function pendingCount(): int
     {
         return (int)Database::value(
@@ -385,7 +555,7 @@ final class PostModel extends Model
         );
     }
 
-    /** 指定时间点之后发表的回复数（后台概览「今日新增」） */
+    /** 指定时间点之后发表的评论数（后台概览「今日新增」） */
     public static function countSince(int $timestamp): int
     {
         return (int)Database::value(
@@ -396,24 +566,8 @@ final class PostModel extends Model
         );
     }
 
-    /** 后台回帖列表 */
-    public static function adminPaginate(string $keyword, int $status, int $page, int $perPage = 20): array
-    {
-        $query = static::query();
-
-        if ($keyword !== '') {
-            $query->whereContains('content', $keyword);
-        }
-
-        if ($status !== -1) {
-            $query->where('status', $status);
-        }
-
-        return $query->orderBy('id', 'desc')->paginate($perPage, $page);
-    }
-
     /**
-     * 前台搜索：按内容关键词查已发布的回复（含主题首帖），带主题标题与作者名。
+     * 前台搜索：按内容关键词查已发布的评论（含帖子首帖），带帖子标题与作者名。
      *
      * 返回结构与 Query::paginate() 一致，供分页组件直接使用。
      *

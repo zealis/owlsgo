@@ -1,6 +1,6 @@
 <?php
 /**
- * 发表新主题
+ * 发表新帖子
  *
  * 变量：$forums（可发帖版块）、$forum（当前选中版块）、$uploadEnabled、$maxUploadMb
  */
@@ -19,12 +19,12 @@ $contentMax  = (int)config('app.post_max_length', 20000);
 <ol class="unstyled hstack crumbs">
     <li><a class="unstyled" href="<?= e(url('/')) ?>">首页</a></li>
     <li aria-hidden="true">/</li>
-    <li>发表新主题</li>
+    <li>发表新帖子</li>
 </ol>
 
 <section class="panel">
     <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'plus', 'size' => 17]) ?>发表新主题</h2>
+        <h2><?= $view('partials/icon', ['name' => 'plus', 'size' => 17]) ?>发表新帖子</h2>
     </div>
 
     <div class="panel__body">
@@ -46,11 +46,11 @@ $contentMax  = (int)config('app.post_max_length', 20000);
             </div>
 
             <div data-field>
-                <label for="thread-title">主题标题</label>
+                <label for="thread-title">帖子标题</label>
                 <input type="text" id="thread-title" name="title" required
                        maxlength="<?= $titleMax ?>" autocomplete="off"
                        value="<?= e((string)old('title', '')) ?>"
-                       placeholder="请用一句话概括主题（4-<?= $titleMax ?> 字）">
+                       placeholder="请用一句话概括帖子（4-<?= $titleMax ?> 字）">
                 <?php if (old_error('title') !== ''): ?>
                     <span class="field-error"><?= e(old_error('title')) ?></span>
                 <?php endif; ?>
@@ -73,11 +73,11 @@ $contentMax  = (int)config('app.post_max_length', 20000);
             <div class="hstack mt-4">
                 <button type="submit" class="button">
                     <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
-                    <span>发表主题</span>
+                    <span>发表帖子</span>
                 </button>
                 <a class="button ghost" href="<?= e($forumId > 0 ? url('/f/' . $forumId) : url('/')) ?>">取消</a>
                 <?php if (setting_bool('thread_need_audit', false)): ?>
-                    <span class="text-light" style="font-size:12.5px">本站开启了发帖审核，主题需管理员通过后才会公开。</span>
+                    <span class="text-light" style="font-size:12.5px">本站开启了发帖审核，帖子需管理员通过后才会公开。</span>
                 <?php endif; ?>
             </div>
         </form>

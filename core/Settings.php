@@ -35,10 +35,12 @@ final class Settings
             'notice_center_intro' => '发布站点公告与社区消息',
             'notice_push_enabled' => '1',
 
-            /* 外观 */
-            'theme_primary'      => '#00A0E9',
-            'theme_primary_dark' => '#0078D4',
-            'theme_highlight'    => '#E6F7FF',
+            /*
+             * 「外观」三个颜色键（theme_primary / theme_primary_dark / theme_highlight）
+             * 已随后台设置页的「外观」区块一并退役：站点配色由 theme.css 的固定令牌控制，
+             * 布局里的 theme-color 用固定品牌蓝 #00A0E9，不再从设置读取。
+             * 老站点 settings 表里的遗留行不影响任何行为，可留可清。
+             */
 
             /* 注册与登录 */
             'register_enabled'   => '1',
@@ -49,10 +51,10 @@ final class Settings
 
             /* 发帖 */
             /*
-             * 内容审核默认关闭：新主题 / 新回复立即公开并计入统计。
+             * 内容审核默认关闭：新帖子 / 新评论立即公开并计入统计。
              *
-             * 站长可在后台「发帖」分区随时打开 —— 开启后新主题需审核通过才对其他人可见、
-             * 新回复需审核通过才计入统计；拥有「审核内容」（post.approve）权限的用户组
+             * 站长可在后台「发帖」分区随时打开 —— 开启后新帖子需审核通过才对其他人可见、
+             * 新评论需审核通过才计入统计；拥有「审核内容」（post.approve）权限的用户组
              * （管理员、版主）不受影响，发帖即时可见。
              *
              * ⚠️ 默认值只对「数据库里还没存过这个键」的站点生效。已保存过设置的站点

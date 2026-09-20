@@ -491,7 +491,7 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /*  草稿自动保存（发帖 / 回帖）：刷新、离开或误关页面都不丢内容        */
+  /*  草稿自动保存（发帖 / 评论）：刷新、离开或误关页面都不丢内容        */
   /* ------------------------------------------------------------------ */
 
   var DRAFT_PREFIX = 'owlsgo:draft:';
@@ -1234,7 +1234,7 @@
    * -----------------------------------------------------------------------
    * 流程：选择文件 → 立即上传到 data-upload 指定的接口 → 成功后把返回的附件 ID
    *       以隐藏域 attachments[] 写进表单，并渲染一个可移除的附件标签。
-   * 这样发帖/回复表单只提交「附件 ID」，与后端 Request::intArray('attachments') 对齐。
+   * 这样发帖/评论表单只提交「附件 ID」，与后端 Request::intArray('attachments') 对齐。
    * ===================================================================== */
 
   var attachmentSeq = 0;
@@ -1344,6 +1344,11 @@
      */
     row.setAttribute('data-att-name', String(item.name || ''));
     row.setAttribute('data-att-size', String(item.size_text || ''));
+    /*
+     * 前端去重指纹：文件名 + 字节数。选文件时先查列表里有没有同指纹的行，
+     * 有就直接跳过上传（后端另有 sha256 去重兜底，这里省一次无意义的传输）。
+     */
+    row.setAttribute('data-att-key', String(item.name || '') + ':' + String(item.size || 0));
     row.setAttribute('data-att-image', item.is_image ? '1' : '0');
     row.setAttribute('data-att-url', String(item.url || ''));
 
@@ -1510,6 +1515,22 @@
       input.setAttribute('data-uploading', '1');
 
       files.forEach(function (file) {
+        /*
+         * 前端去重：列表里已有「同名 + 同字节数」的附件时直接跳过，
+         * 不再发起上传（真正的内容级去重由后端 sha256 兜底）。
+         */
+        var fileKey = file.name + ':' + file.size;
+        if (target) {
+          var exists = Array.prototype.some.call(
+            target.querySelectorAll('.attachment-row[data-att-key]'),
+            function (row) { return row.getAttribute('data-att-key') === fileKey; }
+          );
+          if (exists) {
+            notify('列表中已有同名同大小的附件“' + file.name + '”，已跳过重复上传。', 'warning');
+            return;
+          }
+        }
+
         var body = new FormData();
         body.append('file', file);
 
@@ -1549,7 +1570,12 @@
               }
               renderAttachment(target, json);
             }
-            notify('附件“' + json.name + '”已上传。', 'success');
+            if (json.duplicate) {
+              // 后端按 sha256 发现同内容文件，复用了已有附件记录
+              notify(json.message || '该文件已存在，已复用之前的附件。', 'warning');
+            } else {
+              notify('附件“' + json.name + '”已上传。', 'success');
+            }
             return;
           }
 
@@ -1577,8 +1603,864 @@
   }
 
   /* =======================================================================
+   * 14. 本地上传安装插件：先开文件选择框，选中后双重风险确认
+   * -----------------------------------------------------------------------
+   * 插件 = 任意 PHP 代码 = 服务器完全执行权限。上传前连续弹两次确认，
+   * 第二次明确要求确认「插件来源可信」，任何一步取消都不发起上传。
+   *
+   * 交互顺序（踩过坑，别改回去）：
+   *   点击按钮 → 打开系统文件选择框 → 选中 .zip → 两次确认 → 提交
+   * 早期版本把按钮写成 type="submit"，点击即提交表单，而那时用户还没机会选文件，
+   * 于是只弹出「请先选择插件 zip 包」——用户看到的是「点了没反应，只说没选文件」。
+   * 所以现在按钮是 type="button"，只负责 file.click()，确认逻辑挂在 change 上。
+   * ===================================================================== */
+
+  function initPluginUpload() {
+    var form = document.querySelector('form[data-plugin-upload]');
+    if (!form) {
+      return;
+    }
+
+    var file = form.querySelector('[data-plugin-file]');
+    if (!file) {
+      return;
+    }
+
+    var trigger = form.querySelector('[data-plugin-trigger]');
+
+    /* 取消或校验失败后清空选择：浏览器对「重复选中同一个文件」不再派发 change，
+       不清空的话用户改完 zip 再选同一个文件名会毫无反应 */
+    function resetPick() {
+      file.value = '';
+    }
+
+    if (trigger) {
+      trigger.addEventListener('click', function () {
+        file.click();
+      });
+    }
+
+    file.addEventListener('change', function () {
+      if (!file.files || file.files.length === 0) {
+        return;
+      }
+
+      var name = file.files[0].name || '';
+
+      /* accept=".zip" 只是给选择框的过滤提示，用户可以手动改成「所有文件」，
+         这里先挡一道，省得服务端往返一次才报错 */
+      if (!/\.zip$/i.test(name)) {
+        notify('只支持 .zip 格式的插件包。', 'warning');
+        resetPick();
+        return;
+      }
+
+      uiConfirm(
+        '即将安装本地插件包「' + name + '」。' +
+        '插件包含任意 PHP 代码，安装即意味着授予其在服务器上完全执行的权限：' +
+        '来源不明的插件可能被用于删库、窃取数据或植入后门。' +
+        '请仅安装来自可信渠道的插件。是否继续？'
+      ).then(function (first) {
+        if (!first) {
+          resetPick();
+          return;
+        }
+
+        uiConfirm(
+          '再次确认：我已核实该插件的来源可信（作者、下载渠道均可追溯），' +
+          '并接受安装带来的安全风险。确认上传？'
+        ).then(function (second) {
+          if (second) {
+            form.submit();   // 原生提交，不再触发本监听器
+          } else {
+            resetPick();
+          }
+        });
+      });
+    });
+
+    /* 兜底：表单被其它途径提交（回车等）时没选文件，给一次提示而不是静默失败 */
+    form.addEventListener('submit', function (event) {
+      if (!file.files || file.files.length === 0) {
+        event.preventDefault();
+        notify('请先选择插件 zip 包。', 'warning');
+      }
+    });
+  }
+
+  /* =======================================================================
+   * 13.（原「首页页签深链」已删除）
+   * -----------------------------------------------------------------------
+   * 首页四个页签现在是**链接**（<a href="/?tab=N"> + aria-current="page"）：
+   * 点页签就是带 ?tab= 的整页跳转，激活哪一项由服务端按 ?tab= 渲染，
+   * 不再需要在客户端补一次 click() 去「修正」页签状态 ——
+   * 那段逻辑反而会误伤页面上其它 tablist（querySelectorAll 是全局的）。
+   * ===================================================================== */
+
+  /* =======================================================================
+   * 13.5 深浅色模式（夜间模式）切换
+   * -----------------------------------------------------------------------
+   * 偏好与解析逻辑在 theme-boot.js（head 内同步执行，防闪白），挂在
+   * window.owlsgoTheme 上；这里只负责**交互**：
+   *   - 顶栏齿轮菜单的 [data-theme-toggle]：点一下在浅/深之间手动切换；
+   *     文案回填 [data-theme-label] —— 深色时显示「日间模式」、浅色显示「夜间模式」
+   *     （「显示的是要去的地方」，太阳/月亮图标由 CSS 按 html[data-theme] 显隐）；
+   *   - 「个性装扮」页的 [data-appearance-follow]：开 = 跟随系统（auto），
+   *     关 = 固定为当前模式，状态文字写进 [data-appearance-state]；
+   *   - 系统深浅变化时（auto 模式下）实时跟随；其它页签改了偏好时（storage 事件）同步。
+   * ===================================================================== */
+
+  function initThemeToggle() {
+    var theme = window.owlsgoTheme;
+    if (!theme) {
+      return;   /* theme-boot.js 未加载（理论上不可能）→ 放弃交互，保持 boot 时的状态 */
+    }
+
+    function resolved() {
+      return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    }
+
+    function save(mode) {
+      try {
+        localStorage.setItem(theme.KEY, mode);
+      } catch (e) { /* localStorage 不可用（隐身模式等）→ 只切换不记住 */ }
+    }
+
+    function syncUi() {
+      var dark = resolved() === 'dark';
+
+      Array.prototype.forEach.call(document.querySelectorAll('[data-theme-label]'), function (el) {
+        el.textContent = dark ? '日间模式' : '夜间模式';
+      });
+
+      Array.prototype.forEach.call(document.querySelectorAll('[data-appearance-follow]'), function (input) {
+        input.checked = theme.stored() === 'auto';
+        var row = input.closest('.privacy-row');
+        var state = row ? row.querySelector('[data-appearance-state]') : null;
+        if (state) {
+          state.textContent = theme.stored() === 'auto' ? '跟随系统' : '手动切换';
+        }
+      });
+
+      /* 让浏览器地址栏 / 系统栏的颜色跟着走（浅色沿用站点设置的主色） */
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        if (!meta.getAttribute('data-light')) {
+          meta.setAttribute('data-light', meta.getAttribute('content') || '#00A0E9');
+        }
+        meta.setAttribute('content', dark ? '#0f121a' : meta.getAttribute('data-light'));
+      }
+    }
+
+    /* 齿轮菜单：手动切换深浅色 */
+    document.addEventListener('click', function (event) {
+      var btn = event.target.closest ? event.target.closest('[data-theme-toggle]') : null;
+      if (!btn) {
+        return;
+      }
+
+      save(resolved() === 'dark' ? 'light' : 'dark');
+      theme.apply();
+      syncUi();
+    });
+
+    /* 个性装扮页：跟随系统开关 */
+    document.addEventListener('change', function (event) {
+      var input = event.target.closest ? event.target.closest('[data-appearance-follow]') : null;
+      if (!input) {
+        return;
+      }
+
+      /* 关掉跟随 = 把「当前生效的模式」固定下来（而不是退回某个写死的默认值） */
+      save(input.checked ? 'auto' : resolved());
+      theme.apply();
+      syncUi();
+      notify(input.checked ? '夜间模式将跟随系统外观。' : '已改为手动切换深浅色。', 'success');
+    });
+
+    /* 系统深浅变化（仅 auto 模式下有意义）与其它页签的偏好改动 */
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mq) {
+      var onSystemChange = function () {
+        if (theme.stored() === 'auto') {
+          theme.apply();
+          syncUi();
+        }
+      };
+      if (typeof mq.addEventListener === 'function') {
+        mq.addEventListener('change', onSystemChange);
+      } else if (typeof mq.addListener === 'function') {
+        mq.addListener(onSystemChange);   /* 旧 Safari */
+      }
+    }
+
+    window.addEventListener('storage', function (event) {
+      if (event.key === theme.KEY || event.key === theme.SCHEME_KEY || event.key === theme.CUSTOM_KEY) {
+        theme.apply();
+        syncUi();
+        renderSchemeGrid();
+      }
+    });
+
+    syncUi();
+    renderSchemeGrid();
+  }
+
+  /* =======================================================================
+   * 13.7 图片灯箱（帖子 / 回帖 / 公告正文，适配自参考 image_lightbox 插件）
+   * -----------------------------------------------------------------------
+   * 作用范围：.floor__body / .notice-card__body 里的正文插图（.content-image）。
+   * - 页内自适应：长图钳制到一屏内完整可见（CSS max-height + object-fit）；
+   * - 小图不放大约看：naturalWidth<120 或 naturalHeight<80 的图不可点；
+   * - 灯箱内：滚轮/双击/拖拽/双指捏合自由缩放平移（1~5 倍，带边界回弹），
+   *   左右按钮 + 方向键在「同一楼层/公告内的图片画廊」里切换，
+   *   标题取图片 alt/title，Esc 关闭、+/-/0 缩放、Tab 焦点圈定。
+   * ===================================================================== */
+
+  function initLightbox() {
+    const SCOPE = '.floor__body, .notice-card__body';
+    /* ⚠️ 不能把 SCOPE + ' img' 拼起来用：那会变成「.floor__body 本身 或 公告 img」，
+       mark() 会把楼层容器当图处理、点击委托命中容器 —— 画廊整体失灵。
+       图片匹配必须用完整的 SCOPE_IMG 选择器。 */
+    const SCOPE_IMG = '.floor__body img, .notice-card__body img';
+    let overlay = null;
+    let image = null;
+    let caption = null;
+    let previousButton = null;
+    let nextButton = null;
+    let resetButton = null;
+    let previousFocus = null;
+    let gallery = [];
+    let currentIndex = -1;
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let drag = null;
+    let stageBounds = null;
+    let previousDocumentOverflow = null;
+    const pointers = new Map();
+    let pinch = null;
+    const minimumWidth = 120;
+    const minimumHeight = 80;
+    const observedImages = new WeakSet();
+
+    /* 可进灯箱的「真图片」判定：
+     *  - data:image/*（排除 SVG，SVG 矢量图无放大意义）；
+     *  - 本站附件路由 /attachment/{id} —— 真实上传的图片全走这里，URL **没有扩展名**
+     *    （name 里的 .jpg 只在下载头里），早期版本只认扩展名导致线上灯箱完全失效；
+     *  - 外链图片按扩展名判断；.svg 一律排除。
+     * 头像路径单独排除（isEligible 里）。 */
+    const isRasterUrl = source => {
+      if (!source) return false;
+      if (/^data:image\/(?!svg\+xml)[a-z.+-]+/i.test(source)) return true;
+      try {
+        const u = new URL(source, location.href);
+        if (u.origin === location.origin && /^\/attachment\/\d+\/?(?:[?#].*)?$/.test(u.pathname)) return true;
+        if (/\.svg(?:$|[?#])/i.test(u.pathname)) return false;
+        return /\.(?:avif|bmp|gif|jpe?g|png|webp)(?:$|[?#])/i.test(u.pathname);
+      } catch (error) {
+        return /\.(?:avif|bmp|gif|jpe?g|png|webp)(?:$|[?#])/i.test(source)
+          && !/(?:^data:image\/svg\+xml|\.svg(?:$|[?#]))/i.test(source);
+      }
+    };
+    const getSource = target => {
+      const linkedSource = target.closest('a[href]') ? target.closest('a[href]').href : '';
+      return isRasterUrl(linkedSource) ? linkedSource : (target.currentSrc || target.src);
+    };
+    const isEligible = target => {
+      const source = getSource(target);
+      if (!target.closest(SCOPE) || target.closest('.avatar-img, .emoji, .emoticon')) return false;
+      if (/\/(?:avatar|avatar_upload)(?:[\/_-]|$)/i.test(source) || !isRasterUrl(source)) return false;
+      return target.naturalWidth >= minimumWidth && target.naturalHeight >= minimumHeight;
+    };
+    const updateTransform = () => {
+      if (!image) return;
+      image.style.setProperty('--image-lightbox-scale', zoom);
+      image.style.setProperty('--image-lightbox-pan-x', panX + 'px');
+      image.style.setProperty('--image-lightbox-pan-y', panY + 'px');
+      image.classList.toggle('image-lightbox-zoomed', zoom > 1);
+      resetButton.hidden = zoom === 1;
+    };
+    const clampPan = () => {
+      if (!image || !overlay) return;
+      const stage = stageBounds || image.parentElement.getBoundingClientRect();
+      const maxX = Math.max(0, (image.clientWidth * zoom - stage.width) / 2);
+      const maxY = Math.max(0, (image.clientHeight * zoom - stage.height) / 2);
+      panX = Math.max(-maxX, Math.min(maxX, panX));
+      panY = Math.max(-maxY, Math.min(maxY, panY));
+    };
+    const resetView = () => {
+      zoom = 1;
+      panX = 0;
+      panY = 0;
+      updateTransform();
+    };
+    const clearGesture = () => {
+      pointers.clear();
+      pinch = null;
+      drag = null;
+      stageBounds = null;
+      if (image) image.classList.remove('image-lightbox-dragging');
+    };
+    const setZoom = (nextZoom, clientX, clientY) => {
+      const previousZoom = zoom;
+      zoom = Math.max(1, Math.min(5, nextZoom));
+      if (zoom === 1) return resetView();
+      if (previousZoom === zoom) return;
+      const stage = stageBounds || image.parentElement.getBoundingClientRect();
+      if (Number.isFinite(clientX) && Number.isFinite(clientY)) {
+        const factor = zoom / previousZoom;
+        const x = clientX - (stage.left + stage.width / 2);
+        const y = clientY - (stage.top + stage.height / 2);
+        panX = (panX - x) * factor + x;
+        panY = (panY - y) * factor + y;
+      }
+      clampPan();
+      updateTransform();
+    };
+    const show = index => {
+      if (!gallery.length) return;
+      currentIndex = (index + gallery.length) % gallery.length;
+      const target = gallery[currentIndex];
+      resetView();
+      image.src = getSource(target);
+      image.alt = target.alt || '';
+      const text = (target.alt || target.title || '').trim();
+      caption.textContent = text;
+      caption.hidden = text === '';
+      const hasNavigation = gallery.length > 1;
+      previousButton.hidden = !hasNavigation;
+      nextButton.hidden = !hasNavigation;
+    };
+    const navigate = offset => show(currentIndex + offset);
+    const close = () => {
+      if (!overlay || overlay.hidden) return;
+      overlay.hidden = true;
+      clearGesture();
+      image.removeAttribute('src');
+      image.alt = '';
+      resetView();
+      caption.textContent = '';
+      gallery = [];
+      currentIndex = -1;
+      if (previousDocumentOverflow !== null) {
+        document.documentElement.style.overflow = previousDocumentOverflow;
+        previousDocumentOverflow = null;
+      }
+      if (previousFocus && previousFocus.focus) previousFocus.focus();
+    };
+    const ensureOverlay = () => {
+      if (overlay) return;
+      overlay = document.createElement('div');
+      overlay.className = 'image-lightbox-overlay';
+      overlay.hidden = true;
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-label', '图片预览');
+      const dialog = document.createElement('div');
+      dialog.className = 'image-lightbox-dialog';
+      const stage = document.createElement('div');
+      stage.className = 'image-lightbox-stage';
+      image = document.createElement('img');
+      image.className = 'image-lightbox-image';
+      image.alt = '';
+      image.draggable = false;
+      caption = document.createElement('div');
+      caption.className = 'image-lightbox-caption';
+      caption.hidden = true;
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'image-lightbox-close';
+      closeButton.setAttribute('aria-label', '关闭图片预览');
+      closeButton.textContent = '\u00d7';
+      closeButton.addEventListener('click', close);
+      previousButton = document.createElement('button');
+      previousButton.type = 'button';
+      previousButton.className = 'image-lightbox-nav image-lightbox-prev';
+      previousButton.setAttribute('aria-label', '上一张图片');
+      previousButton.textContent = '\u2039';
+      previousButton.addEventListener('click', () => navigate(-1));
+      nextButton = document.createElement('button');
+      nextButton.type = 'button';
+      nextButton.className = 'image-lightbox-nav image-lightbox-next';
+      nextButton.setAttribute('aria-label', '下一张图片');
+      nextButton.textContent = '\u203a';
+      nextButton.addEventListener('click', () => navigate(1));
+      resetButton = document.createElement('button');
+      resetButton.type = 'button';
+      resetButton.className = 'image-lightbox-reset';
+      resetButton.setAttribute('aria-label', '还原缩放');
+      resetButton.title = '还原缩放';
+      resetButton.textContent = '\u21ba';
+      resetButton.hidden = true;
+      resetButton.addEventListener('click', resetView);
+      image.addEventListener('wheel', event => {
+        event.preventDefault();
+        setZoom(zoom * (event.deltaY < 0 ? 1.25 : 0.8), event.clientX, event.clientY);
+      }, { passive: false });
+      image.addEventListener('dblclick', event => {
+        event.preventDefault();
+        if (zoom > 1) resetView();
+        else setZoom(2, event.clientX, event.clientY);
+      });
+      image.addEventListener('pointerdown', event => {
+        if (zoom > 1) event.preventDefault();
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        image.setPointerCapture(event.pointerId);
+        stageBounds = image.parentElement.getBoundingClientRect();
+        if (pointers.size === 2) {
+          const pair = Array.from(pointers.values());
+          pinch = { distance: Math.hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y), zoom: zoom };
+          drag = null;
+          image.classList.add('image-lightbox-dragging');
+          return;
+        }
+        if (zoom <= 1) return;
+        drag = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: panX, panY: panY };
+        image.classList.add('image-lightbox-dragging');
+      });
+      image.addEventListener('pointermove', event => {
+        if (pointers.has(event.pointerId)) pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch && pointers.size === 2) {
+          const pair = Array.from(pointers.values());
+          const distance = Math.hypot(pair[1].x - pair[0].x, pair[1].y - pair[0].y);
+          setZoom(pinch.zoom * distance / pinch.distance, (pair[0].x + pair[1].x) / 2, (pair[0].y + pair[1].y) / 2);
+          return;
+        }
+        if (!drag || drag.id !== event.pointerId) return;
+        panX = drag.panX + event.clientX - drag.x;
+        panY = drag.panY + event.clientY - drag.y;
+        clampPan();
+        updateTransform();
+      });
+      const stopDrag = event => {
+        pointers.delete(event.pointerId);
+        if (pointers.size < 2) {
+          pinch = null;
+          stageBounds = null;
+          if (!drag) image.classList.remove('image-lightbox-dragging');
+        }
+        if (!drag || drag.id !== event.pointerId) return;
+        drag = null;
+        image.classList.remove('image-lightbox-dragging');
+      };
+      image.addEventListener('pointerup', stopDrag);
+      image.addEventListener('pointercancel', stopDrag);
+      image.addEventListener('lostpointercapture', stopDrag);
+      image.addEventListener('dragstart', event => event.preventDefault());
+      stage.append(image, previousButton, nextButton);
+      dialog.append(stage, caption);
+      overlay.append(dialog, resetButton, closeButton);
+      overlay.addEventListener('click', event => {
+        if (!event.target.closest('.image-lightbox-image, .image-lightbox-close, .image-lightbox-nav, .image-lightbox-reset')) close();
+      });
+      document.body.appendChild(overlay);
+    };
+    document.addEventListener('click', event => {
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const target = event.target.closest ? event.target.closest(SCOPE_IMG) : null;
+      if (!target || !isEligible(target)) return;
+      const source = getSource(target);
+      if (!source || !/^https?:/i.test(source)) return;
+      event.preventDefault();
+      ensureOverlay();
+      previousFocus = document.activeElement;
+      const content = target.closest(SCOPE);
+      gallery = Array.prototype.filter.call(
+        content.querySelectorAll('img'),
+        item => isEligible(item) && /^https?:/i.test(getSource(item) || '')
+      );
+      currentIndex = gallery.indexOf(target);
+      if (currentIndex < 0) {
+        gallery = [target];
+        currentIndex = 0;
+      }
+      show(currentIndex);
+      overlay.hidden = false;
+      previousDocumentOverflow = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = 'hidden';
+      overlay.querySelector('.image-lightbox-close').focus();
+    });
+    document.addEventListener('keydown', event => {
+      if (!overlay || overlay.hidden) return;
+      if (event.key === 'Tab') {
+        const controls = Array.from(overlay.querySelectorAll('button:not([hidden])'));
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      } else if (event.key === 'Escape') close();
+      else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        navigate(-1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        navigate(1);
+      } else if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        setZoom(zoom * 1.25);
+      } else if (event.key === '-') {
+        event.preventDefault();
+        setZoom(zoom * 0.8);
+      } else if (event.key === '0') {
+        event.preventDefault();
+        resetView();
+      }
+    });
+    const prepare = img => {
+      const update = () => img.classList.toggle('image-lightbox-clickable', isEligible(img));
+      update();
+      if (observedImages.has(img)) return;
+      observedImages.add(img);
+      img.addEventListener('load', update);
+      img.addEventListener('error', () => img.classList.remove('image-lightbox-clickable'));
+    };
+    const mark = root => {
+      if (root.matches && root.matches('img') && root.closest(SCOPE)) prepare(root);
+      if (root.querySelectorAll) {
+        Array.prototype.forEach.call(root.querySelectorAll(SCOPE_IMG), prepare);
+      }
+    };
+    const start = () => {
+      mark(document);
+      if (window.MutationObserver) {
+        new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) mark(node);
+        }))).observe(document.body, { childList: true, subtree: true });
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+  }
+
+  /* =======================================================================
+   * 13.6 色系管理（个性装扮页）
+   * -----------------------------------------------------------------------
+   * 色系 = {name, brand 主色, hover 悬浮/强调, soft 浅底}，结构与参考
+   * color_scheme 插件一致；应用方式是写 html 行内变量（--qq-blue 一族）。
+   * 内置 5 套（经典蓝/翡翠绿/品牌红/紫罗兰/雅酷黑），用户可在装扮页自建，
+   * 自建色系存 localStorage（owlsgo_schemes_custom），仍只作用于当前浏览器。
+   * 夜间模式不用色系（固定石墨），applyScheme() 在夜间会摘掉行内变量。
+   * ===================================================================== */
+
+  function renderSchemeGrid() {
+    var theme = window.owlsgoTheme;
+    var grid = document.querySelector('[data-scheme-grid]');
+    if (!theme || !grid) {
+      return;   /* 只在个性装扮页渲染 */
+    }
+
+    var schemes = theme.allSchemes();
+    var active = theme.schemeId();
+    var html = '';
+
+    Object.keys(schemes).forEach(function (id) {
+      var s = schemes[id];
+      html += '<div class="scheme-card' + (id === active ? ' active' : '') + '"' +
+        ' data-scheme-id="' + id + '">' +
+        '<button type="button" class="scheme-card__pick" data-scheme-pick="' + id + '"' +
+        ' aria-pressed="' + (id === active ? 'true' : 'false') + '">' +
+        '<span class="swatches" aria-hidden="true">' +
+        '<i style="background:' + s.brand + '"></i>' +
+        '<i style="background:' + s.hover + '"></i>' +
+        '<i style="background:' + s.soft + '"></i>' +
+        '</span>' +
+        '<span class="scheme-card__name">' + escapeHtml(s.name) + '</span>' +
+        '</button>' +
+        (s.custom ? '<button type="button" class="scheme-card__del" data-scheme-del="' + id + '"' +
+          ' title="删除该色系" aria-label="删除色系 ' + escapeHtml(s.name) + '">×</button>' : '') +
+        '</div>';
+    });
+
+    grid.innerHTML = html;
+  }
+
+  function initSchemeManager() {
+    var theme = window.owlsgoTheme;
+    if (!theme) {
+      return;
+    }
+
+    var grid = document.querySelector('[data-scheme-grid]');
+    var nameInput = document.querySelector('[data-scheme-name]');
+    var brandInput = document.querySelector('[data-scheme-brand]');
+    var hoverInput = document.querySelector('[data-scheme-hover]');
+    var softInput = document.querySelector('[data-scheme-soft]');
+    var createBtn = document.querySelector('[data-scheme-create]');
+
+    if (!grid) {
+      return;   /* 不在个性装扮页 */
+    }
+
+    /* 选择色系：立即生效 + 持久化。
+       ⚠️ 必须用 theme.apply() 按当前深浅模式应用 —— 若写死 applyScheme('light')，
+       夜间模式下点色系卡片会把日间浅色变量套上（卡片悬浮出现白色遮盖）。 */
+    grid.addEventListener('click', function (event) {
+      var pick = event.target.closest ? event.target.closest('[data-scheme-pick]') : null;
+      if (pick) {
+        var id = pick.getAttribute('data-scheme-pick');
+        theme.saveSchemeId(id);
+        theme.apply();
+        renderSchemeGrid();
+        notify('已切换到「' + (theme.allSchemes()[id] || {}).name + '」色系。', 'success');
+        return;
+      }
+
+      var del = event.target.closest ? event.target.closest('[data-scheme-del]') : null;
+      if (del) {
+        var delId = del.getAttribute('data-scheme-del');
+        var removed = theme.removeCustomScheme(delId);   /* 返回是否删除成功 */
+        if (removed) {
+          /* 删掉的是正在用的 → 回经典蓝（theme-boot 对失效 id 也会兜底回退） */
+          var storedId = '';
+          try { storedId = localStorage.getItem(theme.SCHEME_KEY) || ''; } catch (e) { /* ignore */ }
+          if (storedId === delId) {
+            theme.saveSchemeId('classic');
+          }
+        }
+        theme.apply();
+        renderSchemeGrid();
+        if (removed) {
+          notify('色系已删除。', 'success');
+        }
+      }
+    });
+
+    /* 新增自定义色系 */
+    if (createBtn) {
+      createBtn.addEventListener('click', function () {
+        var name = (nameInput.value || '').trim();
+        if (name === '') {
+          notify('请先填写色系名称。', 'warning');
+          nameInput.focus();
+          return;
+        }
+
+        var scheme = theme.addCustomScheme({
+          name: name,
+          brand: brandInput.value,
+          hover: hoverInput.value,
+          soft: softInput.value
+        });
+
+        if (!scheme) {
+          notify('色系保存失败，请检查颜色值。', 'error');
+          return;
+        }
+
+        theme.saveSchemeId(scheme.id);   /* 新建即启用 */
+        theme.apply();
+        renderSchemeGrid();
+        nameInput.value = '';
+        notify('色系「' + scheme.name + '」已创建并启用。', 'success');
+      });
+    }
+  }
+
+  /* =======================================================================
    * 启动
    * ===================================================================== */
+
+  /* =======================================================================
+   * 20. 后台列表批量操作
+   * -----------------------------------------------------------------------
+   * 表格每行都有自己的操作表单（通过 / 删除），而 HTML 不允许表单嵌套，
+   * 所以批量操作**不套 <form>**：这里收集勾选项，POST 到 [data-bulk-endpoint]，
+   * 拿 JSON 结果 → notify → 按返回的 redirect 刷新整页（与服务端 flash 同文案）。
+   *
+   * 约定：
+   *   容器      [data-bulk]（内含 data-bulk-endpoint）
+   *   全选      [data-bulk-all]（只作用于**本页**，服务端分页）
+   *   行复选框  [data-bulk-item] value = 该行的提交值
+   *   动作下拉  [data-bulk-action]，选项可带 data-confirm（用 {n} 占位条数）
+   *              与 data-extra（需要额外参数时，值 = 那个字段的 name）
+   *   额外控件  [data-bulk-extra="<字段名>"] 包一个 name 相同的 select/input
+   * ===================================================================== */
+
+  function initAdminBulk() {
+    var bars = document.querySelectorAll('[data-bulk]');
+
+    Array.prototype.forEach.call(bars, function (bar) {
+      var panel = bar.closest('.panel') || document;
+
+      var all     = bar.querySelector('[data-bulk-all]');
+      var action  = bar.querySelector('[data-bulk-action]');
+      var run     = bar.querySelector('[data-bulk-run]');
+      var counter = bar.querySelector('[data-bulk-count]');
+      var noun    = bar.getAttribute('data-bulk-noun') || '项';
+      var extras  = bar.querySelectorAll('[data-bulk-extra]');
+
+      if (!action || !run) {
+        return;
+      }
+
+      function boxes() {
+        /* 过滤掉 disabled 的（如「首帖」行）：全选不该把它算进条数，也不该提交它 */
+        return Array.prototype.slice.call(panel.querySelectorAll('[data-bulk-item]')).filter(function (box) {
+          return !box.disabled;
+        });
+      }
+
+      function checked() {
+        return boxes().filter(function (box) {
+          return box.checked;
+        });
+      }
+
+      function sync() {
+        var picked = checked().length;
+        var total  = boxes().length;
+
+        if (counter) {
+          counter.textContent = '已选 ' + picked + ' ' + noun;
+        }
+
+        if (all) {
+          all.checked = picked > 0 && picked === total;
+          all.indeterminate = picked > 0 && picked < total;
+        }
+
+        run.disabled = picked === 0 || action.value === '';
+      }
+
+      /* 额外控件按当前动作显示：如「转移版块」才露出目标版块下拉 */
+      function syncExtras() {
+        var option = action.options[action.selectedIndex];
+        var need   = option ? (option.getAttribute('data-extra') || '') : '';
+
+        Array.prototype.forEach.call(extras, function (extra) {
+          var show = need !== '' && extra.getAttribute('data-bulk-extra') === need;
+          extra.hidden = !show;
+          extra.style.display = show ? '' : 'none';
+        });
+      }
+
+      panel.addEventListener('change', function (event) {
+        var target = event.target;
+
+        if (!target || !target.hasAttribute) {
+          return;
+        }
+
+        if (target.hasAttribute('data-bulk-item')) {
+          sync();
+          return;
+        }
+
+        if (target === all) {
+          boxes().forEach(function (box) {
+            box.checked = all.checked;
+          });
+          sync();
+        }
+      });
+
+      action.addEventListener('change', function () {
+        syncExtras();
+        sync();
+      });
+
+      run.addEventListener('click', function () {
+        var picked = checked();
+        var option = action.options[action.selectedIndex];
+
+        if (!option || picked.length === 0) {
+          return;
+        }
+
+        if (option.value === '') {
+          notify('请先选择要执行的批量操作。', 'warning');
+          return;
+        }
+
+        /*
+         * 需要额外参数的动作用「先拦住、不发请求」而不是发一个空参数过去 ——
+         * 后者会变成「转移到一个不存在的版块」这种服务端才知道的错误。
+         */
+        var need       = option.getAttribute('data-extra') || '';
+        var extraValue = '';
+        var extraField = null;
+
+        if (need !== '') {
+          var extra = bar.querySelector('[data-bulk-extra="' + need + '"]');
+          extraField = extra ? extra.querySelector('select, input, textarea') : null;
+          extraValue = extraField ? String(extraField.value || '') : '';
+
+          if (extraValue === '' || extraValue === '0') {
+            notify('请先选择「' + option.textContent.trim() + '」的目标。', 'warning');
+            return;
+          }
+        }
+
+        var template = option.getAttribute('data-confirm') || '';
+        var message  = template !== ''
+          ? template.split('{n}').join(String(picked.length))
+          : '确认对选中的 ' + picked.length + ' ' + noun + '执行该操作吗？';
+
+        uiConfirm(message).then(function (ok) {
+          if (!ok) {
+            return;
+          }
+
+          var body = new FormData();
+          body.append('_token', csrfToken());
+          body.append('action', option.value);
+
+          picked.forEach(function (box) {
+            body.append('items[]', box.value);
+          });
+
+          if (extraField) {
+            body.append(extraField.name || need, extraValue);
+          }
+
+          run.disabled = true;
+
+          fetch(bar.getAttribute('data-bulk-endpoint'), {
+            method: 'POST',
+            body: body,
+            credentials: 'same-origin',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-OWLSGO-Response': 'json'
+            }
+          })
+            .then(function (response) {
+              return response.json().catch(function () {
+                return {};
+              });
+            })
+            .then(function (json) {
+              notify(json.message || '操作完成。', json.ok === false ? 'error' : 'success');
+
+              if (json.ok === false) {
+                run.disabled = false;
+                return;
+              }
+
+              window.setTimeout(function () {
+                window.location.href = json.redirect || window.location.href;
+              }, 600);
+            })
+            .catch(function () {
+              notify('网络异常，操作未完成。', 'error');
+              run.disabled = false;
+            });
+        });
+      });
+
+      syncExtras();
+      sync();
+    });
+  }
 
   function boot() {
     initFlash();
@@ -1599,6 +2481,11 @@
     initUploads();
     initDrafts();
     initSwitchStates();
+    initThemeToggle();
+    initSchemeManager();
+    initLightbox();
+    initPluginUpload();
+    initAdminBulk();
     syncInsertButtons();
   }
 
@@ -1609,8 +2496,15 @@
   }
 
   // 暴露少量工具函数，便于插件或调试使用
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
   window.owlsgo = {
     notify: notify,
-    csrfToken: csrfToken
+    csrfToken: csrfToken,
+    escapeHtml: escapeHtml
   };
 })();

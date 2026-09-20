@@ -41,13 +41,13 @@ $toggles = [
     'register_verify'  => ['注册需验证邮箱', '开启后新用户需要完成邮箱验证才能发言。'],
     'login_captcha'    => ['登录需要验证码', '在登录失败次数较多时建议开启。'],
     'register_captcha' => ['注册需要验证码', '用于拦截批量注册机器人，建议与「登录需要验证码」一起开启。'],
-    'guest_view'       => ['允许游客浏览', '关闭后必须登录才能查看主题内容。'],
+    'guest_view'       => ['允许游客浏览', '关闭后必须登录才能查看帖子内容。'],
     /*
      * 审核这两个开关不配说明文案：开关名称已经说清行为，再补一句只是噪音。
      * 渲染时说明为空会走紧凑版（勾选框与标题垂直居中），见下方「发帖」分区。
      */
-    'thread_need_audit' => ['主题需要审核', ''],
-    'post_need_audit'  => ['回复需要审核', ''],
+    'thread_need_audit' => ['帖子需要审核', ''],
+    'post_need_audit'  => ['评论需要审核', ''],
     'upload_enabled'   => ['允许上传附件', '关闭后发帖页与头像上传都会被禁用。'],
     'site_closed'      => ['关闭站点', '开启后前台会展示维护提示，管理员仍可正常访问后台。'],
     'debug_mode'       => ['调试模式', '开启后记录 debug 级日志、出错页显示详细报错。仅用于排错，用完请及时关闭 —— 报错细节可能暴露路径、SQL 与配置信息。'],
@@ -120,34 +120,12 @@ $toggles = [
         </div>
     </section>
 
-    <!-- 外观 -->
-    <section class="panel">
-        <div class="panel__head">
-            <h3><?= $view('partials/icon', ['name' => 'image', 'size' => 16]) ?>外观</h3>
-        </div>
-        <div class="panel__body">
-            <div class="form-grid">
-                <?php
-                $colors = [
-                    'theme_primary'      => ['主色调', '#00A0E9'],
-                    'theme_primary_dark' => ['深色主色', '#0078D4'],
-                    'theme_highlight'    => ['高亮底色', '#E6F7FF'],
-                ];
-                ?>
-                <?php foreach ($colors as $key => [$label, $fallback]): ?>
-                    <div data-field>
-                        <label for="<?= e($key) ?>"><?= e($label) ?></label>
-                        <input type="color" id="<?= e($key) ?>" name="<?= e($key) ?>"
-                               value="<?= e($val($key, $fallback)) ?>">
-                        <?php if (old_error($key) !== ''): ?>
-                            <span class="field-error"><?= e(old_error($key)) ?></span>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <span data-hint>颜色值必须为 #RRGGBB 格式。</span>
-        </div>
-    </section>
+    <!--
+        「外观」（主色调 / 深色主色 / 高亮底色三个取色器）已删除：
+        站点配色是「经典蓝白」固定品牌色，由 theme.css 的令牌统一控制，
+        这三个键除了浏览器地址栏 theme-color 外没有任何真实消费点，留着只会
+        让人误以为改了能全站换肤。theme_primary 键也随之退役（见 Settings::defaults）。
+    -->
 
     <!-- 注册与登录 -->
     <section class="panel">
@@ -257,8 +235,8 @@ $toggles = [
                     <input type="number" id="attachment_quota" name="attachment_quota" min="0" max="1048576"
                            value="<?= e($val('attachment_quota', '0')) ?>">
                     <span data-hint>
-                        所有附件加起来的上限，0 表示不限制。当前已占用 <?= e($uploadDirSize) ?>，
-                        达到上限后新的上传会被拒绝。
+                        所有用户附件加起来的上限（全站合计，不是每人上限），0 表示不限制。
+                        当前已占用 <?= e($uploadDirSize) ?>，达到上限后新的上传会被拒绝。
                     </span>
                 </div>
 

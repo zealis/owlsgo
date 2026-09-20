@@ -56,11 +56,14 @@ final class PluginController extends AdminBaseController
         $plugins = PluginManager::syncDatabase();
         $loaded  = PluginManager::loadedIds();
 
+        // 搜索：按插件 ID / 名称 / 介绍模糊匹配（不区分大小写）
+        $keyword = trim(\Core\Text::cleanSearchKeyword(Request::string('q', '', 50)));
+
         $rows = [];
         foreach ($plugins as $id => $meta) {
             $entry = PluginManager::safePath($id, (string)$meta['entry']);
 
-            $rows[] = [
+            $row = [
                 'id'          => (string)$id,
                 'name'        => (string)$meta['name'],
                 'version'     => (string)$meta['version'],
@@ -75,6 +78,15 @@ final class PluginController extends AdminBaseController
                 'has_assets'  => (array)($meta['assets']['css'] ?? []) !== [] || (array)($meta['assets']['js'] ?? []) !== [],
                 'path'        => (string)$meta['path'],
             ];
+
+            if ($keyword !== ''
+                && mb_stripos($row['name'], $keyword) === false
+                && mb_stripos($row['description'], $keyword) === false
+                && mb_stripos($row['id'], $keyword) === false) {
+                continue;
+            }
+
+            $rows[] = $row;
         }
 
         return $this->adminView('admin/plugins', [
@@ -82,9 +94,116 @@ final class PluginController extends AdminBaseController
             'adminTitle' => '插件管理',
             'rows'       => $rows,
             'total'      => count($rows),
+            'keyword'    => $keyword,
             'enabledCount' => count(array_filter($rows, static fn (array $r): bool => $r['enabled'])),
             'bundleReady' => PluginManager::hasAssets(),
         ]);
+    }
+
+    /**
+     * 本地上传安装插件（zip 包）
+     *
+     * 安全边界：
+     *  - 只接受 .zip，且服务器需启用 ZipArchive；
+     *  - 包内必须存在且仅存在一个插件根目录，根目录下必须有 plugin.json；
+     *  - 插件目录名（= 插件 ID）必须符合 discover() 的同一套命名规则；
+     *  - 逐条校验压缩包内路径：拒绝绝对路径与目录穿越，拒绝包外文件；
+     *  - 目标目录已存在时拒绝覆盖（同名插件请先卸载/手动清理目录）；
+     *  - 前端有双重风险确认（插件即 PHP 代码，等于交出服务器执行权限）。
+     */
+    public function upload(array $params): never
+    {
+        $back = Router::url('/admin/plugins');
+
+        if (!class_exists('ZipArchive')) {
+            $this->redirectWith($back, '服务器 PHP 未启用 zip 扩展，无法本地上传安装插件。', 'error');
+        }
+
+        $file = $_FILES['package'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->redirectWith($back, '请选择要安装的插件 zip 包。', 'error');
+        }
+
+        $original = (string)($file['name'] ?? '');
+        if (strtolower(pathinfo($original, PATHINFO_EXTENSION)) !== 'zip') {
+            $this->redirectWith($back, '只支持 .zip 格式的插件包。', 'error');
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open((string)$file['tmp_name']) !== true) {
+            $this->redirectWith($back, '插件包无法解压，文件可能已损坏。', 'error');
+        }
+
+        /* 找唯一的插件根目录（<slug>/plugin.json），同时校验全部条目路径 */
+        $slug    = '';
+        $entries = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = (string)$zip->getNameIndex($i);
+            if ($name === '') {
+                continue;
+            }
+
+            // 拒绝绝对路径与目录穿越
+            if (str_starts_with($name, '/') || str_contains($name, '\\')
+                || preg_match('#(^|/)\.\.(/|$)#', $name)) {
+                $zip->close();
+                $this->redirectWith($back, '插件包内包含非法路径（目录穿越或绝对路径），已拒绝安装。', 'error');
+            }
+
+            $entries[] = $name;
+
+            if ($slug === '' && preg_match('#^([a-z0-9][a-z0-9_\-]{0,31})/plugin\.json$#', $name, $m)) {
+                $slug = $m[1];
+            }
+        }
+
+        if ($slug === '') {
+            $zip->close();
+            $this->redirectWith($back, '插件包结构不对：顶层目录下必须包含 plugin.json。', 'error');
+        }
+
+        // 所有条目都必须在同一个插件根目录之下
+        foreach ($entries as $name) {
+            if (!str_starts_with($name, $slug . '/')) {
+                $zip->close();
+                $this->redirectWith($back, '插件包内混入了多个顶层目录，已拒绝安装。', 'error');
+            }
+        }
+
+        $target = APP_ROOT . '/plugins/' . $slug;
+        if (is_dir($target)) {
+            $zip->close();
+            $this->redirectWith($back, '插件目录 plugins/' . $slug . ' 已存在，拒绝覆盖。如需重装请先卸载并手动清理目录。', 'error');
+        }
+
+        if (!@mkdir($target, 0755, true) && !is_dir($target)) {
+            $zip->close();
+            $this->redirectWith($back, '无法创建插件目录，请检查 plugins/ 目录权限。', 'error');
+        }
+
+        // 只解压属于该插件根目录的条目
+        $owned = array_values(array_filter($entries, static fn (string $n): bool => str_starts_with($n, $slug . '/')));
+        if (!$zip->extractTo(APP_ROOT . '/plugins', $owned)) {
+            $zip->close();
+            $this->redirectWith($back, '解压失败，请检查 plugins/ 目录权限。', 'error');
+        }
+        $zip->close();
+
+        if (!is_file($target . '/plugin.json')) {
+            $this->redirectWith($back, '解压完成但未找到 plugin.json，插件包可能不完整。', 'error');
+        }
+
+        PluginManager::discover(true);
+        $plugins = PluginManager::syncDatabase();
+        $meta    = $plugins[$slug] ?? [];
+
+        $this->audit('plugin.upload', 'plugin:' . $slug, '本地上传安装插件：' . (string)($meta['name'] ?? $slug));
+
+        $this->redirectWith(
+            $back,
+            '插件「' . (string)($meta['name'] ?? $slug) . '」已上传并识别，尚未启用 —— 请确认来源可信后再启用。',
+            'success'
+        );
     }
 
     /**

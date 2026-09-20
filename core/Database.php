@@ -216,6 +216,18 @@ final class Database
     }
 
     /**
+     * 构造 LIKE 的匹配串（两端加 %，并转义串内的通配符）
+     *
+     * 用户输入里的 `%` / `_` / `\` 必须转义，否则「%」会变成「匹配任意内容」、
+     * 「_」会变成「匹配任意单字符」—— 搜索框里打一个 % 就返回全表。
+     * 转义后的串必须配合 likeEscapeClause() 一起用（见那里的驱动差异说明）。
+     */
+    public static function likePattern(string $keyword): string
+    {
+        return '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $keyword) . '%';
+    }
+
+    /**
      * LIKE ... ESCAPE 子句（按驱动生成正确的反斜杠字面量）。
      *
      * SQLite / PostgreSQL 的单引号字符串里反斜杠就是字面反斜杠，写 ESCAPE '\'；
@@ -463,6 +475,42 @@ final class Database
         };
 
         return (bool)self::value($sql, [$table]);
+    }
+
+    /**
+     * 判断字段是否存在（**实时探测，不走缓存**）
+     *
+     * ⚠️ 与 Model::columns() 的区别很重要：后者是**进程内静态缓存**，
+     *    刚 ALTER 加完列，同一次请求里它拿到的仍是旧列名列表 ——
+     *    于是 Model::filterColumns() 会静默把这个新字段丢掉。
+     *    所以「补列探测」必须用这里，不能用 Model::columns()。
+     *
+     * 项目没有迁移机制，老站点靠惰性补列（见 UsergroupModel::ensureQuotaColumn()）。
+     */
+    public static function hasColumn(string $table, string $column): bool
+    {
+        try {
+            if (self::driver() === 'sqlite') {
+                foreach (self::select('PRAGMA table_info(' . self::identifier($table) . ')') as $row) {
+                    if ((string)($row['name'] ?? '') === $column) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return self::first(
+                'SELECT column_name FROM information_schema.columns'
+                . ' WHERE table_schema = '
+                . (self::driver() === 'mysql' ? 'DATABASE()' : 'current_schema()')
+                . ' AND table_name = ? AND column_name = ?',
+                [$table, $column]
+            ) !== null;
+        } catch (\Throwable) {
+            // 探测不了就当作已存在，避免每个请求都去重复 ALTER 并抛错
+            return true;
+        }
     }
 
     /**

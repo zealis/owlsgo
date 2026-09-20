@@ -16,19 +16,20 @@ $recentPosts   = is_array($recentPosts ?? null) ? $recentPosts : [];
 $userId    = (int)($profile['id'] ?? 0);
 ?>
 
-<?= $view('partials/profile-hero', ['profile' => $profile]) ?>
+<?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'home']) ?>
 
-<?= $view('partials/user-nav', ['userNavProfile' => $profile, 'userNavActive' => 'home']) ?>
+<?php /* 数据卡只在个人主页出现（帖子/评论/收藏/设置四个子页不渲染） */ ?>
+<?= $view('partials/profile-stats', ['profile' => $profile]) ?>
 
 <section class="panel mt-4">
     <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>最近发表的主题</h3>
+        <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>最近发表的帖子</h3>
         <span class="spacer"></span>
         <a class="text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/threads')) ?>">全部 ›</a>
     </div>
 
     <?php if ($recentThreads === []): ?>
-        <div class="empty" style="padding:34px 16px"><p>还没有发表过主题。</p></div>
+        <div class="empty" style="padding:34px 16px"><p>还没有发表过帖子。</p></div>
     <?php else: ?>
         <?php foreach ($recentThreads as $thread): ?>
             <?= $view('partials/thread-item', ['thread' => $thread, 'showForum' => true, 'favorited' => false]) ?>
@@ -38,13 +39,13 @@ $userId    = (int)($profile['id'] ?? 0);
 
 <section class="panel mt-4">
     <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'reply', 'size' => 16]) ?>最近发表的回复</h3>
+        <h3><?= $view('partials/icon', ['name' => 'reply', 'size' => 16]) ?>最近发表的评论</h3>
         <span class="spacer"></span>
         <a class="text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/posts')) ?>">全部 ›</a>
     </div>
 
     <?php if ($recentPosts === []): ?>
-        <div class="empty" style="padding:34px 16px"><p>还没有发表过回复。</p></div>
+        <div class="empty" style="padding:34px 16px"><p>还没有发表过评论。</p></div>
     <?php else: ?>
         <?php foreach ($recentPosts as $post): ?>
             <article class="notice-item">
@@ -52,7 +53,7 @@ $userId    = (int)($profile['id'] ?? 0);
                 <div class="notice-item__body">
                     <div class="notice-item__text">
                         <a href="<?= e(url('/t/' . (int)($post['thread_id'] ?? 0), ['p' => (int)($post['id'] ?? 0)])) ?>">
-                            <?= e((string)($post['thread_title'] ?? '主题已删除')) ?>
+                            <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                         </a>
                     </div>
                     <div class="text-light" style="font-size:13px;margin-top:2px">

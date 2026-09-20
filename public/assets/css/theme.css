@@ -1,9 +1,9 @@
 /* ==========================================================================
-   owlsgo · QQ 经典蓝白主题
+   owlsgo · 经典蓝白主题
    --------------------------------------------------------------------------
    本文件在 OATUI（oat.css）之后加载，做两件事：
-     1. 覆盖 OATUI 的 CSS 变量，把默认的灰紫色调替换为 QQ 经典蓝白配色
-     2. 补充论坛自身的版面结构：站点头部、版块表、主题列表、楼层、后台侧栏等
+     1. 覆盖 OATUI 的 CSS 变量，把默认的灰紫色调替换为经典蓝白配色
+     2. 补充论坛自身的版面结构：站点头部、版块表、帖子列表、楼层、后台侧栏等
 
    注意：OATUI 默认 color-scheme: light dark（跟随系统深色）。
    经典蓝白是明确以浅色为基准的设计，因此这里强制 color-scheme: light，
@@ -14,7 +14,7 @@
   color-scheme: light;
 
   /* ---------- 品牌色板 ---------- */
-  --qq-blue: #00a0e9;          /* QQ 蓝：主色 */
+  --qq-blue: #00a0e9;          /* 经典蓝：主色 */
   --qq-blue-dark: #0086c9;     /* 悬停 / 激活 */
   --qq-blue-deep: #005f9e;     /* 强调文字 */
   --qq-soft: #e6f7ff;          /* 浅蓝底色 */
@@ -29,10 +29,20 @@
   --qq-orange: #fa8c16;
   --qq-green: #16a34a;
 
+  /* ---------- 语义补充令牌（深色模式换肤的主抓手，见第 17 节） ---------- */
+  --qq-card: #ffffff;              /* 卡片 / 白底面板：全站「白底」统一从这里取 */
+  --qq-danger-soft: #fff1f0;       /* 危险类徽章 / 提示底 */
+  --qq-warning-soft: #fff7e6;      /* 警告类徽章 / 提示底 */
+  --qq-danger-soft-2: #fff7f7;     /* 附件失败行的更浅红底 */
+  --qq-grad-panel-a: #fbfdff;      /* .panel__head 渐变起 */
+  --qq-grad-panel-b: #ffffff;      /* .panel__head 渐变止 */
+  --qq-grad-group-a: #f7fbff;      /* .forum-group__title / 楼层信息栏渐变起 */
+  --qq-grad-group-b: #ffffff;      /* 同上渐变止 */
+
   /* ---------- 覆盖 OATUI 主题变量 ---------- */
   --background: var(--qq-page);
   --foreground: var(--qq-ink);
-  --card: #ffffff;
+  --card: var(--qq-card);
   --card-foreground: var(--qq-ink);
 
   --primary: var(--qq-blue);
@@ -112,7 +122,7 @@ body:not([data-sidebar-layout]) > main {
  * OATUI 的按钮颜色（实心=白字、outline/ghost=前景色）写在 @layer 里，
  * 而 CSS 规则是「无 layer 永远压过有 layer」——本文件不在任何 layer 中，
  * 若这里不排除，所有 <a class="button"> 的文字都会被链接色染成蓝色，
- * 蓝底蓝字（「发表主题」等一众链接按钮全部中招）。
+ * 蓝底蓝字（「发表帖子」等一众链接按钮全部中招）。
  * 按钮的文字色交还给 OATUI；普通链接维持站点的深蓝链接色。
  */
 a:not(.button) {
@@ -202,7 +212,8 @@ code, kbd, pre {
 }
 
 .page {
-  padding: var(--space-6) 0 var(--space-12);
+  /* 顶部留白收紧（用户要求：导航栏与内容之间不要留太多空闲） */
+  padding: var(--space-2) 0 var(--space-12);
 }
 
 .page-grid {
@@ -223,7 +234,7 @@ code, kbd, pre {
    ========================================================================== */
 
 .site-header {
-  background: #fff;
+  background: var(--qq-card);
   border-bottom: 1px solid var(--qq-line);
   position: sticky;
   top: 0;
@@ -314,7 +325,7 @@ select:focus {
   border: 1px solid var(--qq-line);
   border-radius: 999px;
   overflow: hidden;
-  background: #fff;
+  background: var(--qq-card);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -460,7 +471,7 @@ a.user-chip {
   padding: 5px 12px 5px 5px;
   border-radius: 999px;
   border: 1px solid var(--qq-line);
-  background: #fff;
+  background: var(--qq-card);
   color: var(--qq-ink);
   font-size: 14px;
   text-decoration: none;
@@ -512,7 +523,7 @@ a.user-chip:hover {
   height: 38px;
   border-radius: 8px;
   border: 1px solid var(--qq-line);
-  background: #fff;
+  background: var(--qq-card);
   color: var(--qq-ink-2);
 }
 
@@ -543,7 +554,7 @@ a.user-chip:hover {
   height: 38px;
   border-radius: 8px;
   border: 1px solid var(--qq-line);
-  background: #fff;
+  background: var(--qq-card);
   color: var(--qq-ink-2);
   /* 与顶栏搜索框（.search-box--nav）相同的「推右」角色：两者同一时刻只显示其一 */
   margin-left: auto;
@@ -590,7 +601,7 @@ a.user-chip:hover {
     top: var(--header-height);
     left: 0;
     right: 0;
-    background: #fff;
+    background: var(--qq-card);
     border-bottom: 1px solid var(--qq-line);
     box-shadow: var(--shadow-large);
     flex-direction: column;
@@ -636,7 +647,7 @@ a.user-chip:hover {
    ========================================================================== */
 
 .panel {
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-large);
   overflow: hidden;
@@ -652,7 +663,7 @@ a.user-chip:hover {
   gap: var(--space-3);
   padding: 13px 16px;
   border-bottom: 1px solid var(--qq-line-soft);
-  background: linear-gradient(180deg, #fbfdff 0%, #fff 100%);
+  background: linear-gradient(180deg, var(--qq-grad-panel-a) 0%, var(--qq-grad-panel-b) 100%);
 }
 
 .panel__head h2,
@@ -697,7 +708,7 @@ a.user-chip:hover {
  * 面包屑：结构交给 OATUI 官方约定（https://oat.ink/components/breadcrumb/）——
  *   <ol class="unstyled hstack">，链接加 a.unstyled；
  * 这里只保留全站一致性的微调：字号、间距、分隔符灰，
- * 以及把官方 a.unstyled 的悬停色（--primary）覆盖回全站统一的 QQ 蓝。
+ * 以及把官方 a.unstyled 的悬停色（--primary）覆盖回全站统一的经典蓝。
  */
 .crumbs {
   gap: 6px;                             /* hstack 默认 var(--space-3) 偏宽，收紧到原来的紧凑感 */
@@ -722,39 +733,100 @@ a.user-chip:hover {
    5. 版块列表（首页）
    ========================================================================== */
 
-.stat-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
+/*
+ * 首页首屏的「开放版块 / 帖子总数 / 评论总数 / 注册会员」统计条已删除
+ * （.stat-strip / .stat / .stat__value / .stat__label 随之移除，无其它使用点）。
+ * 删除原因：数字与版块行内的计数重复，且占掉导航下方最显眼的一条。
+ */
 
-@media (max-width: 700px) {
-  .stat-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+/*
+ * 首页左栏「新评论 / 新帖子 / 推荐 / 板块」：**一个 panel 当框**，页签条做框头，
+ * 四个页签的内容都在框内。原来是页签条浮在卡片外面，视觉上是两截。
+ * 板块页签里的分组也不再各自套卡片，改为框内「标题条 + 行」铺开，分组间用分隔线。
+ *
+ * ⚠️ 这里**不用** OATUI 的 <ot-tabs>：页签是链接（整页跳转），面板由服务端
+ * 决定谁 hidden，不需要客户端组件（原 `.home-panel ot-tabs{display:block}` 随之删除）。
+ */
 
-.stat {
-  background: #fff;
-  border: 1px solid var(--qq-line);
-  border-radius: var(--radius-medium);
-  padding: 13px 15px;
+/*
+ * 页签条：首页三页签（.home-panel 里）与用户中心导航（自己就是一个 panel）**共用一套**。
+ * 用户拍板的样式：条是白底（跟卡片连成一体），**未选中项白底墨字，选中项灰底**（--muted）。
+ * 首页在 .home-panel 里；用户中心导航自己就是 panel，多一个 margin-top 与上面的名片隔开。
+ */
+.tabbar {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--qq-card);                     /* ⚠️ 必须显式盖掉 OATUI [role=tablist] 的灰底，
+                                           否则选中的灰块会和条底融为一体 */
+  border-bottom: 1px solid var(--qq-line-soft);
 }
 
-.stat__value {
-  font-size: 21px;
-  font-weight: 700;
-  color: var(--qq-blue-deep);
-  line-height: 1.2;
+.tabbar > a,
+.tabbar > button {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--qq-card);
+  color: var(--qq-ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.stat__label {
-  font-size: 12.5px;
-  color: var(--qq-ink-3);
+.tabbar > a:hover,
+.tabbar > button:hover {
+  background: var(--qq-soft);                  /* 用户指定：悬浮底色用默认浅蓝 */
+  color: var(--qq-blue-dark);
+  text-decoration: none;
+}
+
+.tabbar > a[aria-current="page"],
+.tabbar > button[aria-selected="true"] {
+  background: var(--qq-blue);           /* 用户拍板：选中态主色蓝底 */
+  color: #fff;                          /* 选中字白色 */
+  font-weight: 600;
+}
+
+.tabbar > a[aria-current="page"]:hover,
+.tabbar > button[aria-selected="true"]:hover {
+  background: var(--qq-blue-deep);      /* 选中项悬停加深一档，仍白字 */
+  color: #fff;
+}
+
+.tabbar--nav {
+  margin-top: var(--space-4);
+}
+
+.home-panel [role="tabpanel"] {
+  padding: 0;                           /* OATUI 的纵向 padding 在框内会顶出空隙，行自带 16px */
+}
+
+/* 首页页签内的翻页条：贴着列表底部分隔 */
+.home-panel .forum-group + .forum-group {
+  margin-top: 0;                        /* 压过全局的 .forum-group + .forum-group 间距 */
+  border-top: 1px solid var(--qq-line-soft);
+}
+
+/* 计划任务页的两张表：表头与短内容列不换行（「执行次数」这类词原来被列宽挤成两行），
+   任务描述列单独放开换行 */
+.cron-table th,
+.cron-table td {
+  white-space: nowrap;
+}
+
+.cron-table td:first-child {
+  white-space: normal;
+}
+
+.cron-table td:first-child > div {
+  white-space: normal;
 }
 
 .forum-group + .forum-group {
@@ -766,7 +838,7 @@ a.user-chip:hover {
   align-items: center;
   gap: 8px;
   padding: 11px 16px;
-  background: linear-gradient(180deg, #f7fbff 0%, #fff 100%);
+  background: linear-gradient(180deg, var(--qq-grad-group-a) 0%, var(--qq-grad-group-b) 100%);
   border-bottom: 1px solid var(--qq-line-soft);
   font-weight: 600;
   font-size: 14.5px;
@@ -891,7 +963,7 @@ a.user-chip:hover {
 }
 
 /* ==========================================================================
-   6. 主题列表
+   6. 帖子列表
    ========================================================================== */
 
 .thread-toolbar {
@@ -919,7 +991,7 @@ a.user-chip:hover {
   border-radius: 999px;
   font-size: 13.5px;
   color: var(--qq-ink-2);
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
 }
 
@@ -976,6 +1048,14 @@ a.user-chip:hover {
   display: inline;
 }
 
+/*
+ * 标题与用户名都是 <a>，会被全局 `a:not(.button)`（0,1,1）的链接蓝压过 ——
+ * 用 `.thread-item` 前缀提到 (0,2,0) 才能赢。标题黑色、用户名中性灰（与版块行一致）。
+ */
+.thread-item .thread-item__title {
+  color: var(--qq-ink);
+}
+
 .thread-item__title:hover {
   color: var(--qq-blue-dark);
   text-decoration: none;
@@ -1001,6 +1081,14 @@ a.user-chip:hover {
   margin-top: 5px;
 }
 
+.thread-item__sub a {
+  color: var(--qq-ink-3);
+}
+
+.thread-item__sub a:hover {
+  color: var(--qq-blue-dark);
+}
+
 .thread-item__sub .dot {
   color: #d3dae4;
 }
@@ -1013,7 +1101,7 @@ a.user-chip:hover {
 }
 
 .thread-item__stats strong {
-  color: var(--qq-blue-deep);
+  color: var(--qq-ink-3);
   font-weight: 600;
 }
 
@@ -1050,17 +1138,17 @@ a.user-chip:hover {
 }
 
 .tag--pin {
-  background: #fff1f0;
+  background: var(--qq-danger-soft);
   color: var(--qq-red);
 }
 
 .tag--essence {
-  background: #fff7e6;
+  background: var(--qq-warning-soft);
   color: var(--qq-orange);
 }
 
 .tag--lock {
-  background: #f1f4f9;
+  background: var(--muted);
   color: var(--qq-ink-3);
 }
 
@@ -1106,11 +1194,11 @@ a.user-chip:hover {
 }
 
 /* ==========================================================================
-   7. 主题详情与楼层
+   7. 帖子详情与楼层
    ========================================================================== */
 
 .thread-hero {
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-large);
   padding: 18px 20px;
@@ -1134,7 +1222,7 @@ a.user-chip:hover {
 }
 
 /*
- * 「图标 + 数字 + 文字」组合（浏览 / 回复）改成 flex 居中。
+ * 「图标 + 数字 + 文字」组合（浏览 / 评论）改成 flex 居中。
  *
  * 只靠全局的 `svg { vertical-align: middle }` 还不够 —— 实测图标中心仍比文字
  * 低 2.25px（middle 对齐的是「基线 + 半个 x-height」，随字体度量浮动）。
@@ -1159,7 +1247,7 @@ a.user-chip:hover {
 .floor {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-large);
   overflow: hidden;
@@ -1175,7 +1263,7 @@ a.user-chip:hover {
 }
 
 /*
- * 自己发的回复：不画卡片外框。
+ * 自己发的评论：不画卡片外框。
  *
  * 用 border-color: transparent 而不是 border: 0 —— 保留那 1px 的占位，
  * 自己楼层的宽度、正文起始位置才与其它楼层严格对齐（去掉 border 会宽 2px，
@@ -1200,8 +1288,8 @@ a.user-chip:hover {
   border-radius: 999px;
   display: block;
   margin: 0 auto 8px;
-  background: #fff;
-  border: 2px solid #fff;
+  background: var(--qq-card);
+  border: 2px solid var(--qq-card);
   box-shadow: 0 1px 4px rgb(31 35 41 / 0.12);
 }
 
@@ -1395,10 +1483,26 @@ a.user-chip:hover {
 }
 
 /* 楼层分页 */
-.floor-pager {
+/*
+ * 全站分页条容器（.pager）
+ *
+ * Paginator::render() 输出的是 <nav class="pagination">，里面一排按钮已经自带居中；
+ * 这一层只负责「把它摆在哪儿」：独立成一行、上下留白、**不带白底也不带分隔线**。
+ *
+ * 以前各处自己起名字（首页 .home-pager 带 border-top 贴在卡片底部、楼层页
+ * .floor-pager 居中、其它页干脆裸写 .mt-4），结果同一套分页在不同页面长得不一样。
+ * 现在统一成 .pager —— 首页 / 版块页 / 帖子楼层 / 搜索 / 用户主页 / 通知中心都用它。
+ * 改样式只改这一处。
+ */
+.pager {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0;
+}
+
+/* .pagination 自带 margin，在 .pager 里会多出一截，交给 .pager 统一控制外边距 */
+.pager > .pagination {
+  margin: 0;
 }
 
 /* 侧栏小工具 */
@@ -1478,7 +1582,7 @@ a.user-chip:hover {
    ========================================================================== */
 
 .form-card {
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-large);
   padding: 22px;
@@ -1598,6 +1702,36 @@ a.user-chip:hover {
    9. 用户中心
    ========================================================================== */
 
+/*
+ * 用户中心头部：名片 + 导航「结合」成一个整体（2026-09-19 按需求调整）。
+ *
+ * 做法：贴合处各自收平圆角（名片只留上圆角、导航只留下圆角），**完全紧贴、不留缝隙**，
+ * 外沿仍是 --radius-large —— 视觉上就是「一张圆角卡片被一条分隔线分成上下两段」。
+ * 紧贴后靠导航自己的上边线（1px --qq-line）充当分隔：色值是 #E3E9F2，
+ * 在渐变名片下方刚好是一条干净的细线，不需要再额外画 border-top。
+ *
+ * 名片的装饰溢出色块（.profile-hero::after）由 .profile-hero 自己的 overflow:hidden
+ * 裁掉，收平下圆角后不会被导航盖住，也不用额外处理。
+ *
+ * 这两个规则刻意用 .profile-head 包裹来限定：.profile-hero / .tabbar--nav 单独使用时
+ * 仍各自是完整圆角的卡片，耦合只发生在「被 .profile-head 组合」的时候。
+ */
+.profile-head > .profile-hero {
+  border-radius: var(--radius-large) var(--radius-large) 0 0;
+}
+
+.profile-head > .tabbar--nav {
+  /* 与名片严丝合缝：不留 margin，靠自身的上边线分隔（见上面说明） */
+  margin-top: 0;
+  border-radius: 0 0 var(--radius-large) var(--radius-large);
+  /*
+   * .tabbar 的 `border-bottom: 1px solid var(--qq-line-soft)` 是为了「页签条下面还有内容」
+   * 的场景（首页三页签）；这里导航本身就是卡片底沿，浅色下边线会让底沿看着缺一条，
+   * 显式改回与其余三边同色。
+   */
+  border-bottom: 1px solid var(--qq-line);
+}
+
 .profile-hero {
   background: linear-gradient(135deg, #00a0e9 0%, #38bdf8 55%, #7dd3fc 100%);
   border-radius: var(--radius-large);
@@ -1629,7 +1763,7 @@ a.user-chip:hover {
   flex: none;
   position: relative;
   z-index: 1;
-  background: #fff;
+  background: var(--qq-card);
 }
 
 .profile-hero__main {
@@ -1667,6 +1801,64 @@ a.user-chip:hover {
   opacity: 0.92;
   margin: 8px 0 0;
   max-width: 560px;
+}
+
+/*
+ * 个人主页头部数据卡（用户名 / 用户 UID / 注册时间 / 帖子 / 评论 / 获赞）。
+ *
+ * 刻意**直接复用后台概览顶部的 .admin-cards / .admin-card**，而不是另写一套：
+ * 需求就是「和后台首页概览最上面的组件一样」，共用类才能保证圆角、图标底色、
+ * 字号这些细节不会在两处各自漂移。这里只补个人主页特有的三点（间距、列数、换行）。
+ *
+ * ⚠️ 列数规则一律写成 `.admin-cards.profile-stats` 这种**复合选择器**（(0,2,0)）：
+ * .admin-cards 定义在后台那一节，源码位置在本节之后，同为 (0,1,0) 时按「后写的赢」
+ * 会把本节覆盖掉 —— 不提高特异性的话列数白改。
+ */
+.admin-cards.profile-stats {
+  margin-top: var(--space-4);            /* 与上方头部块、下方 mt-4 的内容块对齐 */
+
+  /*
+   * 列数：固定 1 / 2 / 3 列，**不用 .admin-cards 的 auto-fit**。
+   * 本页有 6 张卡（后台那排是 4 张），auto-fit 在 1180px 下只放得下 5 列，
+   * 第 6 张会孤零零换到第二行 —— 6 = 2×3 或 3×2 任何时候都排得匀，所以直接钉死列数。
+   */
+  grid-template-columns: minmax(0, 1fr); /* 手机：一行一张 */
+}
+
+@media (min-width: 480px) {
+  .admin-cards.profile-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 760px) {
+  .admin-cards.profile-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/*
+ * 后台的卡片数值都是短数字，个人主页里却有用户名（最长 20 字）与日期。
+ * 窄屏上留给文字的空间少，不给出换行规则就会横向溢出去把卡片撑破。
+ */
+.profile-stats .admin-card__value {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 插件可以用 ['url' => ...] 把卡片做成链接。
+ * 必须显式写 .profile-stats … a：全局 `a:not(.button)`(0,1,1) 会把链接染成深蓝，
+ * 与旁边的纯文本数值混在一排会很跳；这里回到继承色，只保留悬停反馈。
+ * 本选择器 (0,2,1) 也高于全局悬停规则 body a:hover:not(:where(.button))(0,1,2)，
+ * 所以悬停色能稳定生效。
+ */
+.profile-stats .admin-card__value a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-stats .admin-card__value a:hover {
+  color: var(--qq-blue);
 }
 
 /*
@@ -1723,9 +1915,7 @@ a.user-chip:hover {
   color: var(--qq-ink-3);
 }
 
-.settings-tabs {
-  margin-top: var(--space-4);
-}
+/* （用户中心导航改为 .tabbar（panel），原 .settings-tabs 间距规则随之删除） */
 
 /* 通知列表 */
 .notice-item {
@@ -1792,7 +1982,7 @@ a.user-chip:hover {
 .auth-card {
   width: 100%;
   max-width: 418px;
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-large);
   box-shadow: 0 12px 32px -12px rgb(0 95 158 / 0.18);
@@ -2085,7 +2275,7 @@ body[data-sidebar-layout] {
 }
 
 [data-sidebar] {
-  background: #fff;
+  background: var(--qq-card);
   border-right: 1px solid var(--qq-line);
 }
 
@@ -2138,7 +2328,7 @@ body[data-sidebar-layout] {
 }
 
 .admin-topnav {
-  background: #fff;
+  background: var(--qq-card);
   border-bottom: 1px solid var(--qq-line);
   display: flex;
   align-items: center;
@@ -2168,7 +2358,7 @@ body[data-sidebar-layout] {
   padding: 0;
   border: 1px solid var(--qq-line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--qq-card);
   color: var(--qq-ink-2);
   cursor: pointer;
   transition: border-color var(--transition-fast), color var(--transition-fast);
@@ -2213,7 +2403,7 @@ body[data-sidebar-layout] {
 }
 
 .admin-card {
-  background: #fff;
+  background: var(--qq-card);
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-medium);
   padding: 15px 16px;
@@ -2251,7 +2441,7 @@ body[data-sidebar-layout] {
 }
 
 .admin-card--warn .admin-card__icon {
-  background: #fff7e6;
+  background: var(--qq-warning-soft);
   color: var(--qq-orange);
 }
 
@@ -2269,7 +2459,7 @@ body[data-sidebar-layout] {
 
 /*
  * 右栏（运行环境 / 最近操作）在无相应权限时整块不渲染，
- * 此时容器收成单列，让「最新主题」等内容铺满整行，而不是空出右半边。
+ * 此时容器收成单列，让「最新帖子」等内容铺满整行，而不是空出右半边。
  */
 .admin-split--single {
   grid-template-columns: minmax(0, 1fr);
@@ -2308,7 +2498,7 @@ body[data-sidebar-layout] {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;   /* 与「操作」表头左对齐：原来右对齐导致表头和按钮错位 */
 }
 
 .inline-form {
@@ -2326,6 +2516,77 @@ body[data-sidebar-layout] {
   background: #fcfdff;
 }
 
+/*
+ * 批量操作条：紧贴表格上方的一条工具带（在 .panel 内、表格之前）。
+ * 底色比搜索栏再浅一档，让「筛选 → 批量操作 → 表格」三段有层次而不抢戏。
+ */
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--qq-line-soft);
+  background: #f7f9fc;
+  font-size: 13px;
+}
+
+/* .spacer 没有全局样式（见 theme.css 顶部说明），推右要自己补 */
+.bulk-bar .spacer {
+  margin-left: auto;
+}
+
+.bulk-bar__pick {
+  color: var(--qq-ink-2);
+  cursor: pointer;
+}
+
+.bulk-bar__count {
+  color: var(--qq-ink-3);
+  font-size: 12.5px;
+}
+
+/*
+ * 批量操作条里的控件要**等高**（36px，与后台筛选行 .admin-filter 一致）：
+ * 之前下拉 32px、按钮按内容自适应 28px，一排三个高度各不相同，看起来是拼凑的。
+ * 下拉加宽到 220px —— 190px 时「批量操作…」五个字贴着右缘，像被截掉了一截。
+ */
+.bulk-bar select {
+  height: 36px;
+  font-size: 13.5px;
+  padding-inline: 10px;
+  border-radius: var(--radius-medium);
+  background: var(--qq-card);
+}
+
+.bulk-bar .button {
+  height: 36px;
+}
+
+/*
+ * 批量勾选列：窄、居中、不换行。
+ * 用固定宽度而不是 auto —— 否则空表头会被压成 0 宽，勾选框贴到标题上。
+ */
+.bulk-check {
+  width: 42px;
+  text-align: center;
+  padding-left: 14px;
+  padding-right: 0;
+}
+
+.bulk-check input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.bulk-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--qq-ink-3);
+  font-size: 12.5px;
+}
+
 .admin-filter label {
   font-size: 12.5px;
   color: var(--qq-ink-3);
@@ -2335,7 +2596,7 @@ body[data-sidebar-layout] {
 }
 
 /*
- * 后台筛选行里的下拉：统一为全站风格（白底 + QQ 线框 + 中圆角），
+ * 后台筛选行里的下拉：统一为全站风格（白底 + 经典蓝线框 + 中圆角），
  * OATUI 默认的方角灰底与前台观感割裂。
  * 搜索输入已改用 .search-box（见上方全站统一搜索框），不再在此单独立规则。
  */
@@ -2343,7 +2604,7 @@ body[data-sidebar-layout] {
   height: 36px;
   font-size: 13.5px;
   border-radius: var(--radius-medium);
-  background: #fff;
+  background: var(--qq-card);
   border-color: var(--qq-line);
   max-width: 100%;                     /* 防止内联宽度在窄屏撑破面板 */
 }
@@ -2357,7 +2618,7 @@ body[data-sidebar-layout] {
   height: 36px;
 }
 
-/* 后台主题标题：独占一行，超长显示省略号 */
+/* 后台帖子标题：独占一行，超长显示省略号 */
 .admin-thread-title {
   min-width: 0;
   max-width: 480px;
@@ -2386,7 +2647,7 @@ body[data-sidebar-layout] {
   padding: 6px 11px;
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-medium);
-  background: #fff;
+  background: var(--qq-card);
   font-size: 13px;
   color: var(--qq-ink-2);
   text-decoration: none;
@@ -2454,7 +2715,7 @@ body[data-sidebar-layout] {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--qq-card);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.22);
   transition: transform var(--transition-fast);
 }
@@ -2473,7 +2734,7 @@ body[data-sidebar-layout] {
 }
 
 /* ==========================================================================
-   草稿提示条（发帖 / 回帖的自动保存：恢复 / 丢弃）
+   草稿提示条（发帖 / 评论的自动保存：恢复 / 丢弃）
    ========================================================================== */
 
 /*
@@ -2493,7 +2754,7 @@ body[data-sidebar-layout] {
   border: 1px solid var(--qq-line);
   border-left: 3px solid var(--qq-blue);
   border-radius: 10px;
-  background: #fff;
+  background: var(--qq-card);
   box-shadow: 0 10px 30px rgb(15 23 42 / 0.14);
   font-size: 13px;
   color: var(--qq-ink-2);
@@ -2525,7 +2786,7 @@ body[data-sidebar-layout] {
   margin-block-end: 0;
 }
 
-/* 回复 / 公告命中条目 */
+/* 评论 / 公告命中条目 */
 .search-hit {
   padding: 12px 16px;
   border-bottom: 1px solid var(--qq-line-soft);
@@ -2660,7 +2921,7 @@ body[data-sidebar-layout] {
 }
 
 .doc-note code {
-  background: #fff;
+  background: var(--qq-card);
 }
 
 pre.snippet {
@@ -2845,7 +3106,7 @@ pre.snippet code {
   flex-direction: column;
   border: 1px solid var(--qq-line-soft);
   border-radius: 10px;
-  background: #fff;
+  background: var(--qq-card);
 }
 
 /*
@@ -2871,7 +3132,7 @@ pre.snippet code {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  background: #fff;
+  background: var(--qq-card);
   border-bottom: 1px solid var(--qq-line-soft);
 }
 
@@ -2884,7 +3145,7 @@ pre.snippet code {
 }
 
 .attachment-row--failed {
-  background: #fff7f7;
+  background: var(--qq-danger-soft-2);
 }
 
 /*
@@ -2945,7 +3206,7 @@ pre.snippet code {
 }
 
 .attachment-icon-btn--danger:hover {
-  background: #fff1f0;
+  background: var(--qq-danger-soft);
   color: var(--qq-red);
 }
 
@@ -2958,7 +3219,7 @@ pre.snippet code {
  * 行内 SVG 图标与文字的垂直对齐。
  *
  * partials/icon 输出的 <svg> 是行内元素，默认按文本基线对齐 —— 图标底边贴着文字
- * 基线，于是整枚图标比同行文字「高一截」（主题标题下的日期/浏览/回复那行最明显）。
+ * 基线，于是整枚图标比同行文字「高一截」（帖子标题下的日期/浏览/评论那行最明显）。
  * 统一改为围绕文本中线对齐。
  * 注意：flex / grid 容器里的 svg 不受 vertical-align 影响，不会干扰图标按钮的布局。
  */
@@ -3014,6 +3275,17 @@ svg {
   color: var(--qq-ink-2);
   font-size: 14px;
   line-height: 1.7;
+  /* 移动端防溢出：长英文串 / URL / 代码在窄屏强制折行 */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.notice-card__head {
+  min-width: 0;                       /* flex 容器内允许标题收缩换行 */
+}
+
+.notice-card__title {
+  overflow-wrap: anywhere;            /* 长标题换行，不把「编辑公告」挤出屏 */
 }
 
 /* 公告正文用 Markdown 渲染，掐掉首尾元素的多余外边距 */
@@ -3045,7 +3317,7 @@ svg {
 
 .site-footer {
   border-top: 1px solid var(--qq-line);
-  background: #fff;
+  background: var(--qq-card);
   padding: var(--space-5) 0;
   margin-top: var(--space-8);
   font-size: 13px;
@@ -3085,6 +3357,11 @@ svg {
 body[data-sidebar-layout] > main {
   padding-block-start: 0;
 }
+
+/*
+ * （原「OATUI Tabs 选中态白底」覆盖规则已删除：首页页签改用 .tabbar 统一样式，
+ *   未选中白底、选中灰底 --muted，不再走 OATUI 默认的选中态。）
+ */
 
 /* 下拉菜单：<menu> 浏览器默认带缩进与项目符号，统一清掉 */
 ot-dropdown [popover] {
@@ -3247,4 +3524,548 @@ dialog menu.buttons {
     border-color: #ddd;
     break-inside: avoid;
   }
+}
+
+/* ==========================================================================
+   17. 深色模式（夜间模式）
+   --------------------------------------------------------------------------
+   开关链路：theme-boot.js（head 内同步执行，把 html[data-theme] 设为 light/dark，
+   auto = 跟随系统）→ app.js 的 initThemeToggle()（齿轮菜单切换 + 个性装扮页
+   「夜间模式跟随系统」开关 + 跨页签同步）。偏好存 localStorage（owlsgo_theme）。
+   CSS 里**不写** prefers-color-scheme —— auto 已在 JS 解析成 light/dark，
+   「设置优先于系统」只走一条路径，避免两套判断各说各话。
+
+   ⚠️ 夜间模式是**独立的石墨配色**，不是经典蓝的暗色版（与参考 color_scheme
+   实现的 dark 变量一致）：主色/按钮/悬浮 = #586779 石灰系，跟日间选的色系无关
+   —— 日间色系只通过行内变量改 --qq-blue 一族，而 theme-boot.js 在夜间会把这些
+   行内变量摘掉，让这里的硬编码值生效（行内变量优先级高于样式表）。
+
+   换肤方式：:root 的令牌在这里整体改值（html[data-theme="dark"] 比 :root 高一档，
+   稳压基础令牌）；全站「白底」都走 --qq-card，少数未令牌化的一次性色值
+   在下面的热点修正里逐条补齐。新增浅色背景时请尽量走令牌，别再写死色值。
+   ========================================================================== */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ---- owlsgo 品牌令牌（石墨族，取自参考 color_scheme 的 dark 变量） ---- */
+  --qq-card: #171b27;              /* 卡片面 */
+  --qq-page: #0f121a;              /* 页面底 */
+  --qq-ink: #e2e5ed;               /* 主文字 */
+  --qq-ink-2: #9399ab;             /* 次级文字 */
+  --qq-ink-3: #636a80;             /* 弱化文字 */
+  --qq-line: #262b3b;              /* 分隔线 */
+  --qq-line-soft: #1e2332;
+  --qq-soft: #1f2937;              /* 悬浮/选中软底 = brand-soft（石墨） */
+  --qq-soft-2: #1a2230;
+  /*
+   * 夜间主色 = 石灰 #586779：实心按钮、选中底、页码等都走它（--primary 跟随）。
+   * 链接基础色 --qq-blue-deep 取近白（参考实现里链接就是正文色），
+   * 悬浮 → --qq-blue-dark #6b7c90（石灰），即「白字悬浮变石灰」。
+   */
+  --qq-blue: #586779;
+  --qq-blue-dark: #6b7c90;
+  --qq-blue-deep: #c9d3e0;
+  --qq-danger-soft: #3a2226;
+  --qq-warning-soft: #3a2d15;
+  --qq-danger-soft-2: #32201f;
+  --qq-grad-panel-a: #1a2130;
+  --qq-grad-panel-b: #171b27;
+  --qq-grad-group-a: #1b2331;
+  --qq-grad-group-b: #171b27;
+
+  /* ---- OATUI 令牌（浅色块里写死的几个在这里翻面） ---- */
+  --secondary: #1f2937;
+  --muted: #222a38;                /* 页签未选中底 / 滑块轨道 */
+  --faint: #151a24;
+  --faint-foreground: #6f7a8c;
+  --input: #3a4356;
+}
+
+/* ---- 热点修正：未令牌化的一次性浅色底 ---- */
+
+/* OATUI 的 [role=tab]:hover 把文字染成 --muted-foreground，深色里统一为石墨悬浮色 */
+html[data-theme="dark"] [role="tab"]:hover {
+  color: var(--qq-blue-dark);
+}
+
+/*
+ * 深色下普通链接悬浮 = 石墨（--qq-blue-dark #6b7c90）：
+ * 链接基础色是近白的 --qq-blue-deep，悬浮变石灰 —— 用户指定的夜间观感
+ * （参考 color_scheme 的 a:hover = primary/0.8，primary 即 #586779）。
+ */
+html[data-theme="dark"] body a:hover:not(:where(.button)) {
+  color: var(--qq-blue-dark);
+}
+
+/* 表格行悬浮：OATUI 用 --muted 的半透明，深色里换成石墨薄底 */
+html[data-theme="dark"] tbody tr:hover {
+  background-color: rgb(from var(--qq-blue) r g b / 0.14);
+}
+
+/*
+ * 已选中页签的悬浮（首页 / 用户中心 / 后台内容页共用 .tabbar）：
+ * 日间悬浮 = 加深一档（--qq-blue-deep）；夜间的 --qq-blue-deep 是链接用的近白色，
+ * 直接搬过来会「浅底白字」看不见。夜间必须**浅一档**：主色调 55% 掺白，
+ * 文字换页面深色保证可读。
+ */
+html[data-theme="dark"] .tabbar > a[aria-current="page"]:hover,
+html[data-theme="dark"] .tabbar > button[aria-selected="true"]:hover {
+  background: color-mix(in srgb, var(--qq-blue) 55%, #fff);
+  color: #0f121a;
+}
+
+html[data-theme="dark"] .forum-row--child,
+html[data-theme="dark"] .thread-toolbar,
+html[data-theme="dark"] .admin-filter,
+html[data-theme="dark"] .bulk-bar {
+  background: #131722;
+}
+
+html[data-theme="dark"] .tag--pending {
+  background: #2b2038;             /* 原 #f5f0ff 浅紫底 */
+}
+
+html[data-theme="dark"] .floor--first {
+  box-shadow: 0 1px 0 #222a38 inset;
+}
+
+html[data-theme="dark"] .floor__side {
+  background: linear-gradient(180deg, #1b2231 0%, #171b27 100%);
+}
+
+html[data-theme="dark"] .floor__body pre {
+  background: #12161f;             /* 原 #f7f9fc；代码块本来就深底，保持近黑 */
+}
+
+html[data-theme="dark"] .floor__body code {
+  background: #141926;             /* 原 #f1f5fa */
+}
+
+/* 登录 / 注册页的两团光晕 → 石墨蓝光晕 */
+html[data-theme="dark"] .auth-page {
+  background:
+    radial-gradient(900px 420px at 12% -10%, #182231 0%, transparent 60%),
+    radial-gradient(700px 380px at 100% 0%, #141d2b 0%, transparent 55%),
+    var(--qq-page);
+}
+
+/* 验证码图保持白底：SVG 验证码是深色笔画，深底上会看不清（可读性优先） */
+
+/* ==========================================================================
+   18. 顶栏个性化齿轮（用户区共用 partial：partials/user-gear.php）
+   --------------------------------------------------------------------------
+   <ot-dropdown>（oat dropdown.js）负责定位与键盘导航；这里只管外观：
+   圆形齿轮按钮与 a.user-chip 同高（38px），弹出的菜单用卡片底
+   （OATUI 的 [popover] 默认 var(--background) = 页面底色，会跟页面融为一体）。
+   ========================================================================== */
+
+.user-gear {
+  display: inline-flex;
+  flex: none;                          /* 顶栏元素一律不许被 flex 压缩 */
+}
+
+.user-gear__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--qq-line);
+  border-radius: 999px;
+  background: var(--qq-card);
+  color: var(--qq-ink-2);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.user-gear__btn:hover {
+  border-color: var(--qq-blue);
+  background: var(--qq-soft);
+  color: var(--qq-blue-dark);
+}
+
+.user-gear__menu {
+  min-width: 152px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--qq-card);          /* 卡片底，压过 OATUI 的页面底色 */
+  border: 1px solid var(--qq-line);
+  border-radius: var(--radius-medium);
+  box-shadow: 0 10px 28px -12px rgb(0 95 158 / 0.28);
+}
+
+.user-gear__menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--qq-ink);
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/*
+ * 悬浮 / 键盘焦点态。三个细节：
+ *  1. 只用 :focus-visible、不用 :focus —— OATUI dropdown 打开菜单时会 focus() 第一项，
+ *     若按 :focus 上高亮，用户「还没选择」菜单里就已经有一项亮着，看起来像误触发；
+ *     :focus-visible 只在键盘导航时显示，鼠标点击打开不会。
+ *  2. ⚠️ 特异性必须压过旧规则 `ot-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
+ *     否则「个性装扮」项（<a>）的悬浮字色被旧规则的 --qq-blue-deep 抢走 ——
+ *     深色下那是淡银蓝，正是用户反馈的「悬浮字变石灰」。这里用
+ *     `ot-dropdown.user-gear [popover] li [role="menuitem"]`（(0,4,2)）稳压。
+ *  3. 悬浮字色用 --qq-blue-dark（深色下 = #7DD6FF 最亮档），悬浮必须比常态更醒目。
+ */
+ot-dropdown.user-gear [popover] li [role="menuitem"]:hover,
+ot-dropdown.user-gear [popover] li [role="menuitem"]:focus-visible {
+  background: var(--qq-soft);
+  color: var(--qq-blue-dark);
+  outline: none;
+  text-decoration: none;
+}
+
+/* 抵消 OATUI 的 :focus 高亮：JS 打开菜单时的程序化 focus 不显示任何选中观感 */
+ot-dropdown.user-gear [popover] li [role="menuitem"]:focus:not(:focus-visible) {
+  background: none;
+  outline: none;
+}
+
+.user-gear__item-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+/*
+ * 「退出」项（仅登录后渲染）：与上面两项用一条分隔线隔开，避免和「个性装扮」挨在一起误点。
+ * 菜单项本体样式沿用 [role="menuitem"]，这里只加分组与上下留白。
+ */
+.user-gear__logout {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--qq-line-soft);
+}
+
+/*
+ * 太阳 / 月亮图标跟随**目标模式**（与文案一致）：
+ *   浅色 → 菜单项是「夜间模式」→ 月亮；深色 → 菜单项是「日间模式」→ 太阳。
+ * 图标与文字永远描述同一个去向，不会出现「太阳配夜间」的错位。
+ */
+[data-theme-icon-moon],
+[data-theme-icon-sun] {
+  display: inline-flex;
+}
+
+[data-theme-icon-sun] {
+  display: none;                       /* 浅色（默认）：目标是夜间 → 只显示月亮 */
+}
+
+html[data-theme="dark"] [data-theme-icon-sun] {
+  display: inline-flex;
+}
+
+html[data-theme="dark"] [data-theme-icon-moon] {
+  display: none;
+}
+
+/* ==========================================================================
+   19. 个性装扮 · 色系管理（templates/user/appearance.php）
+   --------------------------------------------------------------------------
+   卡片由 app.js 动态渲染：内置 5 套 + 用户自建（存 localStorage）。
+   卡片的三格色板 = 主色 / 悬浮 / 浅底，与点选后的实际效果一致。
+   选中态用 aria-pressed（点击的是 <button>，语义上就是「已按下」）。
+   ========================================================================== */
+
+.scheme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.scheme-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.scheme-card__pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--qq-line);
+  border-radius: 10px;
+  background: var(--qq-card);
+  color: var(--qq-ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.scheme-card__pick:hover {
+  border-color: var(--qq-blue);
+  background: var(--qq-soft);
+}
+
+.scheme-card.active .scheme-card__pick,
+.scheme-card__pick[aria-pressed="true"] {
+  border-color: var(--qq-blue);
+  box-shadow: 0 0 0 1px var(--qq-blue);
+}
+
+.scheme-card .swatches {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+.scheme-card .swatches i {
+  display: block;
+  height: 100%;
+}
+
+.scheme-card .swatches i:nth-child(1) { width: 50%; }
+.scheme-card .swatches i:nth-child(2) { width: 30%; }
+.scheme-card .swatches i:nth-child(3) { width: 20%; }
+
+.scheme-card__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheme-card__del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--qq-line);
+  border-radius: 999px;
+  background: var(--qq-card);
+  color: var(--qq-ink-3);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scheme-card__del:hover {
+  border-color: var(--qq-red);
+  color: var(--qq-red);
+}
+
+/* 新增色系表单：名称 + 三个取色器横排 */
+.scheme-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--qq-line-soft);
+}
+
+.scheme-add input[type="text"] {
+  flex: 1 1 150px;
+  max-width: 200px;
+}
+
+.scheme-add__color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--qq-ink-2);
+  font-size: 13px;
+}
+
+.scheme-add__color input[type="color"] {
+  width: 36px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--qq-line);
+  border-radius: 8px;
+  background: var(--qq-card);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   20. 图片灯箱（帖子 / 回帖 / 公告正文插图）
+   --------------------------------------------------------------------------
+   适配自参考 image_lightbox 插件（app.js initLightbox）：
+   - 页内：可点插图 cursor zoom-in；长图钳制到一屏内完整预览（不放大小图）；
+   - 灯箱：舞台居中 object-fit 展示，滚轮/双击/拖拽/捏合缩放平移（1~5 倍），
+     左右切换画廊、标题说明（alt/title）、关闭/还原/导航按钮、键盘操作。
+   按钮配色用固定深色玻璃（遮罩永远深色，深浅主题通用）。
+   ========================================================================== */
+
+.floor__body .image-lightbox-clickable,
+.notice-card__body .image-lightbox-clickable {
+  max-height: min(75vh, 720px);      /* 长图页内完整预览：压到一屏高 */
+  object-fit: contain;
+  object-position: left top;
+  cursor: zoom-in;
+}
+
+.image-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(9, 12, 17, 0.82);
+  cursor: zoom-out;
+}
+
+.image-lightbox-overlay[hidden] {
+  display: none;
+}
+
+.image-lightbox-dialog {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: min(96vw, 1400px);
+  height: 92vh;
+  cursor: default;
+}
+
+.image-lightbox-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  contain: paint;
+}
+
+.image-lightbox-image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  max-width: 100%;                   /* 只缩小不放大小图 */
+  max-height: 100%;
+  border-radius: 8px;
+  background: var(--qq-card);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  object-fit: contain;
+  transform: translate3d(-50%, -50%, 0)
+    translate3d(var(--image-lightbox-pan-x, 0px), var(--image-lightbox-pan-y, 0px), 0)
+    scale(var(--image-lightbox-scale, 1));
+  transform-origin: center;
+  transition: transform 0.12s ease-out;
+  will-change: transform;
+  touch-action: none;
+  user-select: none;
+}
+
+.image-lightbox-image.image-lightbox-zoomed { cursor: grab; }
+.image-lightbox-image.image-lightbox-dragging { cursor: grabbing; transition: none; }
+
+.image-lightbox-close,
+.image-lightbox-nav,
+.image-lightbox-reset {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(23, 27, 39, 0.92);
+  color: #e9edf3;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.image-lightbox-close {
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  font-size: 20px;
+}
+
+.image-lightbox-reset {
+  top: 8px;
+  right: 50px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  font-size: 18px;
+}
+
+.image-lightbox-nav {
+  top: 50%;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  font-size: 28px;
+  transform: translateY(-50%);
+}
+
+.image-lightbox-nav[hidden],
+.image-lightbox-reset[hidden] {
+  display: none;
+}
+
+.image-lightbox-prev { left: 12px; }
+.image-lightbox-next { right: 12px; }
+
+.image-lightbox-caption {
+  max-width: min(90vw, 900px);
+  justify-self: center;
+  margin: 10px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(23, 27, 39, 0.85);
+  color: #e9edf3;
+  font-size: 13px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .image-lightbox-dialog { height: 86vh; }
+  .image-lightbox-nav { width: 38px; min-width: 38px; height: 38px; min-height: 38px; font-size: 24px; }
+}
+
+/* 点赞 / 收藏按钮：透明 ghost（与「置顶/精华/推荐/锁定」版主按钮同款，用户要求）。
+   基准字色钉住 --qq-ink：ajax 切换时 app.js 会给按钮写 data-variant="secondary"，
+   OATUI 的 ghost[data-variant=secondary] 会把字染成 --secondary-foreground（蓝灰），
+   与初始渲染不一致 —— 这里稳压掉。
+   激活态（已点赞/已收藏）只染文字色：表单 data-active="1"（服务端渲染 + app.js 同步）。 */
+.thread-hero__actions form[data-state-field] .button,
+.floor__actions form[data-state-field] .button {
+  color: var(--qq-ink);
+}
+
+.thread-hero__actions form[data-active="1"] .button,
+.floor__actions form[data-active="1"] .button {
+  color: var(--qq-blue);
+}
+
+.thread-hero__actions form[data-active="1"] .button:hover,
+.floor__actions form[data-active="1"] .button:hover {
+  color: var(--qq-blue-dark);
 }

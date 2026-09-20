@@ -74,6 +74,7 @@ final class Plugin
         PluginApi::filter('footer_assets', [Service::class, 'footerAssets']);
         PluginApi::filter('nav_links', [Service::class, 'navLinks']);
         PluginApi::filter('user_profile_tabs', [Service::class, 'profileTabs']);
+        PluginApi::filter('user_profile_stats', [Service::class, 'profileStats']);
 
         // 前台顶部导航菜单项（渲染位置见 templates/partials/header.php）
         PluginApi::menu('插件示例', Router::url('/hello'), 'bulb');
@@ -98,6 +99,11 @@ final class Plugin
 
         /* ---------- 6. 计划任务：每天清理一次插件自己的活动日志 ---------- */
         // 计划任务允许两种写法：静态方法数组，或 "Class@method" 字符串
-        PluginApi::cron('owlsgo_demo_cleanup', 86400, Service::class . '@cleanup');
+        PluginApi::cron(
+            'owlsgo_demo_cleanup',
+            86400,
+            Service::class . '@cleanup',
+            '每日清理一次本插件记录的活动日志：删除超过保留期限（后台插件设置里的「日志保留天数」，默认 7 天）的旧记录。'
+        );
     }
 }

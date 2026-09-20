@@ -127,14 +127,17 @@ final class Plugin
      *
      * @param int             $interval 运行间隔（秒）
      * @param callable|string $handler
+     * @param string          $description 面向管理员的中文说明（后台「插件任务」表展示；
+     *                                     不写则后台只显示任务名，没人知道它干什么）
      */
-    public static function cron(string $name, int $interval, callable|string $handler): void
+    public static function cron(string $name, int $interval, callable|string $handler, string $description = ''): void
     {
         self::$crons[] = [
-            'plugin'   => self::$current,
-            'name'     => preg_replace('/[^A-Za-z0-9_]/', '_', $name) ?: 'task',
-            'interval' => max(60, $interval),
-            'handler'  => $handler,
+            'plugin'      => self::$current,
+            'name'        => preg_replace('/[^A-Za-z0-9_]/', '_', $name) ?: 'task',
+            'interval'    => max(60, $interval),
+            'handler'     => $handler,
+            'description' => trim($description),
         ];
     }
 

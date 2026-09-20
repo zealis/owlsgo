@@ -21,11 +21,119 @@ use Core\Paginator;
 use Core\Permission;
 use Core\Request;
 use Core\Router;
+use Modules\Forum\ForumModel;
+use Modules\Post\PostModel;
+use Modules\Thread\ThreadModel;
 use Modules\User\UsergroupModel;
 use Modules\User\UserModel;
 
 final class UserController extends AdminBaseController
 {
+    /**
+     * 批量操作：删除账号（含「连内容一起删」的三种范围）
+     *
+     * 四种范围（下拉里选择，动作名即范围）：
+     *   account         只删除账号 —— 他的帖子/评论**保留**，作者名显示「用户已删除」，
+     *                   个人主页会变成 404（users 是软删，find() 查不到已删行）
+     *   account_threads 账号 + 他的帖子（连带帖子下所有评论）
+     *   account_posts   账号 + 他的评论（不含首帖 —— 首帖属于帖子，要删得删整个帖子）
+     *   account_all     账号 + 帖子 + 评论
+     *
+     * 三条安全线：
+     *   ① 不能删自己（否则下一个请求就没权限了）；
+     *   ② 不能删超管组账号（`Permission::SUPER_GROUP`）—— 与「超管内容只有超管可删」同一原则；
+     *   ③ 内容一律走 ThreadModel::destroy / PostModel::destroy，**不自己写 UPDATE**，
+     *      这样 5 个冗余计数的回滚与单条删除完全一致（这也是恢复能对称的前提）。
+     *
+     * @param array<string, string> $params
+     */
+    public function bulk(array $params): never
+    {
+        $ids    = Request::intArray('items');
+        $action = (string)Request::post('action', '');
+        $back   = Router::url('/admin/users');
+
+        $scopes = [
+            'account'         => '只删除账号',
+            'account_threads' => '删除账号及其帖子',
+            'account_posts'   => '删除账号及其评论',
+            'account_all'     => '删除账号及其帖子与评论',
+        ];
+
+        if ($ids === []) {
+            $this->bulkFail('请先勾选要删除的账号。', $back);
+        }
+
+        if (!isset($scopes[$action])) {
+            $this->bulkFail('未知的批量操作。', $back);
+        }
+
+        $withThreads = in_array($action, ['account_threads', 'account_all'], true);
+        $withPosts   = in_array($action, ['account_posts', 'account_all'], true);
+
+        $me       = (int)Auth::id();
+        $deleted  = 0;
+        $skipped  = 0;
+        $threads  = 0;
+        $posts    = 0;
+        $names    = [];
+
+        foreach ($ids as $id) {
+            $user = UserModel::find($id);
+
+            // 安全线 ①②：不存在的、自己、超管组一律跳过并计数
+            if ($user === null || $id === $me || (int)$user['group_id'] === Permission::SUPER_GROUP) {
+                $skipped++;
+                continue;
+            }
+
+            if ($withThreads) {
+                foreach (UserModel::threadIdsOf($id) as $threadId) {
+                    if (ThreadModel::destroy($threadId)) {
+                        $threads++;
+                    }
+                }
+            }
+
+            if ($withPosts) {
+                foreach (UserModel::replyIdsOf($id) as $postId) {
+                    if (PostModel::destroy($postId)) {
+                        $posts++;
+                    }
+                }
+            }
+
+            UserModel::deleteById($id);
+
+            $names[] = (string)$user['username'];
+            $deleted++;
+        }
+
+        if ($deleted === 0) {
+            $this->bulkFail('没有可删除的账号（不能删除自己与超级管理员）。', $back);
+        }
+
+        $detail = '批量删除账号 ' . $deleted . ' 个（' . $scopes[$action] . '）';
+        if ($threads > 0 || $posts > 0) {
+            $detail .= '，连带帖子 ' . $threads . ' 个、评论 ' . $posts . ' 条';
+        }
+
+        $this->audit('user.delete', 'bulk', $detail . '：' . implode('、', array_slice($names, 0, 10)));
+
+        $extra = '';
+        if ($threads > 0) {
+            $extra .= '，连带删除帖子 ' . $threads . ' 个';
+        }
+        if ($posts > 0) {
+            $extra .= '，连带删除评论 ' . $posts . ' 条';
+        }
+        if ($skipped > 0) {
+            $extra .= '；' . $skipped . ' 个被跳过（自己或超级管理员）';
+        }
+
+        $this->bulkOk('已删除 ' . $deleted . ' 个账号' . $extra . '。内容可在回收站恢复。', $back);
+    }
+
     /**
      * 用户列表
      *
@@ -52,6 +160,8 @@ final class UserController extends AdminBaseController
             'keyword'    => $keyword,
             'groupId'    => $groupId,
             'groups'     => UsergroupModel::options(),
+            /* 批量删除时用来禁用「自己」那一行的勾选框（服务端 bulk() 还会再拦一次） */
+            'currentUserId' => (int)Auth::id(),
             'pagination' => Paginator::render($result, '/admin/users', $query),
         ]);
     }
@@ -72,6 +182,23 @@ final class UserController extends AdminBaseController
 
         $ban = BanModel::active('user', (string)$userId, true);
 
+        /* 版主版块：forums.moderators 里包含该用户即为其担任版主的版块 */
+        $moderateForums = [];
+        $forumRows = \Core\Database::select(
+            'SELECT ' . implode(',', array_map([\Core\Database::class, 'identifier'], ['id', 'name', 'status', 'moderators']))
+            . ' FROM ' . \Core\Database::identifier('forums')
+            . ' WHERE ' . \Core\Database::identifier('deleted_at') . ' IS NULL'
+            . ' ORDER BY ' . \Core\Database::identifier('sort_order') . ' ASC, ' . \Core\Database::identifier('id') . ' ASC'
+        );
+        foreach ($forumRows as $forum) {
+            $moderateForums[] = [
+                'id'           => (int)$forum['id'],
+                'name'         => (string)$forum['name'],
+                'status'       => (int)$forum['status'],
+                'isModerating' => in_array($userId, group_ids_from_field((string)$forum['moderators']), true),
+            ];
+        }
+
         return $this->adminView('admin/user-edit', [
             'pageTitle'  => '编辑用户 - ' . (string)setting('site_name'),
             'adminTitle' => '编辑用户',
@@ -82,12 +209,37 @@ final class UserController extends AdminBaseController
             'isSuper'    => Permission::groupOf($user) === Permission::SUPER_GROUP,
             'mutedGroup' => Permission::MUTED_GROUP,
             'canBan'     => Auth::can('user.ban'),
+            'moderateForums' => $moderateForums,
             'stats'      => [
                 'threads'   => (int)$user['thread_count'],
-                'posts'     => (int)$user['post_count'],
+                /* 评论数不含本人帖子（post_count 口径含首帖），见 user_comment_count() */
+                'comments'  => user_comment_count($user),
                 'favorites' => (int)$user['favorite_count'],
             ],
         ]);
+    }
+
+    /**
+     * 保存用户的版主版块（版主指派的唯一入口）
+     *
+     * 以全量勾选集合为准：勾选的补任版主、未勾选的移除，见
+     * ForumModel::setModeratorForUser()。
+     */
+    public function moderates(array $params): never
+    {
+        $userId = (int)($params['id'] ?? 0);
+        $user   = UserModel::find($userId);
+
+        if ($user === null) {
+            App::abort(404, '用户不存在或已注销。');
+        }
+
+        $back    = Router::url('/admin/users/' . $userId);
+        $changed = ForumModel::setModeratorForUser($userId, Request::intArray('forum_ids'));
+
+        $this->audit('user.moderates', 'user:' . $userId, '调整版主版块（涉及 ' . $changed . ' 个版块）：' . (string)$user['username']);
+
+        $this->redirectWith($back, '版主版块已更新（调整 ' . $changed . ' 个版块）。');
     }
 
     /**

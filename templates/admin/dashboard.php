@@ -7,7 +7,7 @@
  *                  （users、threads、posts、attachments、today_*、pending_*、bans、plugins、cron_due）
  *  - $forumStats   版块聚合（forums/threads/posts）
  *  - $recentUsers  最新注册用户（已 decorateMany）
- *  - $recentThreads 最新主题（已 decorate）
+ *  - $recentThreads 最新帖子（已 decorate）
  *  - $recentLogs   最新操作日志（原样行，含 action/target/detail/created_at）
  *  - $system       运行环境信息键值对
  */
@@ -33,15 +33,15 @@ $showRightBar  = $canSystem || $canLogs;
 /** 主统计卡片：图标 / 标签 / 数值键 / 是否告警态 */
 $primaryCards = [
     ['icon' => 'users',  'label' => '注册用户', 'key' => 'users',       'warn' => false],
-    ['icon' => 'file',   'label' => '主题总数', 'key' => 'threads',     'warn' => false],
-    ['icon' => 'message', 'label' => '回复总数', 'key' => 'posts',      'warn' => false],
+    ['icon' => 'file',   'label' => '帖子总数', 'key' => 'threads',     'warn' => false],
+    ['icon' => 'message', 'label' => '评论总数', 'key' => 'posts',      'warn' => false],
     ['icon' => 'paperclip', 'label' => '附件数量', 'key' => 'attachments', 'warn' => false],
 ];
 
 /** 待处理事项：为 0 时不显示告警配色 */
 $todoCards = [
-    ['icon' => 'alert',  'label' => '待审核主题', 'key' => 'pending_threads'],
-    ['icon' => 'alert',  'label' => '待审核回复', 'key' => 'pending_posts'],
+    ['icon' => 'alert',  'label' => '待审核帖子', 'key' => 'pending_threads'],
+    ['icon' => 'alert',  'label' => '待审核评论', 'key' => 'pending_posts'],
     ['icon' => 'ban',    'label' => '生效中的封禁', 'key' => 'bans'],
     ['icon' => 'clock',  'label' => '待执行任务', 'key' => 'cron_due'],
 ];
@@ -88,14 +88,14 @@ $todoCards = [
         <span class="admin-card__icon"><?= $view('partials/icon', ['name' => 'activity', 'size' => 20]) ?></span>
         <div style="min-width:0">
             <div class="admin-card__value"><?= format_number((int)($stats['today_threads'] ?? 0)) ?></div>
-            <div class="admin-card__label">今日新增主题</div>
+            <div class="admin-card__label">今日新增帖子</div>
         </div>
     </div>
     <div class="admin-card">
         <span class="admin-card__icon"><?= $view('partials/icon', ['name' => 'activity', 'size' => 20]) ?></span>
         <div style="min-width:0">
             <div class="admin-card__value"><?= format_number((int)($stats['today_posts'] ?? 0)) ?></div>
-            <div class="admin-card__label">今日新增回复</div>
+            <div class="admin-card__label">今日新增评论</div>
         </div>
     </div>
     <div class="admin-card">
@@ -112,7 +112,7 @@ $todoCards = [
     <div>
         <section class="panel">
             <div class="panel__head">
-                <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>最新主题</h3>
+                <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>最新帖子</h3>
                 <span class="spacer"></span>
                 <a href="<?= e(url('/admin/threads')) ?>" style="font-size:13px">内容管理</a>
             </div>
@@ -120,7 +120,7 @@ $todoCards = [
             <?php if ($recentThreads === []): ?>
                 <div class="empty">
                     <?= $view('partials/icon', ['name' => 'file', 'size' => 42]) ?>
-                    <p>还没有任何主题。</p>
+                    <p>还没有任何帖子。</p>
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
@@ -130,7 +130,7 @@ $todoCards = [
                             <th>标题</th>
                             <th style="width:130px">作者</th>
                             <th style="width:110px">版块</th>
-                            <th style="width:90px">回复</th>
+                            <th style="width:90px">评论</th>
                             <th style="width:120px">发表时间</th>
                         </tr>
                         </thead>
@@ -153,7 +153,7 @@ $todoCards = [
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-light">
-                                    <?= e((string)($thread['author']['username'] ?? '已注销用户')) ?>
+                                    <?= e((string)($thread['author']['username'] ?? '用户已删除')) ?>
                                 </td>
                                 <td class="text-light"><?= e((string)($thread['forum_name'] ?? '—')) ?></td>
                                 <td class="text-light"><?= (int)($thread['reply_count'] ?? 0) ?></td>
@@ -231,8 +231,8 @@ $todoCards = [
                 <div class="doc-note" style="margin-top:12px">
                     <strong>版块聚合：</strong>
                     共 <?= (int)($forumStats['forums'] ?? 0) ?> 个版块 ·
-                    <?= format_number((int)($forumStats['threads'] ?? 0)) ?> 个主题 ·
-                    <?= format_number((int)($forumStats['posts'] ?? 0)) ?> 条回复
+                    <?= format_number((int)($forumStats['threads'] ?? 0)) ?> 个帖子 ·
+                    <?= format_number((int)($forumStats['posts'] ?? 0)) ?> 条评论
                 </div>
 
                 <?php if (!empty($system['debug'])): ?>

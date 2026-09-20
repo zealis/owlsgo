@@ -3,9 +3,9 @@
  * 通知模型
  *
  * 通知类型：
- *  - reply    有人回复了我的主题
+ *  - reply    有人评论了我的帖子
  *  - mention  有人在帖子里 @ 了我
- *  - quote    有人引用了我的回复
+ *  - quote    有人引用了我的评论
  *  - system   系统通知
  *  - audit    内容审核结果
  */
@@ -24,7 +24,7 @@ final class NotificationModel extends Model
 
     /** 通知类型 => 中文名 */
     public const KINDS = [
-        'reply'   => '回复',
+        'reply'   => '评论',
         'mention' => '提及',
         'quote'   => '引用',
         'system'  => '系统',
@@ -126,7 +126,7 @@ final class NotificationModel extends Model
     }
 
     /**
-     * 批量通知：回复主题时通知楼主
+     * 批量通知：评论帖子时通知楼主
      */
     public static function notifyThreadAuthor(array $thread, int $senderId, string $excerpt, int $postId): void
     {

@@ -42,7 +42,7 @@ return [
 
     /* 分页 */
     'per_page'        => 20,         // 列表每页条数
-    'post_per_page'   => 15,         // 主题内每页楼层数
+    'post_per_page'   => 15,         // 帖子内每页楼层数
     'max_page'        => 500,        // 分页上限，防止深分页拖垮数据库
 
     /* 缓存（站点设置 / 版块 / 用户组的懒加载缓存秒数，0 表示仅请求内缓存） */
@@ -81,6 +81,7 @@ return [
         'register' => ['max' => 5,   'window' => 3600],
         'post'     => ['max' => 30,  'window' => 600],
         'upload'   => ['max' => 20,  'window' => 600],
+        'upload_burst' => ['max' => 10, 'window' => 60],
         'search'   => ['max' => 1,   'window' => 20],
         'default'  => ['max' => 120, 'window' => 60],
     ],

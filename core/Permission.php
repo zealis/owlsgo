@@ -19,6 +19,12 @@ final class Permission
     /** 超级管理员组 ID（不可删除） */
     public const SUPER_GROUP = 1;
 
+    /** 版主组 ID（组内成员的「管理权」只在担任版主的版块内生效，见 allows()） */
+    public const MODERATOR_GROUP = 2;
+
+    /** 注册用户组 ID（版主卸任后自动回到这里） */
+    public const MEMBER_GROUP = 3;
+
     /** 游客组 ID */
     public const GUEST_GROUP = 4;
 
@@ -26,9 +32,27 @@ final class Permission
     public const MUTED_GROUP = 5;
 
     /**
+     * 版主组成员的「管理类」权限清单。
+     *
+     * 这些权限在组权限里可以勾上，但**只在其担任版主的版块内生效**
+     * （allows() 收口）：指派版块 → 自动升级版主组并获得对应版块的管理权；
+     * 取消全部版块 → 自动降级回注册用户组，管理权全部消失。
+     */
+    private const MODERATOR_MANAGED_PERMS = [
+        'thread.essence',
+        'thread.delete',
+        'post.delete',
+        'post.approve',
+        'notice.manage',
+        'user.ban',
+        'admin.access',
+        'admin.content',
+    ];
+
+    /**
      * 作者用户组缓存：键为用户 ID
      *
-     * 主题页会把每个楼层都过一遍「能否编辑/删除」的判断，同一位作者常常出现多次。
+     * 帖子页会把每个楼层都过一遍「能否编辑/删除」的判断，同一位作者常常出现多次。
      * 缓存后整个请求对每位作者只查一次库；静态属性随请求结束销毁，不会跨请求串数据。
      *
      * @var array<int, int>
@@ -42,14 +66,14 @@ final class Permission
      */
     public const CATALOG = [
         /* 内容 */
-        'thread.view'        => ['浏览主题', '内容', '关闭后该类用户组无法查看任何主题'],
-        'thread.create'      => ['发表主题', '内容', '允许在版块中发布新主题'],
-        'thread.reply'       => ['回复主题', '内容', '允许在主题下发表回复'],
+        'thread.view'        => ['浏览帖子', '内容', '关闭后该类用户组无法查看任何帖子'],
+        'thread.create'      => ['发表帖子', '内容', '允许在版块中发布新帖子'],
+        'thread.reply'       => ['评论帖子', '内容', '允许在帖子下发表评论'],
         'thread.edit'        => ['编辑自己的内容', '内容', '允许编辑自己发表的帖子'],
-        'thread.essence'     => ['加精/置顶', '内容', '将主题设为精华、置顶或推荐'],
-        'thread.delete'      => ['删除主题', '内容', '删除任意主题（含他人）'],
-        'post.delete'        => ['删除回复', '内容', '删除任意回复（含他人）'],
-        'post.approve'       => ['审核内容', '内容', '通过或驳回待审核的主题与回复'],
+        'thread.essence'     => ['加精/置顶', '内容', '将帖子设为精华、置顶或推荐'],
+        'thread.delete'      => ['删除帖子', '内容', '删除任意帖子（含他人）'],
+        'post.delete'        => ['删除评论', '内容', '删除任意评论（含他人）'],
+        'post.approve'       => ['审核内容', '内容', '通过或驳回待审核的帖子与评论'],
         'attachment.upload'  => ['上传附件', '内容', '允许上传图片与附件'],
         'attachment.download' => ['下载附件', '内容', '允许查看与下载帖子、公告里的附件（图片也算）；关闭后只列出文件名，点不开'],
         'attachment.manage'  => ['管理附件', '内容', '在后台查看与删除所有附件'],
@@ -65,7 +89,7 @@ final class Permission
         'admin.forum'        => ['版块管理', '后台', '新增、编辑、排序、删除版块'],
         'admin.group'        => ['用户组管理', '后台', '编辑用户组权限与外观'],
         'admin.user'         => ['用户管理', '后台', '在后台查看与调整用户资料'],
-        'admin.content'      => ['内容管理', '后台', '批量管理主题与回复'],
+        'admin.content'      => ['内容管理', '后台', '批量管理帖子与评论'],
         'admin.plugin'       => ['插件管理', '后台', '安装、启用、停用插件'],
         'admin.cron'         => ['计划任务', '后台', '查看与手动执行计划任务'],
         'admin.logs'         => ['查看日志', '后台', '查看操作日志与运行日志'],
@@ -111,6 +135,18 @@ final class Permission
             if (in_array($perm, ['thread.essence', 'thread.delete', 'post.delete', 'post.approve', 'thread.view', 'thread.create', 'thread.reply'], true)) {
                 return true;
             }
+        }
+
+        /*
+         * 版主组成员的管理类权限只在「传入版块 + 是该版块版主」时生效：
+         *  - 没有版块上下文（全局/后台入口）一律不放行 —— 后台内容管理是跨版块的，
+         *    版主的管理范围仅限其勾选的版块，在前台完成；
+         *  - 组权限里这些键可以勾着（保持展示完整），实际放行与否由版主名单决定。
+         */
+        if ($groupId === self::MODERATOR_GROUP
+            && in_array($perm, self::MODERATOR_MANAGED_PERMS, true)
+            && !($forum !== null && self::isModerator($user, $forum))) {
+            return false;
         }
 
         $permissions = self::ofGroup($groupId);
@@ -180,7 +216,7 @@ final class Permission
             // 超级管理员：全开
             self::SUPER_GROUP => array_fill_keys(array_keys(self::CATALOG), true),
 
-            // 版主：内容管理 + 审核，无站点设置
+            // 版主：内容管理 + 审核 + 公告/封禁/后台 —— 实际生效范围由版主名单收口（见 allows()）
             2 => array_merge($all, [
                 'thread.view'       => true,
                 'thread.create'     => true,
@@ -259,7 +295,7 @@ final class Permission
     }
 
     /**
-     * 当前用户是否可在该版块发主题
+     * 当前用户是否可在该版块发帖子
      */
     public static function canCreateThread(?array $user, array $forum): bool
     {
@@ -271,7 +307,7 @@ final class Permission
     }
 
     /**
-     * 当前用户是否可在该版块回复
+     * 当前用户是否可在该版块评论
      */
     public static function canReply(?array $user, array $forum): bool
     {

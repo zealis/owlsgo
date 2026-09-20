@@ -13,9 +13,7 @@ $items   = is_array($result['items'] ?? null) ? $result['items'] : [];
 $userId  = (int)($profile['id'] ?? 0);
 ?>
 
-<?= $view('partials/profile-hero', ['profile' => $profile]) ?>
-
-<?= $view('partials/user-nav', ['userNavProfile' => $profile, 'userNavActive' => 'favorites']) ?>
+<?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'favorites']) ?>
 
 <section class="panel mt-4">
     <div class="panel__head">
@@ -26,7 +24,7 @@ $userId  = (int)($profile['id'] ?? 0);
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'bookmark', 'size' => 46]) ?>
-            <p>收藏夹是空的，在主题页点击「收藏」即可加入。</p>
+            <p>收藏夹是空的，在帖子页点击「收藏」即可加入。</p>
         </div>
     <?php else: ?>
         <?php foreach ($items as $thread): ?>
@@ -36,5 +34,5 @@ $userId  = (int)($profile['id'] ?? 0);
 </section>
 
 <?php if (($pagination ?? '') !== ''): ?>
-    <div class="mt-4"><?= (string)$pagination ?></div>
+    <div class="pager"><?= (string)$pagination ?></div>
 <?php endif; ?>

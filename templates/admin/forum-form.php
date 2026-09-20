@@ -3,7 +3,7 @@
  * 后台：版块新增 / 编辑（共用模板）
  *
  * 变量：$forum（null 表示新增，数组表示编辑）、$parents（父版块下拉）、
- *       $groups（用户组下拉）、$moderatorCandidates（可选版主：用户 ID => 用户名）、$action
+ *       $groups（用户组下拉）、$action
  *
  * 权限字段说明：
  *  - group_view / group_thread / group_reply 保存为「逗号分隔的用户组 ID」
@@ -17,7 +17,6 @@ $forum      = is_array($forum ?? null) ? $forum : null;
 $isEdit     = $forum !== null;
 $parents    = is_array($parents ?? null) ? $parents : [];
 $groups     = is_array($groups ?? null) ? $groups : [];
-$candidates = is_array($moderatorCandidates ?? null) ? $moderatorCandidates : [];
 $action     = (string)($action ?? url('/admin/forums'));
 
 /** 取值：编辑时用当前值，新增时用默认值 */
@@ -36,7 +35,6 @@ $checkedGroups = static function (string $field) use ($forum): array {
 $viewGroupIds   = $checkedGroups('group_view');
 $viewThreadIds  = $checkedGroups('group_thread');
 $viewReplyIds   = $checkedGroups('group_reply');
-$currentMods    = group_ids_from_field((string)($forum['moderators'] ?? ''));
 ?>
 
 <form method="post" action="<?= e($action) ?>">
@@ -129,8 +127,8 @@ $currentMods    = group_ids_from_field((string)($forum['moderators'] ?? ''));
             <?php
             $switches = [
                 'status'           => ['显示该版块', '关闭后前台不再展示，后台仍可管理。', true],
-                'allow_thread'     => ['允许发表主题', '关闭后该版块只能浏览，不能发新主题。', true],
-                'allow_reply'      => ['允许回复', '关闭后已存在的主题也不能回复。', true],
+                'allow_thread'     => ['允许发表帖子', '关闭后该版块只能浏览，不能发新帖子。', true],
+                'allow_reply'      => ['允许评论', '关闭后已存在的帖子也不能评论。', true],
                 'allow_attachment' => ['允许上传附件', '关闭后仅影响该版块内的附件上传。', true],
             ];
             ?>
@@ -167,8 +165,8 @@ $currentMods    = group_ids_from_field((string)($forum['moderators'] ?? ''));
                 <?php
                 $whitelists = [
                     ['field' => 'group_view',   'label' => '可浏览该版块的用户组',   'checked' => $viewGroupIds],
-                    ['field' => 'group_thread', 'label' => '可发表主题的用户组',     'checked' => $viewThreadIds],
-                    ['field' => 'group_reply',  'label' => '可回复主题的用户组',     'checked' => $viewReplyIds],
+                    ['field' => 'group_thread', 'label' => '可发表帖子的用户组',     'checked' => $viewThreadIds],
+                    ['field' => 'group_reply',  'label' => '可评论帖子的用户组',     'checked' => $viewReplyIds],
                 ];
                 ?>
                 <?php foreach ($whitelists as $list): ?>
@@ -191,38 +189,16 @@ $currentMods    = group_ids_from_field((string)($forum['moderators'] ?? ''));
         </div>
     </section>
 
-    <!-- 版主 -->
-    <section class="panel">
-        <div class="panel__head">
-            <h3><?= $view('partials/icon', ['name' => 'users', 'size' => 16]) ?>版主</h3>
-        </div>
-        <div class="panel__body">
-            <?php if ($candidates === []): ?>
-                <p class="text-light">暂无其他用户可供指派。</p>
-            <?php else: ?>
-                <p class="text-light" style="font-size:13px;margin-top:0">
-                    按住 Ctrl（macOS 为 ⌘）可多选。被指派的用户在该版块内拥有加精、置顶、删帖与审核权限。
-                </p>
-                <select name="moderators[]" multiple size="8" style="max-width:420px">
-                    <?php foreach ($candidates as $userId => $username): ?>
-                        <option value="<?= (int)$userId ?>"
-                            <?= checked(in_array((int)$userId, $currentMods, true)) ?>>
-                            <?= e((string)$username) ?>（#<?= (int)$userId ?>）
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <span data-hint>列表中最多展示前 500 位用户。</span>
-            <?php endif; ?>
-        </div>
-        <div class="panel__foot hstack">
-            <button type="submit" class="button">
-                <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
-                <span><?= $isEdit ? '保存修改' : '创建版块' ?></span>
-            </button>
-            <a class="button ghost" href="<?= e(url('/admin/forums')) ?>">
-                <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
-                <span>返回列表</span>
-            </a>
-        </div>
-    </section>
+    <!-- 保存（整个表单只有一个提交按钮，覆盖上面三个面板的全部字段） -->
+    <div class="panel__foot hstack" style="margin-top:16px">
+        <button type="submit" class="button">
+            <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
+            <span><?= $isEdit ? '保存设置' : '创建版块' ?></span>
+        </button>
+        <a class="button ghost" href="<?= e(url('/admin/forums')) ?>">返回版块列表</a>
+        <span class="text-light" style="font-size:12.5px">
+            <?= $isEdit ? '保存后前台立即生效。' : '创建后可在列表中继续编辑。' ?>
+        </span>
+    </div>
+
 </form>

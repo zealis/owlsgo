@@ -101,6 +101,43 @@ final class NoticeModel extends Model
     }
 
     /**
+     * 通知中心前台可见的公告（enabled = 1）——分页版
+     *
+     * 与 published() 的差别只是「限制一页显示多少条」：条数取自站点统一的
+     * config('app.per_page')，跟首页、版块页、我的通知是同一套配置。
+     * 公告数量少于每页条数时 Paginator 不会输出分页条，界面与不分页时完全一致，
+     * 所以可以直接替换原来「一次性全部列出」的做法。
+     *
+     * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
+     */
+    public static function paginatePublished(int $page, int $perPage): array
+    {
+        self::ensureTable();
+
+        $result = static::query()
+            ->where('enabled', 1)
+            ->orderBy('sort', 'asc')
+            ->orderBy('id', 'desc')
+            ->paginate($perPage, $page);
+
+        $result['items'] = self::withFiles($result['items']);
+
+        return $result;
+    }
+
+    /** 已发布公告的总数（含未公开？不含：只有 enabled = 1 的） */
+    public static function publishedCount(): int
+    {
+        self::ensureTable();
+
+        return (int)Database::value(
+            'SELECT COUNT(*) FROM ' . Database::identifier(static::$table)
+            . ' WHERE ' . Database::identifier('enabled') . ' = 1'
+            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL'
+        );
+    }
+
+    /**
      * 给一批公告附加各自的附件明细（写入 attachments 键）
      *
      * 一条查询把所有引用到的附件取回来再按 ID 分发，避免逐条公告查一次（N+1）。
@@ -381,6 +418,24 @@ final class NoticeModel extends Model
                     . ' ORDER BY a.' . Database::identifier('id') . ' ASC',
                     array_values($ids)
                 );
+
+                /*
+                 * 引用了但已不存在的附件（记录被删除/清理）：补一条占位行，
+                 * 让管理页能看出「这条公告挂着一个死引用」，而不是静默少一行。
+                 */
+                $found = [];
+                foreach ($files as $file) {
+                    $found[(int)$file['id']] = true;
+                }
+                foreach ($ids as $id) {
+                    if (!isset($found[$id])) {
+                        $files[] = [
+                            'id'      => $id,
+                            'name'    => '附件 #' . $id . '（记录已不存在）',
+                            'missing' => true,
+                        ];
+                    }
+                }
             }
 
             $rows[] = ['notice' => $notice, 'attachments' => $files];

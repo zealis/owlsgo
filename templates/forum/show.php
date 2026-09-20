@@ -1,6 +1,6 @@
 <?php
 /**
- * 版块详情：主题列表 + 筛选 + 分页
+ * 版块详情：帖子列表 + 筛选 + 分页
  *
  * 变量：$forum、$result（items 已 decorate）、$filters、$favorited、$pagination、
  *       $canCreate、$canModerate、$subForums、$backUrl
@@ -45,8 +45,8 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
 
 <section class="panel">
     <div class="thread-toolbar">
-        <nav class="filter-tabs" aria-label="主题筛选">
-            <a href="<?= e($tabAll) ?>" <?= $essenceOnly ? '' : 'aria-current="true"' ?>>全部主题</a>
+        <nav class="filter-tabs" aria-label="帖子筛选">
+            <a href="<?= e($tabAll) ?>" <?= $essenceOnly ? '' : 'aria-current="true"' ?>>全部帖子</a>
             <a href="<?= e($tabEssence) ?>" <?= $essenceOnly ? 'aria-current="true"' : '' ?>>精华</a>
         </nav>
 
@@ -55,7 +55,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
         <?php if ($canCreate): ?>
             <a class="button small" href="<?= e(url('/new', ['fid' => $forumId])) ?>">
                 <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
-                <span>发表主题</span>
+                <span>发表帖子</span>
             </a>
         <?php endif; ?>
     </div>
@@ -63,7 +63,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'file', 'size' => 46]) ?>
-            <p><?= $keyword !== '' ? '没有找到匹配的主题。' : '该版块还没有主题，来发第一帖吧。' ?></p>
+            <p><?= $keyword !== '' ? '没有找到匹配的帖子。' : '该版块还没有帖子，来发第一帖吧。' ?></p>
         </div>
     <?php else: ?>
         <?php foreach ($items as $thread): ?>
@@ -95,7 +95,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
                 <div class="forum-row__meta">
                     <div>
                         <strong><?= format_number((int)($child['thread_count'] ?? 0)) ?></strong>
-                        <span>主题</span>
+                        <span>帖子</span>
                     </div>
                 </div>
             </div>
@@ -104,5 +104,5 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
 <?php endif; ?>
 
 <?php if (($pagination ?? '') !== ''): ?>
-    <div class="mt-4"><?= (string)$pagination ?></div>
+    <div class="pager"><?= (string)$pagination ?></div>
 <?php endif; ?>

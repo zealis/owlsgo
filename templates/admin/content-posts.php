@@ -1,11 +1,11 @@
 <?php
 /**
- * 后台：回复管理
+ * 后台：评论管理
  *
  * 变量：$result（items 已 decorate，并补了 thread_title）、$keyword、
  *       $status（-1 全部 / 0 待审核 / 1 已通过）、$canApprove、$pending、$pagination
  *
- * 注意：主题的首帖（is_first = 1）不能单独删除，只能连同主题一起删，
+ * 注意：帖子的首帖（is_first = 1）不能单独删除，只能连同帖子一起删，
  * 因此这里对首帖禁用删除按钮并给出说明。
  */
 
@@ -22,14 +22,17 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
 ?>
 
 <section class="panel">
+    <?php /* 内容管理的三个页签（帖子 / 回帖 / 回收站），与前台共用 .tabbar */ ?>
+    <?= $view('partials/admin-content-tabs', ['tabsActive' => 'posts']) ?>
+
     <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>回复管理</h3>
+        <h3><?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>评论管理</h3>
         <span class="spacer"></span>
         <?php if ($pending > 0): ?>
             <span class="badge" data-variant="warning"><?= $pending ?> 条待审核</span>
         <?php endif; ?>
         <span class="text-light" style="font-size:13px">
-            共 <?= number_format((int)($result['total'] ?? 0)) ?> 条回复
+            共 <?= number_format((int)($result['total'] ?? 0)) ?> 条评论
         </span>
     </div>
 
@@ -45,16 +48,29 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
             </select>
         </label>
 
+        <?php /* 搜索范围：回帖内容 / 作者 / 回帖Id / 帖子Id（见 PostModel::applyAdminSearch） */ ?>
+        <label>
+            搜索范围
+            <select name="scope" style="width:120px">
+                <?php foreach ($scopes as $value => $label): ?>
+                    <option value="<?= e((string)$value) ?>" <?= selected($scope, $value) ?>>
+                        <?= e($label) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+
         <?php /* 与前台同一套胶囊搜索框（.search-box），放大镜按钮即提交 */ ?>
         <div class="search-box search-box--admin">
             <input type="search" name="q" value="<?= e($keyword) ?>" maxlength="60"
-                   placeholder="正文中包含…" aria-label="正文关键词">
+                   placeholder="<?= e(in_array($scope, ['id', 'thread'], true) ? '输入数字 ID…' : '输入关键词…') ?>"
+                   aria-label="搜索关键词">
             <button type="submit" aria-label="筛选">
                 <?= $view('partials/icon', ['name' => 'search', 'size' => 16]) ?>
             </button>
         </div>
 
-        <?php if ($keyword !== '' || $status !== -1): ?>
+        <?php if ($keyword !== '' || $status !== -1 || $scope !== 'content'): ?>
             <a class="button small ghost" href="<?= e(url('/admin/posts')) ?>">重置</a>
         <?php endif; ?>
 
@@ -67,19 +83,36 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         <?php endif; ?>
     </form>
 
+    <?php
+    /* 批量操作：只有「删除」一种（评论不涉及版块归属），软删后可到回收站恢复 */
+    echo $view('partials/admin-bulk-bar', [
+        'bulkEndpoint' => url('/admin/posts/bulk'),
+        'bulkNoun'     => '条评论',
+        'bulkOptions'  => [
+            [
+                'value'   => 'delete',
+                'label'   => '批量删除',
+                'confirm' => '确认删除选中的 {n} 条评论吗？（可在回收站恢复；帖子首帖会被自动跳过）',
+                'danger'  => true,
+            ],
+        ],
+    ]);
+    ?>
+
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'message', 'size' => 46]) ?>
-            <p><?= $keyword !== '' || $status !== -1 ? '没有符合条件的回复。' : '还没有任何回复。' ?></p>
+            <p><?= $keyword !== '' || $status !== -1 ? '没有符合条件的评论。' : '还没有任何评论。' ?></p>
         </div>
     <?php else: ?>
         <div class="table-scroll">
             <table>
                 <thead>
                 <tr>
+                    <th class="bulk-check"></th>
                     <th>内容摘要</th>
                     <th style="width:130px">作者</th>
-                    <th style="width:200px">所属主题</th>
+                    <th style="width:200px">所属帖子</th>
                     <th style="width:70px">楼层</th>
                     <th style="width:90px">状态</th>
                     <th style="width:120px">发表时间</th>
@@ -97,6 +130,12 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                     $hasFiles  = is_array($post['attachments'] ?? null) && $post['attachments'] !== [];
                     ?>
                     <tr>
+                        <td class="bulk-check">
+                            <?php /* 首帖不能单独删，批量里也会被跳过 —— 复选框禁用，避免勾了却删不掉 */ ?>
+                            <input type="checkbox" data-bulk-item value="<?= (int)($post['id'] ?? 0) ?>"
+                                   <?= $isFirst ? 'disabled title="首帖请到「帖子」页签删除整个帖子"' : '' ?>
+                                   aria-label="选择评论">
+                        </td>
                         <td>
                             <?php if ((int)($post['parent_id'] ?? 0) > 0): ?>
                                 <span class="badge outline" style="margin-right:4px">楼中楼</span>
@@ -112,17 +151,17 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                             <a href="<?= e(url('/u/' . (int)($post['user_id'] ?? 0))) ?>"
                                target="_blank" rel="noopener"
                                style="color:<?= e((string)($post['author_group_color'] ?? '#999999')) ?>">
-                                <?= e((string)($post['author']['username'] ?? '已注销用户')) ?>
+                                <?= e((string)($post['author']['username'] ?? '用户已删除')) ?>
                             </a>
                         </td>
                         <td>
                             <?php if ($threadId > 0): ?>
                                 <a href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>"
                                    target="_blank" rel="noopener">
-                                    <?= e((string)($post['thread_title'] ?? '主题已删除')) ?>
+                                    <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                                 </a>
                             <?php else: ?>
-                                <span class="text-light">主题已删除</span>
+                                <span class="text-light">帖子已删除</span>
                             <?php endif; ?>
                         </td>
                         <td class="text-light mono">
@@ -141,7 +180,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <?php if ($canApprove && $isPending): ?>
                                     <form class="inline-form" method="post"
                                           action="<?= e(url('/admin/posts/' . $postId . '/approve')) ?>"
-                                          data-confirm="确认通过这条回复的审核吗？">
+                                          data-confirm="确认通过这条评论的审核吗？">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="button small">
                                             <?= $view('partials/icon', ['name' => 'check', 'size' => 14]) ?>
@@ -161,7 +200,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
 
                                 <?php if ($isFirst): ?>
                                     <button type="button" class="button small ghost" disabled
-                                            title="首帖需连同主题一起删除">
+                                            title="首帖需连同帖子一起删除">
                                         <?= $view('partials/icon', ['name' => 'lock', 'size' => 14]) ?>
                                         <span>删除</span>
                                     </button>
@@ -174,7 +213,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <?php else: ?>
                                     <form class="inline-form" method="post"
                                           action="<?= e(url('/admin/posts/' . $postId . '/delete')) ?>"
-                                          data-confirm="确定要删除这条回复吗？">
+                                          data-confirm="确定要删除这条评论吗？">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="button small ghost" data-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
@@ -192,7 +231,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
     <?php endif; ?>
 
     <div class="panel__foot text-light" style="font-size:12.5px">
-        所有删除均为软删除，回复数、主题数等统计会同步回滚。
+        所有删除均为软删除，评论数、帖子数等统计会同步回滚。
     </div>
 
     <?php if (($pagination ?? '') !== ''): ?>

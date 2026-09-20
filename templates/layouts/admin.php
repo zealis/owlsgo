@@ -36,6 +36,8 @@ $isCurrent = static function (string $url) use ($path): bool {
     <meta name="theme-color" content="#00A0E9">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
+    <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
+    <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('assets/css/theme.css')) ?>">
 
@@ -67,36 +69,24 @@ $isCurrent = static function (string $url) use ($path): bool {
     </a>
 
     <?php if ($user !== null): ?>
-        <ot-dropdown>
-            <button type="button" class="user-chip" popovertarget="admin-user-menu" aria-haspopup="menu">
-                <?= avatar_img($user, 24) ?>
-                <span><?= e((string)($user['username'] ?? '')) ?></span>
-                <?= $view('partials/icon', ['name' => 'chevron-down', 'size' => 13]) ?>
-            </button>
-
-            <menu id="admin-user-menu" popover>
-                <li>
-                    <a role="menuitem" href="<?= e(url('/u/' . (int)$user['id'])) ?>">
-                        <?= $view('partials/icon', ['name' => 'user']) ?>
-                        <span>我的主页</span>
-                    </a>
-                </li>
-                <li>
-                    <a role="menuitem" href="<?= e(url('/settings')) ?>">
-                        <?= $view('partials/icon', ['name' => 'settings']) ?>
-                        <span>账号设置</span>
-                    </a>
-                </li>
-                <hr>
-                <li>
-                    <a role="menuitem" href="<?= e(url('/logout')) ?>">
-                        <?= $view('partials/icon', ['name' => 'logout']) ?>
-                        <span>退出登录</span>
-                    </a>
-                </li>
-            </menu>
-        </ot-dropdown>
+        <?php
+        /*
+         * 用户区：头像 + 用户名整块就是「我的主页」入口，与前台顶栏保持同一种做法
+         * （已取消下拉菜单，也不加 title 提示——悬浮气泡会挡住旁边的元素）。
+         * 「账号设置」「安全退出」都在账号设置页里；后台入口在左侧导航，这里不再重复。
+         *
+         * 样式复用前台顶栏的全局规则（a.user-chip）——注意选择器带元素名，
+         * 否则会被全局 `a:not(.button)` 的链接色覆盖。
+         */
+        ?>
+        <a class="user-chip" href="<?= e(url('/u/' . (int)$user['id'])) ?>">
+            <?= avatar_img($user, 26) ?>
+            <span><?= e((string)($user['username'] ?? '')) ?></span>
+        </a>
     <?php endif; ?>
+
+    <?php /* 个性化齿轮（与前台顶栏共用同一 partial）：深浅色切换 + 个性装扮入口 */ ?>
+    <?= $view('partials/user-gear') ?>
 </nav>
 
 <aside data-sidebar>
@@ -111,7 +101,13 @@ $isCurrent = static function (string $url) use ($path): bool {
                     <path d="M12 15.4l1.7 2.2h-3.4z" fill="currentColor" stroke="none"/>
                 </svg>
             </span>
-            <span>管理后台</span>
+            <?php /*
+             * 品牌名显示**站点名称**（与前台顶栏同一个 $siteName 共享变量），
+             * 原来这里写死「管理后台」——后台是站点的一部分，用同一套品牌名才不会
+             * 出现「前台叫 X、后台叫管理后台」的割裂感。
+             * $siteName 来自 View::defaultData()，布局与前台 header.php 都能取到。
+             */ ?>
+            <span><?= e((string)($siteName ?? 'owlsgo')) ?></span>
         </a>
     </header>
 

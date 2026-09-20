@@ -6,17 +6,18 @@
 
 -- 用户组表 ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "usergroups" (
-    "id"          INTEGER PRIMARY KEY AUTOINCREMENT,
-    "name"        TEXT    NOT NULL,
-    "slug"        TEXT    NOT NULL,
-    "description" TEXT    NOT NULL DEFAULT '',
-    "color"       TEXT    NOT NULL DEFAULT '',
-    "icon"        TEXT    NOT NULL DEFAULT '',
-    "permissions" TEXT    NOT NULL DEFAULT '{}',
-    "is_system"   INTEGER NOT NULL DEFAULT 0,
-    "sort_order"  INTEGER NOT NULL DEFAULT 0,
-    "created_at"  INTEGER NOT NULL DEFAULT 0,
-    "updated_at"  INTEGER NOT NULL DEFAULT 0
+    "id"              INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name"            TEXT    NOT NULL,
+    "slug"            TEXT    NOT NULL,
+    "description"     TEXT    NOT NULL DEFAULT '',
+    "color"           TEXT    NOT NULL DEFAULT '',
+    "icon"            TEXT    NOT NULL DEFAULT '',
+    "permissions"     TEXT    NOT NULL DEFAULT '{}',
+    "attach_quota_mb" INTEGER NOT NULL DEFAULT 0,
+    "is_system"       INTEGER NOT NULL DEFAULT 0,
+    "sort_order"      INTEGER NOT NULL DEFAULT 0,
+    "created_at"      INTEGER NOT NULL DEFAULT 0,
+    "updated_at"      INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_usergroups_slug" ON "usergroups" ("slug");
 
@@ -79,7 +80,7 @@ CREATE TABLE IF NOT EXISTS "forums" (
 );
 CREATE INDEX IF NOT EXISTS "idx_forums_parent" ON "forums" ("parent_id", "sort_order");
 
--- 主题表 ----------------------------------------------------------------
+-- 帖子表 ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "threads" (
     "id"                 INTEGER PRIMARY KEY AUTOINCREMENT,
     "forum_id"           INTEGER NOT NULL,
@@ -104,7 +105,7 @@ CREATE INDEX IF NOT EXISTS "idx_threads_forum" ON "threads" ("forum_id", "is_pin
 CREATE INDEX IF NOT EXISTS "idx_threads_user" ON "threads" ("user_id", "created_at");
 CREATE INDEX IF NOT EXISTS "idx_threads_status" ON "threads" ("status", "deleted_at");
 
--- 回帖表 ----------------------------------------------------------------
+-- 评论表 ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS "posts" (
     "id"          INTEGER PRIMARY KEY AUTOINCREMENT,
     "thread_id"   INTEGER NOT NULL,

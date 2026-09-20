@@ -1,6 +1,6 @@
 <?php
 /**
- * 后台：主题管理
+ * 后台：帖子管理
  *
  * 变量：$result（items 已 decorate，不含摘要）、$keyword、$status（-1 全部 / 0 待审核 / 1 已通过）、
  *       $forums（版块下拉，用作 forum_name 缺失时的兜底）、$canApprove、$pending、$pagination
@@ -20,14 +20,17 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
 ?>
 
 <section class="panel">
+    <?php /* 内容管理的三个页签（帖子 / 回帖 / 回收站），与前台共用 .tabbar */ ?>
+    <?= $view('partials/admin-content-tabs', ['tabsActive' => 'threads']) ?>
+
     <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>主题管理</h3>
+        <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>帖子管理</h3>
         <span class="spacer"></span>
         <?php if ($pending > 0): ?>
             <span class="badge" data-variant="warning"><?= $pending ?> 条待审核</span>
         <?php endif; ?>
         <span class="text-light" style="font-size:13px">
-            共 <?= number_format((int)($result['total'] ?? 0)) ?> 个主题
+            共 <?= number_format((int)($result['total'] ?? 0)) ?> 个帖子
         </span>
     </div>
 
@@ -43,16 +46,28 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
             </select>
         </label>
 
+        <?php /* 搜索范围：决定关键词去匹配哪个字段（见 ThreadModel::applyAdminSearch） */ ?>
+        <label>
+            搜索范围
+            <select name="scope" style="width:120px">
+                <?php foreach ($scopes as $value => $label): ?>
+                    <option value="<?= e((string)$value) ?>" <?= selected($scope, $value) ?>>
+                        <?= e($label) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+
         <?php /* 与前台同一套胶囊搜索框（.search-box），放大镜按钮即提交 */ ?>
         <div class="search-box search-box--admin">
             <input type="search" name="q" value="<?= e($keyword) ?>" maxlength="60"
-                   placeholder="标题中包含…" aria-label="标题关键词">
+                   placeholder="<?= e($scope === 'id' ? '输入帖子 ID…' : '输入关键词…') ?>" aria-label="搜索关键词">
             <button type="submit" aria-label="筛选">
                 <?= $view('partials/icon', ['name' => 'search', 'size' => 16]) ?>
             </button>
         </div>
 
-        <?php if ($keyword !== '' || $status !== -1): ?>
+        <?php if ($keyword !== '' || $status !== -1 || $scope !== 'all'): ?>
             <a class="button small ghost" href="<?= e(url('/admin/threads')) ?>">重置</a>
         <?php endif; ?>
 
@@ -65,20 +80,55 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         <?php endif; ?>
     </form>
 
+    <?php
+    /*
+     * 批量操作条。动作与服务端 bulkThreads() 的 action 取值一一对应：
+     *   move   → 需要额外参数 forum_id，界面上由「转移到」版块下拉提供
+     *   delete → 软删除，可到回收站恢复
+     */
+    echo $view('partials/admin-bulk-bar', [
+        'bulkEndpoint' => url('/admin/threads/bulk'),
+        'bulkNoun'     => '个帖子',
+        'bulkExtras'   => '<label class="bulk-target" data-bulk-extra="forum_id" hidden>转移到'
+            . '<select name="forum_id" style="width:150px"><option value="">选择版块…</option>'
+            . implode('', array_map(
+                static fn (int $fid, string $fname): string => '<option value="' . $fid . '">' . e($fname) . '</option>',
+                array_keys($forums),
+                array_values($forums)
+            ))
+            . '</select></label>',
+        'bulkOptions'  => [
+            [
+                'value'   => 'move',
+                'label'   => '批量转移版块',
+                'confirm' => '确认把选中的 {n} 个帖子转移到指定版块吗？帖子的评论会一起转移。',
+                'extra'   => 'forum_id',
+            ],
+            [
+                'value'   => 'delete',
+                'label'   => '批量删除',
+                'confirm' => '确认删除选中的 {n} 个帖子吗？其下所有评论会一并删除（可在回收站恢复）。',
+                'danger'  => true,
+            ],
+        ],
+    ]);
+    ?>
+
     <?php if ($items === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'file', 'size' => 46]) ?>
-            <p><?= $keyword !== '' || $status !== -1 ? '没有符合条件的主题。' : '还没有任何主题。' ?></p>
+            <p><?= $keyword !== '' || $status !== -1 ? '没有符合条件的帖子。' : '还没有任何帖子。' ?></p>
         </div>
     <?php else: ?>
         <div class="table-scroll">
             <table>
                 <thead>
                 <tr>
+                    <th class="bulk-check"></th>
                     <th>标题</th>
                     <th style="width:130px">作者</th>
                     <th style="width:120px">版块</th>
-                    <th style="width:65px">回复</th>
+                    <th style="width:65px">评论</th>
                     <th style="width:65px">浏览</th>
                     <th style="width:90px">状态</th>
                     <th style="width:120px">发表时间</th>
@@ -96,6 +146,10 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                         : (string)($forums[$forumId] ?? '未知版块');
                     ?>
                     <tr>
+                        <td class="bulk-check">
+                            <input type="checkbox" data-bulk-item value="<?= $threadId ?>"
+                                   aria-label="选择帖子：<?= e((string)($thread['title'] ?? '')) ?>">
+                        </td>
                         <td class="admin-thread-title">
                             <a href="<?= e(url('/t/' . $threadId)) ?>" target="_blank" rel="noopener"
                                title="<?= e((string)($thread['title'] ?? '')) ?>">
@@ -118,7 +172,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                             <a href="<?= e(url('/u/' . (int)($thread['user_id'] ?? 0))) ?>"
                                target="_blank" rel="noopener"
                                style="color:<?= e((string)($thread['author_group_color'] ?? '#999999')) ?>">
-                                <?= e((string)($thread['author']['username'] ?? '已注销用户')) ?>
+                                <?= e((string)($thread['author']['username'] ?? '用户已删除')) ?>
                             </a>
                         </td>
                         <td class="text-light">
@@ -159,7 +213,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <?php if ((bool)($thread['can_delete'] ?? true)): ?>
                                     <form class="inline-form" method="post"
                                           action="<?= e(url('/admin/threads/' . $threadId . '/delete')) ?>"
-                                          data-confirm="确定要删除主题《<?= e((string)($thread['title'] ?? '')) ?>》吗？其下所有回复会一并删除。">
+                                          data-confirm="确定要删除帖子《<?= e((string)($thread['title'] ?? '')) ?>》吗？其下所有评论会一并删除。">
                                         <?= csrf_field() ?>
                                         <button type="submit" class="button small ghost" data-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>

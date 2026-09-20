@@ -59,6 +59,8 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
                            value="<?= e((string)old('name', $val('name'))) ?>">
                     <?php if (old_error('name') !== ''): ?>
                         <span class="field-error"><?= e(old_error('name')) ?></span>
+                    <?php else: ?>
+                        <span data-hint>显示在后台列表与前台用户名旁。</span>
                     <?php endif; ?>
                 </div>
 
@@ -87,6 +89,24 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
                 <input type="text" id="group-description" name="description" maxlength="120"
                        placeholder="展示在后台列表中，帮助识别该组的用途"
                        value="<?= e($val('description')) ?>">
+                <span data-hint>选填，最多 120 字。</span>
+            </div>
+
+            <div class="form-grid">
+                <div data-field>
+                    <label for="group-quota">附件空间上限</label>
+                    <input type="number" id="group-quota" name="attach_quota_mb" min="0"
+                           max="<?= (int)\Modules\User\UsergroupModel::QUOTA_MAX ?>" step="1"
+                           value="<?= (int)($quotaMb ?? 0) ?>">
+                    <span data-hint>单位 MB，<strong>0 = 不限制</strong>；超限后拒绝上传，删除附件即释放。</span>
+                </div>
+
+                <div data-field>
+                    <label for="group-sort">排序值</label>
+                    <input type="number" id="group-sort" name="sort_order" min="-9999" max="9999"
+                           value="<?= e($val('sort_order', '0')) ?>">
+                    <span data-hint>数字越小越靠前，内置组默认 0~5。</span>
+                </div>
             </div>
 
             <div class="form-grid">
@@ -95,13 +115,6 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
                     <input type="color" id="group-color" name="color"
                            value="<?= e($val('color', '#00A0E9')) ?>">
                     <span data-hint>用于前台用户名着色。</span>
-                </div>
-
-                <div data-field>
-                    <label for="group-sort">排序值</label>
-                    <input type="number" id="group-sort" name="sort_order" min="-9999" max="9999"
-                           value="<?= e($val('sort_order', '0')) ?>">
-                    <span data-hint>数字越小越靠前，内置组默认 0~5。</span>
                 </div>
             </div>
         </div>

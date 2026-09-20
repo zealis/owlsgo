@@ -1,6 +1,6 @@
 <?php
 /**
- * 回帖控制器
+ * 评论控制器
  */
 
 declare(strict_types=1);
@@ -13,6 +13,8 @@ use Core\Hook;
 use Core\Permission;
 use Core\Request;
 use Core\Router;
+use Core\Settings;
+use Core\Upload;
 use Modules\Forum\ForumModel;
 use Modules\Thread\ThreadModel;
 use Modules\User\AttachmentModel;
@@ -22,7 +24,7 @@ use Modules\User\NotificationModel;
 final class PostController extends Controller
 {
     /**
-     * 发表回复
+     * 发表评论
      *
      * @param array<string, string> $params
      */
@@ -37,15 +39,15 @@ final class PostController extends Controller
         $forum  = ForumModel::findOrFail((int)$thread['forum_id']);
 
         if ((int)$thread['is_locked'] === 1 && !Permission::allows($user, 'thread.essence', $forum)) {
-            $this->failOrBack('该主题已被锁定，无法回复。', Router::url('/t/' . $threadId));
+            $this->failOrBack('该帖子已被锁定，无法评论。', Router::url('/t/' . $threadId));
         }
 
         if (!Permission::canReply($user, $forum)) {
-            $this->failOrBack('你没有在该版块回复的权限。', Router::url('/t/' . $threadId));
+            $this->failOrBack('你没有在该版块评论的权限。', Router::url('/t/' . $threadId));
         }
 
         if ((int)$thread['status'] !== 1 && !Permission::allows($user, 'thread.essence', $forum)) {
-            $this->failOrBack('该主题正在审核中，暂不可回复。', Router::url('/t/' . $threadId));
+            $this->failOrBack('该帖子正在审核中，暂不可评论。', Router::url('/t/' . $threadId));
         }
 
         $content = Request::string('content', '', (int)config('app.post_max_length', 20000));
@@ -53,14 +55,14 @@ final class PostController extends Controller
         $validator = $this->validate(
             ['content' => $content],
             ['content' => 'required|min:' . (int)config('app.post_min_length', 2) . '|max:' . (int)config('app.post_max_length', 20000)],
-            ['content' => '回复内容']
+            ['content' => '评论内容']
         );
 
         if ($validator->fails()) {
             $this->backWithErrors($validator->errors(), Router::url('/t/' . $threadId));
         }
 
-        // 楼中楼：只允许回复同一主题下的楼层
+        // 楼中楼：只允许评论同一帖子下的楼层
         $parentId = Request::int('parent_id', 0);
         if ($parentId > 0) {
             $parent = PostModel::find($parentId);
@@ -91,7 +93,7 @@ final class PostController extends Controller
             $needAudit ? 0 : 1
         );
 
-        // 通知：回复楼主 + @提及
+        // 通知：评论楼主 + @提及
         if (!$needAudit) {
             $excerpt = \Core\Text::excerpt($content, 100);
             NotificationModel::notifyThreadAuthor($thread, (int)$user['id'], $excerpt, $result['post_id']);
@@ -105,7 +107,7 @@ final class PostController extends Controller
             ]);
         }
 
-        $message = $needAudit ? '回复已提交，等待审核通过后展示。' : '回复成功，当前为第 ' . $result['floor'] . ' 楼。';
+        $message = $needAudit ? '评论已提交，等待审核通过后展示。' : '评论成功，当前为第 ' . $result['floor'] . ' 楼。';
 
         if (Request::wantsJson()) {
             $this->json([
@@ -120,7 +122,7 @@ final class PostController extends Controller
     }
 
     /**
-     * 编辑回帖表单
+     * 编辑评论表单
      *
      * @param array<string, string> $params
      */
@@ -130,27 +132,27 @@ final class PostController extends Controller
         $post = PostModel::findOrFail((int)($params['id'] ?? 0));
 
         if ((int)$post['is_first'] === 1) {
-            // 首帖的编辑入口属于主题编辑
+            // 首帖的编辑入口属于帖子编辑
             \Core\Response::redirect(Router::url('/t/' . $post['thread_id'] . '/edit'));
         }
 
         $context = PostModel::withContext((int)$post['id']);
 
         if ($context === null) {
-            \Core\App::abort(404, '回帖不存在或已被删除。');
+            \Core\App::abort(404, '评论不存在或已被删除。');
         }
 
         if (!$this->canEdit($user, $context['post'], $context['forum'])) {
-            \Core\App::abort(403, '你没有编辑该回复的权限。');
+            \Core\App::abort(403, '你没有编辑该评论的权限。');
         }
 
         return $this->view('post/edit', [
-            'pageTitle'         => '编辑回复 - ' . (string)setting('site_name'),
+            'pageTitle'         => '编辑评论 - ' . (string)setting('site_name'),
             'post'              => $context['post'],
             'thread'            => $context['thread'],
             'forum'             => $context['forum'],
-            'editorUpload'      => (bool)config('app.upload.enabled', true),
-            'editorMaxMb'       => (int)round((int)config('app.upload.max_size', 20971520) / 1048576),
+            'editorUpload'      => Settings::bool('upload_enabled', true),
+            'editorMaxMb'       => Upload::maxSizeMb(),
             'editorAttachments' => AttachmentModel::forEditor(
                 AttachmentModel::ofPost((int)$context['post']['id'])
             ),
@@ -158,7 +160,7 @@ final class PostController extends Controller
     }
 
     /**
-     * 保存回帖编辑
+     * 保存评论编辑
      *
      * @param array<string, string> $params
      */
@@ -169,11 +171,11 @@ final class PostController extends Controller
         $context = PostModel::withContext((int)$post['id']);
 
         if ($context === null) {
-            \Core\App::abort(404, '回帖不存在或已被删除。');
+            \Core\App::abort(404, '评论不存在或已被删除。');
         }
 
         if (!$this->canEdit($user, $context['post'], $context['forum'])) {
-            \Core\App::abort(403, '你没有编辑该回复的权限。');
+            \Core\App::abort(403, '你没有编辑该评论的权限。');
         }
 
         $content = Request::string('content', '', (int)config('app.post_max_length', 20000));
@@ -181,7 +183,7 @@ final class PostController extends Controller
         $validator = $this->validate(
             ['content' => $content],
             ['content' => 'required|min:' . (int)config('app.post_min_length', 2) . '|max:' . (int)config('app.post_max_length', 20000)],
-            ['content' => '回复内容']
+            ['content' => '评论内容']
         );
 
         if ($validator->fails()) {
@@ -194,7 +196,7 @@ final class PostController extends Controller
 
         /*
          * 附件绑定：编辑页提交的完整附件列表（回显的已有附件 + 新上传的）。
-         * 没有这一步的话，编辑时新上传的附件不会被绑定到本回复。
+         * 没有这一步的话，编辑时新上传的附件不会被绑定到本评论。
          */
         AttachmentModel::bindToPost(
             Request::intArray('attachments'),
@@ -203,7 +205,7 @@ final class PostController extends Controller
             (int)$post['id']
         );
 
-        $message = '回复已更新。';
+        $message = '评论已更新。';
 
         if (Request::wantsJson()) {
             $this->json([
@@ -220,7 +222,7 @@ final class PostController extends Controller
     }
 
     /**
-     * 删除回帖
+     * 删除评论
      *
      * @param array<string, string> $params
      */
@@ -231,29 +233,29 @@ final class PostController extends Controller
         $context = PostModel::withContext((int)$post['id']);
 
         if ($context === null) {
-            \Core\App::abort(404, '回帖不存在或已被删除。');
+            \Core\App::abort(404, '评论不存在或已被删除。');
         }
 
         if ((int)$post['is_first'] === 1) {
-            $this->failOrBack('首帖不能单独删除，请删除整个主题。', Router::url('/t/' . $post['thread_id']));
+            $this->failOrBack('首帖不能单独删除，请删除整个帖子。', Router::url('/t/' . $post['thread_id']));
         }
 
         $isAuthor = (int)$post['user_id'] === (int)$user['id'];
 
         if (!$isAuthor && !Permission::allows($user, 'post.delete', $context['forum'])) {
-            \Core\App::abort(403, '你没有删除该回复的权限。');
+            \Core\App::abort(403, '你没有删除该评论的权限。');
         }
 
         // 保护线：管理员发布的内容，版主也动不了
         if (!Permission::canManageContentOf($user, (int)$post['user_id'])) {
-            \Core\App::abort(403, '这是管理员发布的回复，只有超级管理员可以删除。');
+            \Core\App::abort(403, '这是管理员发布的评论，只有超级管理员可以删除。');
         }
 
         PostModel::destroy((int)$post['id']);
 
         Hook::action('after_post_delete', ['post_id' => (int)$post['id'], 'user' => $user]);
 
-        $message = '回复已删除。';
+        $message = '评论已删除。';
 
         if (Request::wantsJson()) {
             $this->json(['ok' => true, 'message' => $message, 'redirect' => Router::url('/t/' . $post['thread_id'])]);
@@ -263,7 +265,7 @@ final class PostController extends Controller
     }
 
     /**
-     * 回帖点赞
+     * 评论点赞
      *
      * @param array<string, string> $params
      */
@@ -286,7 +288,7 @@ final class PostController extends Controller
     /* ------------------------------------------------------------------ */
 
     /**
-     * 是否可编辑该回帖
+     * 是否可编辑该评论
      *
      * @param array<string, mixed> $post
      * @param array<string, mixed> $forum
@@ -294,8 +296,8 @@ final class PostController extends Controller
     private function canEdit(array $user, array $post, array $forum): bool
     {
         /*
-         * 保护线：超级管理员发布的回复，只有超级管理员能改。
-         * 作者编辑自己的回复不受影响（canManageContentOf 对本人直接放行）。
+         * 保护线：超级管理员发布的评论，只有超级管理员能改。
+         * 作者编辑自己的评论不受影响（canManageContentOf 对本人直接放行）。
          */
         if (!Permission::canManageContentOf($user, (int)$post['user_id'])) {
             return false;

@@ -76,6 +76,22 @@ $unused = (int)($stats['unused_total'] ?? 0);
                         </thead>
                         <tbody>
                         <?php foreach ($files as $file): ?>
+                            <?php if (!empty($file['missing'])): ?>
+                                <?php /* 公告引用的附件记录已不存在（被清理/删除）—— 显示死引用占位 */ ?>
+                                <tr>
+                                    <td>
+                                        <span class="text-light">
+                                            <?= e((string)($file['name'] ?? '')) ?>
+                                        </span>
+                                        <span class="badge" data-variant="warning" style="margin-left:6px">引用已失效</span>
+                                    </td>
+                                    <td class="text-light">—</td>
+                                    <td class="text-light">—</td>
+                                    <td class="text-light">—</td>
+                                    <td class="text-light">—</td>
+                                </tr>
+                                <?php continue; ?>
+                            <?php endif; ?>
                             <tr>
                                 <td>
                                     <a href="<?= e(url('/attachment/' . (int)$file['id'])) ?>">
