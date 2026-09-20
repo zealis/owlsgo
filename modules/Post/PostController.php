@@ -109,16 +109,26 @@ final class PostController extends Controller
 
         $message = $needAudit ? '评论已提交，等待审核通过后展示。' : '评论成功，当前为第 ' . $result['floor'] . ' 楼。';
 
+        /*
+         * 回跳带上楼层锚点 #p{评论ID}。
+         *   ?p=  让控制器算出「这条评论在第几页」并高亮它（跨页也能一次到位）；
+         *   #p.. 让浏览器加载完直接滚到那一层。
+         * 少了锚点，提交后只会停在页面顶部 —— 评论在下方，用户看到的就是「没有跳转」。
+         * 待审核的评论不展示，因此不给锚点（否则锚点不存在，浏览器同样停在顶部）。
+         */
+        $redirect = Router::url('/t/' . $threadId, ['p' => $result['post_id']])
+            . ($needAudit ? '' : '#p' . (int)$result['post_id']);
+
         if (Request::wantsJson()) {
             $this->json([
                 'ok'       => true,
                 'message'  => $message,
                 'post_id'  => $result['post_id'],
-                'redirect' => Router::url('/t/' . $threadId, ['p' => $result['post_id']]),
+                'redirect' => $redirect,
             ]);
         }
 
-        $this->redirectWith(Router::url('/t/' . $threadId, ['p' => $result['post_id']]), $message);
+        $this->redirectWith($redirect, $message);
     }
 
     /**
@@ -193,6 +203,9 @@ final class PostController extends Controller
         $content = (string)Hook::filter('content_render', $content, ['user' => $user, 'forum' => $context['forum']]);
 
         PostModel::updateContent((int)$post['id'], $content);
+
+        /* 记录最后编辑人（后加字段，见 PostModel::ensureUpdatedByColumn()） */
+        PostModel::setUpdatedBy((int)$post['id'], (int)$user['id']);
 
         /*
          * 附件绑定：编辑页提交的完整附件列表（回显的已有附件 + 新上传的）。

@@ -190,62 +190,16 @@ $forumIcon = static function (array $forum): string {
         <?php endif; ?>
     </div>
 
-    <aside>
-        <?php if (!empty($canPost)): ?>
-            <a class="button w-100 mb-4" href="<?= e(url('/new')) ?>">
-                <?= $view('partials/icon', ['name' => 'plus', 'size' => 17]) ?>
-                <span>发表新帖子</span>
-            </a>
-        <?php endif; ?>
-
-        <?php
-        /*
-         * 「最新帖子」小组件：按最后评论时间倒序，取新评论列表的前 8 条（复用同一份查询）。
-         * 注意它与左栏「新评论」是同一排序口径，只是少了页签切换 —— 用户要求保留在右栏。
-         */
-        ?>
-        <section class="panel widget">
-            <div class="panel__head">
-                <h3><?= $view('partials/icon', ['name' => 'activity', 'size' => 16]) ?>最新帖子</h3>
-            </div>
-            <?php if ($newComments === []): ?>
-                <div class="empty" style="padding:26px 16px"><p>暂无帖子</p></div>
-            <?php else: ?>
-                <ul class="widget__list">
-                    <?php foreach (array_slice($newComments, 0, 8) as $thread): ?>
-                        <li>
-                            <a href="<?= e(url('/t/' . (int)($thread['id'] ?? 0))) ?>"
-                               title="<?= e((string)($thread['title'] ?? '')) ?>">
-                                <?= e((string)($thread['title'] ?? '')) ?>
-                            </a>
-                            <time datetime="<?= e(date('c', (int)($thread['last_reply_at'] ?? 0))) ?>">
-                                <?= e(human_time((int)($thread['last_reply_at'] ?? 0))) ?>
-                            </time>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </section>
-
-        <section class="panel widget">
-            <div class="panel__head">
-                <h3><?= $view('partials/icon', ['name' => 'bulb', 'size' => 16]) ?>热门帖子</h3>
-            </div>
-            <?php if ($hot === []): ?>
-                <div class="empty" style="padding:26px 16px"><p>暂无帖子</p></div>
-            <?php else: ?>
-                <ul class="widget__list">
-                    <?php foreach ($hot as $thread): ?>
-                        <li>
-                            <a href="<?= e(url('/t/' . (int)($thread['id'] ?? 0))) ?>"
-                               title="<?= e((string)($thread['title'] ?? '')) ?>">
-                                <?= e((string)($thread['title'] ?? '')) ?>
-                            </a>
-                            <time><?= format_number((int)($thread['reply_count'] ?? 0)) ?> 评论</time>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </section>
-    </aside>
+    <?php
+    /*
+     * 右栏（发表新帖子 + 最新帖子 + 热门帖子）已抽成共用 partial `partials/sidebar`：
+     * 前台其它页面（版块页 / 帖子详情 / 搜索 …）用同一份，保证全站右栏一致。
+     * 首页自己已经查好了数据，直接传进去，partial 不会再去查库。
+     */
+    ?>
+    <?= $view('partials/sidebar', [
+        'latest'  => $newComments,
+        'hot'     => $hot,
+        'canPost' => !empty($canPost),
+    ]) ?>
 </div>

@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS `posts` (
     `user_agent`   VARCHAR(255) NOT NULL DEFAULT '',
     `created_at`   INT UNSIGNED NOT NULL DEFAULT 0,
     `updated_at`   INT UNSIGNED NOT NULL DEFAULT 0,
+    `updated_by`   INT UNSIGNED NOT NULL DEFAULT 0,
     `deleted_at`   INT UNSIGNED NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     KEY `idx_posts_thread` (`thread_id`, `floor`),

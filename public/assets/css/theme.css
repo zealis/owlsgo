@@ -729,6 +729,16 @@ a.user-chip:hover {
   color: #c3cad6;
 }
 
+/*
+ * 帖子详情页的面包屑（2026-09-21 从卡片外的页面上方搬进卡片左上角，即标题左上方）。
+ * 在卡片内要收紧：底部留白从 var(--space-4) 降到 6px，字号缩一档与标题层级拉开。
+ * （与 .crumbs 同特异性 (0,1,0)，靠源码顺序生效 —— 必须写在这条之后。）
+ */
+.crumbs--topic {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+
 /* ==========================================================================
    5. 版块列表（首页）
    ========================================================================== */
@@ -1018,6 +1028,10 @@ a.user-chip:hover {
   align-items: center;
 }
 
+.thread-item__body {
+  min-width: 0;
+}
+
 .thread-item:last-child {
   border-bottom: 0;
 }
@@ -1071,11 +1085,16 @@ a.user-chip:hover {
   -webkit-box-orient: vertical;
 }
 
+/*
+ * 副信息行：作者 / 时间 / 评论数 / 已收藏 / 最后评论者+时间。
+ * 各项之间**只靠 gap 分隔**（2026-09-20 起不再输出「·」），所以 gap 取小值就够。
+ * 末尾的「最后评论者 时间」是同一项，内部再用一个更小的 gap。
+ */
 .thread-item__sub {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
   font-size: 12.5px;
   color: var(--qq-ink-3);
   margin-top: 5px;
@@ -1089,15 +1108,35 @@ a.user-chip:hover {
   color: var(--qq-blue-dark);
 }
 
-.thread-item__sub .dot {
-  color: #d3dae4;
+/* (0,2,0) 高于全局 a:not(.button)(0,1,1)：作者名要加粗，别被链接色改回去 */
+.thread-item .thread-item__author {
+  font-weight: 600;
 }
 
+.thread-item__comments strong {
+  font-weight: 600;
+}
+
+/* 「最后评论者 时间」是一组，内部间距比组间距更小 */
+.thread-item__last {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+/*
+ * 右侧摘要：上「版块」（$showForum 为真时）、下「浏览」。
+ * 版块页 $showForum 为假 → 只剩浏览一行。
+ */
 .thread-item__stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
   text-align: right;
   font-size: 12.5px;
   color: var(--qq-ink-3);
-  flex: none;
 }
 
 .thread-item__stats strong {
@@ -1105,9 +1144,30 @@ a.user-chip:hover {
   font-weight: 600;
 }
 
+/*
+ * 版块名用 <a>，会被全局 `a:not(.button)`(0,1,1) 染成链接蓝 ——
+ * 这里 (0,2,0) 稳压，悬停 (0,3,0) 压过 body a:hover:not(:where(.button))(0,1,2)。
+ */
+.thread-item .thread-item__forum {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--qq-ink-3);
+}
+
+.thread-item .thread-item__forum:hover {
+  color: var(--qq-blue-dark);
+}
+
+/*
+ * 窄屏：右摘要不再占第三列，改为独立一行排在副信息行（含最后评论）之后，
+ * 版块与浏览同行、左对齐。
+ */
 @media (max-width: 700px) {
   .thread-item {
     grid-template-columns: 38px minmax(0, 1fr);
+    row-gap: 6px;
   }
 
   .thread-item__avatar {
@@ -1117,8 +1177,15 @@ a.user-chip:hover {
 
   .thread-item__stats {
     grid-column: 2;
-    text-align: left;
-    margin-top: 4px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .thread-item .thread-item__forum {
+    width: auto;
+    max-width: 60%;
   }
 }
 
@@ -1194,170 +1261,408 @@ a.user-chip:hover {
 }
 
 /* ==========================================================================
-   7. 帖子详情与楼层
+   7. 帖子详情（版式参考 reference project/bbs/bbs1）
+   --------------------------------------------------------------------------
+   结构：.post-panel > .post-list > .post-entry
+        首楼额外带 .has-title / .post-entry--topic（顶部多一行标题区）。
+   .post-entry 是 Grid，区域依次为 title（仅首楼）/ avatar / body / content / foot：
+   头像在左，作者信息在右，正文与附件整行铺开 —— 长正文不会被头像列挤窄。
+
+   ⚠️ 正文类名是 .post-content（原 .floor__body）：app.js 的图片灯箱、外链属性，
+   以及本文件 17 节（深色热点）、20 节（灯箱）都按它取元素，改名要同步这几处。
    ========================================================================== */
 
-.thread-hero {
-  background: var(--qq-card);
-  border: 1px solid var(--qq-line);
-  border-radius: var(--radius-large);
-  padding: 18px 20px;
-  margin-bottom: var(--space-4);
+.post-panel {
+  padding: var(--space-2) var(--space-4);
 }
 
-.thread-hero h1 {
-  font-size: 21px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  line-height: 1.35;
+.post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.thread-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--qq-ink-3);
-}
-
-/*
- * 「图标 + 数字 + 文字」组合（浏览 / 评论）改成 flex 居中。
- *
- * 只靠全局的 `svg { vertical-align: middle }` 还不够 —— 实测图标中心仍比文字
- * 低 2.25px（middle 对齐的是「基线 + 半个 x-height」，随字体度量浮动）。
- * 变成 flex 之后由 align-items 精确居中，与字号、字体都无关。
- */
-.thread-hero__meta > span,
-.thread-hero__meta > time {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.thread-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--qq-line);
-}
-
-.floor {
+/* 一行 = 一个楼层 */
+.post-entry {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
-  background: var(--qq-card);
-  border: 1px solid var(--qq-line);
-  border-radius: var(--radius-large);
-  overflow: hidden;
-}
-
-.floor + .floor {
-  margin-top: var(--space-3);
-}
-
-.floor--first {
-  border-color: #cdeafc;
-  box-shadow: 0 1px 0 #eaf6ff inset;
-}
-
-/*
- * 自己发的评论：不画卡片外框。
- *
- * 用 border-color: transparent 而不是 border: 0 —— 保留那 1px 的占位，
- * 自己楼层的宽度、正文起始位置才与其它楼层严格对齐（去掉 border 会宽 2px，
- * 整列内容左右各偏 1px）。
- */
-.floor--self {
-  border-color: transparent;
-}
-
-.floor__side {
-  background: linear-gradient(180deg, #f7fbff 0%, #fdfeff 100%);
-  border-right: 1px solid var(--qq-line-soft);
-  padding: 16px 14px;
-  font-size: 13px;
-  text-align: center;
-  color: var(--qq-ink-3);
-}
-
-.floor__side img {
-  width: 68px;
-  height: 68px;
-  border-radius: 999px;
-  display: block;
-  margin: 0 auto 8px;
-  background: var(--qq-card);
-  border: 2px solid var(--qq-card);
-  box-shadow: 0 1px 4px rgb(31 35 41 / 0.12);
-}
-
-.floor__name {
-  font-weight: 600;
-  font-size: 14.5px;
-  margin-bottom: 3px;
-  word-break: break-all;
-}
-
-.floor__stats {
-  margin-top: 8px;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--qq-ink-3);
-}
-
-.floor__main {
-  padding: 16px 18px;
-  min-width: 0;
-}
-
-.floor__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--qq-ink-3);
-  padding-bottom: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas:
+    "avatar body"
+    "content content"
+    "foot foot";
+  column-gap: 12px;
+  align-items: start;
+  padding: 16px 0;
   border-bottom: 1px solid var(--qq-line-soft);
 }
 
-.floor__head .spacer {
-  margin-left: auto;
+.post-entry:last-child {
+  border-bottom: 0;
 }
 
-.floor__no {
+.post-entry.has-title {
+  grid-template-areas:
+    "title title"
+    "avatar body"
+    "content content"
+    "foot foot";
+}
+
+.post-entry > * {
+  min-width: 0;
+}
+
+/* 行内锚点跳转（?p= 楼层链接、回复指向）留出吸顶导航的高度 */
+.post-entry {
+  scroll-margin-top: 84px;
+}
+
+/* 跳转目标楼层（?p=帖子ID）高亮 */
+.post-highlight {
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: var(--radius-medium);
+  background: var(--qq-soft-2);
+  box-shadow: inset 3px 0 0 var(--qq-blue);
+}
+
+.post-list__empty {
+  padding: 28px 0;
+  text-align: center;
+  color: var(--qq-ink-3);
+  font-size: 13.5px;
+}
+
+/* ---- 首楼标题区 ---- */
+
+.post-topic-title {
+  grid-area: title;
+  margin-bottom: 12px;
+}
+
+/*
+ * 标题行：标题在左、发布时间（+「已编辑」）在右。
+ * 标题 20px、右侧是 13px 的弱化文字 —— 用 space-between + 基线对齐；
+ * 窄屏空间不够时右侧整块换到下一行（flex-wrap）。
+ */
+.post-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.post-title-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/*
+ * 发布时间 +「已编辑」（2026-09-21 从标题下方移上来；原来标题下方的作者名已去掉）。
+ */
+.post-title-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  flex: none;
+  font-size: 13px;
+  color: var(--qq-ink-3);
+}
+
+/*
+ * 「已编辑」标记：与发布时间同排，比正文弱一档；title 里写「谁最后编辑于何时」，所以光标用 help。
+ * 只对真正编辑过的帖子输出（见 partials/floor.php 的 $editedAt > $threadAt 判断）。
+ */
+.post-edited-flag {
+  color: var(--qq-ink-3);
+  font-size: 12.5px;
+  cursor: help;
+}
+
+/*
+ * 标题下方的「N 浏览 · N 评论」已于 2026-09-21 按用户要求删除（.post-topic-stats 及其子规则一并移除），
+ * 标题区现在只有标题行本身。
+ */
+
+/*
+ * 帖子详情页里的提示气泡都贴着卡片的右边缘，而 `.panel` 是 `overflow: hidden`
+ * （卡片圆角与渐变标题栏都靠它裁切）—— OATUI 默认把气泡水平居中
+ * （`inset-inline-start: 50%` + `translateX(-50%)`），右边会被卡片裁掉。
+ * 这里把气泡改成贴着元素的右边缘展开；箭头（::before）保持居中，仍然指向元素本身。
+ *
+ * 「已编辑」那个标记还贴着卡片上沿，光靠水平对齐不够（向上显示会被顶部裁掉），
+ * 所以它另外带 data-tooltip-placement="bottom"（见 partials/floor.php）。
+ */
+.post-ops [data-tooltip]::after,
+.post-edited-flag[data-tooltip]::after {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  transform: translateX(0) var(--_o);
+}
+
+/* ---- 头像列 ---- */
+
+.post-avatar {
+  grid-area: avatar;
+}
+
+.post-avatar img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--qq-line);
+  background: var(--qq-card);
+}
+
+/* ---- 作者信息 ---- */
+
+.post-body {
+  grid-area: body;
+}
+
+.post-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.post-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.post-author {
+  color: var(--qq-ink);
   font-weight: 600;
-  color: var(--qq-blue-dark);
 }
 
-.floor__body {
+.post-author:hover {
+  color: var(--qq-blue);
+}
+
+.post-time,
+.post-edited {
+  color: var(--qq-ink-3);
+}
+
+.post-edited {
+  font-size: 12px;
+}
+
+/* 首楼的「楼主」标记 */
+.post-badge {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--qq-soft);
+  color: var(--qq-blue-dark);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 19px;
+}
+
+/*
+ * 楼层号（点回本楼层）：观感与「多久前」「编辑过」一致 —— 同色（--qq-ink-3）同字号、无下划线，
+ * 不用链接蓝（用户要求「楼层颜色改成和发布时间一样」）。
+ *
+ * ⚠️ 选择器必须带容器与元素（`.post-info a.post-floor`，(0,2,1)）：只写 `.post-floor`（(0,1,0)）
+ *    会被全局 `a:not(.button)`（(0,1,1)）染成链接蓝 —— 这正是之前 #楼层号发蓝的原因。
+ *    悬停同理用 (0,3,1) 压过全局 `body a:hover:not(:where(.button))`（(0,1,2)），
+ *    并沿用 .post-replyto 的弱化观感（--qq-ink-2）。
+ */
+.post-info a.post-floor {
+  color: var(--qq-ink-3);
+  text-decoration: none;
+}
+
+.post-info a.post-floor:hover {
+  color: var(--qq-ink-2);
+  text-decoration: none;
+}
+
+/*
+ * 楼层操作：右对齐、**只显示图标**（2026-09-21 起按钮里不再有文字，见 partials/floor.php）。
+ * 首楼这一行的顺序是：楼层点赞 → 收藏 → 置顶 → 精华 → 推荐 → 「⋯」菜单 → 插件按钮。
+ */
+.post-ops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+/* 图标按钮：收成方形小块（文字已退到 title / aria-label，靠悬浮与读屏可读） */
+.post-ops .button {
+  padding: 3px 5px;
+  font-size: 12.5px;
+}
+
+/* ---- 首楼「⋯」更多操作菜单（锁定 / 编辑帖子 / 删除帖子）---- */
+
+.post-more {
+  display: inline-flex;
+  flex: none;
+}
+
+.post-more__menu {
+  min-width: 148px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--qq-card);          /* 卡片底，压过 OATUI 的页面底色 */
+  border: 1px solid var(--qq-line);
+  border-radius: var(--radius-medium);
+  box-shadow: 0 10px 28px -12px rgb(0 95 158 / 0.28);
+}
+
+/* 删除项是表单：让它整行铺开，菜单项之间的间距才一致 */
+.post-more__menu form {
+  display: block;
+  margin: 0;
+}
+
+.post-more__menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--qq-ink);
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/*
+ * 悬浮 / 键盘焦点态。与顶栏齿轮同样的两个要点：
+ *  1. 只用 :focus-visible —— OATUI 打开菜单时会 focus() 第一项，用 :focus 会让人以为已经选中了；
+ *  2. ⚠️ 特异性要压过 OATUI 的 `ot-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
+ *     写成 `ot-dropdown.post-more [popover] li [role="menuitem"]`（(0,4,2)）才稳。
+ */
+ot-dropdown.post-more [popover] li [role="menuitem"]:hover,
+ot-dropdown.post-more [popover] li [role="menuitem"]:focus-visible {
+  background: var(--qq-soft);
+  color: var(--qq-blue-dark);
+  outline: none;
+  text-decoration: none;
+}
+
+/* 程序化 focus（JS 打开菜单时的 focus()）不显示任何选中观感 */
+ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
+  background: none;
+  outline: none;
+}
+
+.post-more__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+/* 元信息：用户组 + 帖子 / 评论数 + 引用来源 */
+.post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--qq-ink-3);
+}
+
+.post-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 用户组标签：跟在作者昵称后面同一排（见 partials/floor.php 的 .post-info） */
+.post-group {
+  padding: 0 7px;
+  border: 1px solid var(--qq-line);
+  border-radius: 999px;
+  color: var(--qq-ink-3);
+  line-height: 19px;
+  white-space: nowrap;
+}
+
+/*
+ * 回复指向：@用户名 #楼层（可点，跳到被回复的那一层）
+ *
+ * 观感与「多久前」「编辑过」一致：弱化文字色、常规字重、**没有下划线**（用户要求）。
+ * ⚠️ 选择器必须带元素与容器（.post-meta a.post-replyto，(0,2,1)）：
+ *    全局的 `a:not(.button)` 是 (0,1,1)，只写 .post-replyto（(0,1,0)）会被它染成链接蓝。
+ *    悬停同理 —— 全局 `body a:hover:not(:where(.button))` 是 (0,1,2)，
+ *    这里用 (0,2,2)/(0,3,1) 稳压，且不写 underline（全站链接都不带下划线）。
+ */
+.post-meta a.post-replyto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--qq-ink-3);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.post-meta a.post-replyto:hover {
+  color: var(--qq-ink-2);
+  text-decoration: none;
+}
+
+/* 目标已删除：只说明、不给链接（观感与上面一致，鼠标不显示可点） */
+.post-replyto--gone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--qq-ink-3);
+}
+
+/* ---- 正文 ---- */
+
+.post-content {
+  grid-area: content;
+  margin-top: 10px;
   font-size: 15px;
-  line-height: 1.78;
+  line-height: 1.8;
   color: var(--qq-ink);
   word-wrap: break-word;
   overflow-wrap: anywhere;
 }
 
-.floor__body > *:first-child {
+.post-content > *:first-child {
   margin-top: 0;
 }
 
-.floor__body > *:last-child {
+.post-content > *:last-child {
   margin-bottom: 0;
 }
 
-.floor__body img {
+.post-content img {
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-medium);
   border: 1px solid var(--qq-line);
 }
 
-.floor__body pre {
+.post-content pre {
   background: #f7f9fc;
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-medium);
@@ -1367,19 +1672,19 @@ a.user-chip:hover {
   line-height: 1.6;
 }
 
-.floor__body code {
+.post-content code {
   background: #f1f5fa;
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 13px;
 }
 
-.floor__body pre code {
+.post-content pre code {
   background: none;
   padding: 0;
 }
 
-.floor__body blockquote {
+.post-content blockquote {
   border-left: 3px solid var(--qq-blue);
   background: var(--qq-soft-2);
   margin: 10px 0;
@@ -1388,16 +1693,22 @@ a.user-chip:hover {
   color: var(--qq-ink-2);
 }
 
-.floor__body table {
+.post-content table {
   font-size: 14px;
 }
 
-.floor__body ul,
-.floor__body ol {
+.post-content ul,
+.post-content ol {
   padding-left: 22px;
 }
 
-.floor__sign {
+/* ---- 附件与签名 ---- */
+
+.post-foot {
+  grid-area: foot;
+}
+
+.post-sign {
   margin-top: 14px;
   padding-top: 10px;
   border-top: 1px dashed var(--qq-line);
@@ -1405,16 +1716,19 @@ a.user-chip:hover {
   color: var(--qq-ink-3);
 }
 
-.floor__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
+/* ---- 评论面板 ---- */
+
+.reply-panel__status {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--qq-ink-3);
+  font-size: 12px;
 }
 
-.floor__actions .spacer {
-  margin-left: auto;
+/* 评论锚点：贴顶导航会挡住，留出偏移 */
+#respond {
+  scroll-margin-top: 84px;
 }
 
 /* 楼中楼：引用 */
@@ -3244,7 +3558,7 @@ svg {
  * 标题行：标题在左，「未公开」徽章与「编辑公告」贴在行尾。
  *
  * 推右沿用项目里 .spacer 的约定写法 —— 它**没有全局样式**，每个容器各自定义
- * （.panel__head .spacer、.floor__head .spacer、.site-footer__inner .spacer …），
+ * （.panel__head .spacer、.post-info .spacer、.site-footer__inner .spacer …），
  * 新容器忘了写这一条，<span class="spacer"></span> 就是个推不动东西的空元素。
  */
 .notice-card__head {
@@ -3409,16 +3723,19 @@ ot-dropdown [popover] hr {
   margin: var(--space-1) 0;
 }
 
-/* 正文内的富文本元素（由 Core\Text 生成） */
+/* 正文内的富文本元素（由 Core\Text 生成）；.floor__body 一并保留，兼容插件自定义模板 */
+.post-content .content-heading,
 .floor__body .content-heading {
   margin: 18px 0 8px;
 }
 
+.post-content .content-image,
 .floor__body .content-image {
   display: block;
   margin: 12px 0;
 }
 
+.post-content .mention,
 .floor__body .mention {
   color: var(--qq-blue-deep);
   font-weight: 600;
@@ -3427,6 +3744,7 @@ ot-dropdown [popover] hr {
   border-radius: 3px;
 }
 
+.post-content .attachment-link,
 .floor__body .attachment-link {
   display: inline-flex;
   align-items: center;
@@ -3507,8 +3825,9 @@ dialog menu.buttons {
   .site-header,
   .site-nav,
   .site-footer,
-  .floor__actions,
-  .thread-hero__actions,
+  .sidebar,               /* 打印时不要侧栏（帖子页 / 首页都带） */
+  .post-more,             /* 「⋯」更多操作菜单 */
+  .post-ops,
   .pagination,
   .editor-bar,
   .thread-toolbar {
@@ -3520,7 +3839,7 @@ dialog menu.buttons {
   }
 
   .panel,
-  .floor {
+  .post-entry {
     border-color: #ddd;
     break-inside: avoid;
   }
@@ -3626,20 +3945,17 @@ html[data-theme="dark"] .tag--pending {
   background: #2b2038;             /* 原 #f5f0ff 浅紫底 */
 }
 
-html[data-theme="dark"] .floor--first {
-  box-shadow: 0 1px 0 #222a38 inset;
-}
-
-html[data-theme="dark"] .floor__side {
-  background: linear-gradient(180deg, #1b2231 0%, #171b27 100%);
-}
-
-html[data-theme="dark"] .floor__body pre {
+html[data-theme="dark"] .post-content pre {
   background: #12161f;             /* 原 #f7f9fc；代码块本来就深底，保持近黑 */
 }
 
-html[data-theme="dark"] .floor__body code {
+html[data-theme="dark"] .post-content code {
   background: #141926;             /* 原 #f1f5fa */
+}
+
+/* 跳转目标楼层的高亮底（浅色下是极浅蓝，深色下需要单独给值） */
+html[data-theme="dark"] .post-highlight {
+  background: #1c2333;
 }
 
 /* 登录 / 注册页的两团光晕 → 石墨蓝光晕 */
@@ -3914,6 +4230,7 @@ html[data-theme="dark"] [data-theme-icon-moon] {
    按钮配色用固定深色玻璃（遮罩永远深色，深浅主题通用）。
    ========================================================================== */
 
+.post-content .image-lightbox-clickable,
 .floor__body .image-lightbox-clickable,
 .notice-card__body .image-lightbox-clickable {
   max-height: min(75vh, 720px);      /* 长图页内完整预览：压到一屏高 */
@@ -4050,22 +4367,21 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   .image-lightbox-nav { width: 38px; min-width: 38px; height: 38px; min-height: 38px; font-size: 24px; }
 }
 
-/* 点赞 / 收藏按钮：透明 ghost（与「置顶/精华/推荐/锁定」版主按钮同款，用户要求）。
+/* 楼层操作图标：透明 ghost（与「置顶/精华/推荐/锁定」版主图标同款，用户要求）。
    基准字色钉住 --qq-ink：ajax 切换时 app.js 会给按钮写 data-variant="secondary"，
    OATUI 的 ghost[data-variant=secondary] 会把字染成 --secondary-foreground（蓝灰），
    与初始渲染不一致 —— 这里稳压掉。
-   激活态（已点赞/已收藏）只染文字色：表单 data-active="1"（服务端渲染 + app.js 同步）。 */
-.thread-hero__actions form[data-state-field] .button,
-.floor__actions form[data-state-field] .button {
+   激活态（已点赞 / 已收藏 / 已置顶 / 已加精 / 已推荐）＝ 色系里的**文字链接色**：
+   与全局 `a:not(.button)` 用的同一个令牌（--qq-blue-deep），换色系 / 深色会自动跟随。 */
+.post-ops form[data-state-field] .button,
+.post-ops form[data-active] .button {
   color: var(--qq-ink);
 }
 
-.thread-hero__actions form[data-active="1"] .button,
-.floor__actions form[data-active="1"] .button {
-  color: var(--qq-blue);
+.post-ops form[data-active="1"] .button {
+  color: var(--qq-blue-deep);
 }
 
-.thread-hero__actions form[data-active="1"] .button:hover,
-.floor__actions form[data-active="1"] .button:hover {
+.post-ops form[data-active="1"] .button:hover {
   color: var(--qq-blue-dark);
 }

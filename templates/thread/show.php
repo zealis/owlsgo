@@ -1,6 +1,11 @@
 <?php
 /**
- * 帖子详情：首帖 + 评论楼层 + 评论框
+ * 帖子详情：首楼（标题 + 正文）+ 评论楼层 + 评论框，右侧与首页同款侧栏
+ *
+ * 版式参考 reference project/bbs/bbs1 的帖子页：
+ *   面包屑 → 主面板（首楼标题区 + 楼层列表）→ 翻页条 → 评论面板，
+ *   右侧固定「发表新帖子 + 最新帖子 + 热门帖子」侧栏（共用 partials/sidebar）。
+ *   首楼与楼层都是 .post-entry（头像 + 作者信息 + 正文，见 partials/floor.php）。
  *
  * 变量：$thread、$forum、$firstPost、$replies（items 已 decorate）、$pagination、
  *       $favorited、$liked、$likedPosts、$canReply、$canModerate、$canEdit、
@@ -31,221 +36,146 @@ $isLocked  = (int)($thread['is_locked'] ?? 0) === 1;
 /* 跳转到指定楼层时高亮该楼（?p=帖子ID） */
 $highlightId = isset($_GET['p']) && is_scalar($_GET['p']) ? (int)$_GET['p'] : 0;
 
-$author     = is_array($thread['author'] ?? null) ? $thread['author'] : [];
-$groupColor = (string)($thread['author_group_color'] ?? '#86909c');
+/* 首楼的帖子级操作条（点赞 / 收藏 / 编辑 / 删除 / 版主 / 插件），抽成局部模板 */
+$topicActions = $view('partials/topic-actions', [
+    'thread'      => $thread,
+    'forum'       => $forum,
+    'canEdit'     => $canEdit,
+    'canModerate' => $canModerate,
+    'liked'       => $liked,
+    'favorited'   => $favorited,
+]);
 
-/* 版主操作按钮：动作 => [文案, 图标, 是否已启用] */
-$modActions = [
-    ['action' => (int)($thread['is_pinned'] ?? 0) === 1 ? 'unpin' : 'pin',
-     'label'  => (int)($thread['is_pinned'] ?? 0) === 1 ? '取消置顶' : '置顶',
-     'icon'   => 'pin'],
-    ['action' => (int)($thread['is_essence'] ?? 0) === 1 ? 'unessence' : 'essence',
-     'label'  => (int)($thread['is_essence'] ?? 0) === 1 ? '取消精华' : '加精',
-     'icon'   => 'star'],
-    ['action' => (int)($thread['is_recommended'] ?? 0) === 1 ? 'unrecommend' : 'recommend',
-     'label'  => (int)($thread['is_recommended'] ?? 0) === 1 ? '取消推荐' : '推荐',
-     'icon'   => 'flag'],
-    ['action' => $isLocked ? 'unlock' : 'lock',
-     'label'  => $isLocked ? '解锁' : '锁定',
-     'icon'   => $isLocked ? 'unlock' : 'lock'],
-];
+/* 评论框上方的状态提示（与参考站一致：一句短状态，而不是整块警示） */
+if (!is_logged_in()) {
+    $replyStatus = '登录后评论';
+} elseif ($isLocked) {
+    $replyStatus = '该帖子已锁定';
+} elseif (!$canReply) {
+    $replyStatus = '你没有评论权限';
+} else {
+    $replyStatus = '说两句';
+}
 ?>
 
-<?php
-/*
- * 面包屑只到版块为止，不再重复当前帖子标题。
- * 标题就在紧接着的 .thread-hero 里大字显示，面包屑再放一次是重复信息，
- * 而且长标题会把这一行撑满、换行，反而干扰阅读。
- */
-?>
-<ol class="unstyled hstack crumbs">
-    <li><a class="unstyled" href="<?= e(url('/')) ?>">首页</a></li>
-    <li aria-hidden="true">/</li>
-    <li><a class="unstyled" href="<?= e(url('/f/' . $forumId)) ?>"><?= e((string)($forum['name'] ?? '版块')) ?></a></li>
-</ol>
+<div class="page-grid">
+    <div>
+        <section class="panel post-panel">
+            <?php /*
+              面包屑在卡片左上角、也就是标题的左上方（用户要求：原来它飘在卡片外面的页面上方）。
+              样式用 .crumbs--topic 在卡片内收紧一点（见 theme.css 第 4 节）。
+            */ ?>
+            <ol class="unstyled hstack crumbs crumbs--topic">
+                <li><a class="unstyled" href="<?= e(url('/')) ?>">首页</a></li>
+                <li aria-hidden="true">/</li>
+                <li><a class="unstyled" href="<?= e(url('/f/' . $forumId)) ?>"><?= e((string)($forum['name'] ?? '版块')) ?></a></li>
+            </ol>
 
-<article class="thread-hero">
-    <h1>
-        <?= e((string)($thread['title'] ?? '')) ?>
-        <?php /* 标记统一放在标题后面（用户要求） */ ?>
-        <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?><span class="tag tag--pin">置顶</span><?php endif; ?>
-        <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?><span class="tag tag--essence">精华</span><?php endif; ?>
-        <?php if ((int)($thread['is_recommended'] ?? 0) === 1): ?><span class="tag tag--hot">推荐</span><?php endif; ?>
-        <?php if ($isLocked): ?><span class="tag tag--lock">已锁定</span><?php endif; ?>
-        <?php if ($isPending): ?><span class="tag tag--pending">审核中</span><?php endif; ?>
-    </h1>
-
-    <div class="thread-hero__meta">
-        <a href="<?= e(url('/u/' . (int)($author['id'] ?? 0))) ?>" style="color:<?= e($groupColor) ?>;font-weight:600">
-            <?= e((string)($author['username'] ?? '用户已删除')) ?>
-        </a>
-        <span>·</span>
-        <time datetime="<?= e(date('c', (int)($thread['created_at'] ?? 0))) ?>">
-            <?= e(date('Y-m-d H:i', (int)($thread['created_at'] ?? 0))) ?>
-        </time>
-        <span>·</span>
-        <span><?= $view('partials/icon', ['name' => 'eye', 'size' => 14]) ?> <?= format_number((int)($thread['views'] ?? 0)) ?> 浏览</span>
-        <span>·</span>
-        <span><?= $view('partials/icon', ['name' => 'message', 'size' => 14]) ?> <?= format_number((int)($thread['reply_count'] ?? 0)) ?> 评论</span>
-    </div>
-
-    <div class="thread-hero__actions">
-        <form method="post" action="<?= e(url('/t/' . $threadId . '/like')) ?>" data-ajax
-              data-state-field="liked" data-active="<?= $liked ? '1' : '0' ?>" class="inline-form">
-            <?= csrf_field() ?>
-            <button type="submit" class="button ghost small">
-                <?= $view('partials/icon', ['name' => 'heart', 'size' => 15]) ?>
-                <span>赞 <span data-count><?= (int)($thread['like_count'] ?? 0) ?></span></span>
-            </button>
-        </form>
-
-        <form method="post" action="<?= e(url('/t/' . $threadId . '/favorite')) ?>" data-ajax
-              data-state-field="favorited" data-active="<?= $favorited ? '1' : '0' ?>" class="inline-form">
-            <?= csrf_field() ?>
-            <button type="submit" class="button ghost small">
-                <?= $view('partials/icon', ['name' => 'bookmark', 'size' => 15]) ?>
-                <span><span data-count><?= (int)($thread['favorite_count'] ?? 0) ?></span> 收藏</span>
-            </button>
-        </form>
-
-        <?php if ($canEdit): ?>
-            <a class="button outline small" href="<?= e(url('/t/' . $threadId . '/edit')) ?>">
-                <?= $view('partials/icon', ['name' => 'edit', 'size' => 15]) ?>
-                <span>编辑帖子</span>
-            </a>
-        <?php endif; ?>
-
-        <?php if ($canEdit || $canModerate): ?>
-            <form method="post" action="<?= e(url('/t/' . $threadId . '/delete')) ?>"
-                  data-confirm="确定要删除该帖子吗？帖子下的所有评论也会一并删除，且无法自行恢复。"
-                  class="inline-form">
-                <?= csrf_field() ?>
-                <button type="submit" class="button outline small" data-variant="danger">
-                    <?= $view('partials/icon', ['name' => 'trash', 'size' => 15]) ?>
-                    <span>删除帖子</span>
-                </button>
-            </form>
-        <?php endif; ?>
-
-        <?php if ($canModerate): ?>
-            <span class="spacer"></span>
-            <form method="post" action="<?= e(url('/t/' . $threadId . '/moderate')) ?>"
-                  class="inline-form" style="display:flex;gap:6px;flex-wrap:wrap">
-                <?= csrf_field() ?>
-                <?php foreach ($modActions as $mod): ?>
-                    <button type="submit" name="action" value="<?= e($mod['action']) ?>"
-                            class="button ghost small" title="<?= e($mod['label']) ?>">
-                        <?= $view('partials/icon', ['name' => $mod['icon'], 'size' => 15]) ?>
-                        <span><?= e($mod['label']) ?></span>
-                    </button>
-                <?php endforeach; ?>
-            </form>
-        <?php endif; ?>
-
-        <?php
-        /* 插件可往操作区追加按钮，返回 HTML 字符串（由插件自行保证转义） */
-        echo (string)hook('thread_view_actions', '', [
-            'thread' => $thread,
-            'forum'  => $forum,
-            'user'   => auth_user(),
-        ]);
-        ?>
-    </div>
-</article>
-
-<?php if ($firstPost !== null && is_array($firstPost)): ?>
-    <?= $view('partials/floor', [
-        'post'        => $firstPost,
-        'thread'      => $thread,
-        'canModerate' => $canModerate,
-        'canReply'    => $canReply,
-        'likedPosts'  => $likedPosts,
-        'highlight'   => $highlightId === (int)($firstPost['id'] ?? 0),
-    ]) ?>
-<?php endif; ?>
-
-<?php if ($replyItems !== []): ?>
-    <div style="margin-top:var(--space-4)">
-        <?php foreach ($replyItems as $reply): ?>
-            <?= $view('partials/floor', [
-                'post'        => $reply,
-                'thread'      => $thread,
-                'canModerate' => $canModerate,
-                'canReply'    => $canReply,
-                'likedPosts'  => $likedPosts,
-                'highlight'   => $highlightId === (int)($reply['id'] ?? 0),
-            ]) ?>
-        <?php endforeach; ?>
-    </div>
-<?php endif; ?>
-
-<?php if (($pagination ?? '') !== ''): ?>
-    <div class="pager"><?= (string)$pagination ?></div>
-<?php endif; ?>
-
-<section class="panel" id="respond" style="margin-top:var(--space-4)">
-    <div class="panel__head">
-        <h3><?= $view('partials/icon', ['name' => 'reply', 'size' => 16]) ?>发表评论</h3>
-    </div>
-
-    <div class="panel__body">
-        <?php if (!$canReply): ?>
-            <div role="alert" data-variant="warning">
-                <?= $view('partials/icon', ['name' => 'lock', 'size' => 18]) ?>
-                <div>
-                    <?php if ($isLocked): ?>
-                        该帖子已被锁定，无法继续评论。
-                    <?php elseif (!is_logged_in()): ?>
-                        请先 <a href="<?= e(url('/login')) ?>">登录</a> 后再评论。
-                    <?php else: ?>
-                        你没有在该版块评论的权限。
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php else: ?>
-            <?php if ($replyTo !== null): ?>
-                <div class="reply-to" style="margin-bottom:10px">
-                    正在评论 <strong><?= e((string)($replyTo['username'] ?? '')) ?></strong>
-                    <?php if ((int)($replyTo['floor'] ?? 0) > 0): ?>（<?= (int)$replyTo['floor'] ?> 楼）<?php endif; ?>
-                    · <a href="<?= e(url('/t/' . $threadId)) ?>#respond">取消</a>
-                </div>
-            <?php endif; ?>
-
-            <?php /* data-draft：按帖子区分草稿，不同帖子的评论互不覆盖 */ ?>
-            <form method="post" action="<?= e(url('/t/' . $threadId . '/reply')) ?>"
-                  enctype="multipart/form-data" data-ajax data-ajax-redirect
-                  data-draft="reply-<?= (int)$threadId ?>">
-                <?= csrf_field() ?>
-                <?php if ($replyTo !== null): ?>
-                    <input type="hidden" name="parent_id" value="<?= (int)($replyTo['id'] ?? 0) ?>">
+            <ul class="post-list">
+                <?php if ($firstPost !== null && is_array($firstPost)): ?>
+                    <?= $view('partials/floor', [
+                        'post'         => $firstPost,
+                        'thread'       => $thread,
+                        'canModerate'  => $canModerate,
+                        'canReply'     => $canReply,
+                        'likedPosts'   => $likedPosts,
+                        'highlight'    => $highlightId === (int)($firstPost['id'] ?? 0),
+                        'topicActions' => $topicActions,
+                    ]) ?>
                 <?php endif; ?>
 
-                <?php
-                /* 评论与发布/编辑帖子、编辑评论共用同一个编辑器组件（partials/editor），
-                   工具栏、字数统计、附件上传（行式列表 + 进度/复制）行为完全一致。 */
-                ?>
-                <?= $view('partials/editor', [
-                    'editorName'      => 'content',
-                    'editorId'        => 'reply',
-                    'editorMax'       => (int)config('app.post_max_length', 20000),
-                    'editorUpload'    => $uploadOn,
-                    'editorMaxMb'     => $maxMb,
-                    'editorValue'     => (string)old('content', ''),
-                    'editorPlaceholder' => '支持 Markdown：**加粗**、`代码`、> 引用、[链接](https://)',
-                ]) ?>
+                <?php if ($replyItems === []): ?>
+                    <li class="post-list__empty">还没有评论，来发表第一条吧。</li>
+                <?php else: ?>
+                    <?php foreach ($replyItems as $reply): ?>
+                        <?= $view('partials/floor', [
+                            'post'        => $reply,
+                            'thread'      => $thread,
+                            'canModerate' => $canModerate,
+                            'canReply'    => $canReply,
+                            'likedPosts'  => $likedPosts,
+                            'highlight'   => $highlightId === (int)($reply['id'] ?? 0),
+                        ]) ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </ul>
+        </section>
 
-                <div class="hstack mt-4">
-                    <button type="submit" class="button">
-                        <?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>
-                        <span>提交评论</span>
-                    </button>
-                    <?php if ($uploadOn): ?>
-                        <span class="text-light" style="font-size:12.5px">
-                            附件会在选择后立即上传，请等待上传完成再提交。
-                        </span>
-                    <?php endif; ?>
-                </div>
-            </form>
+        <?php /* 全站统一分页条：放在卡片外面（见 theme.css 的分页约定） */ ?>
+        <?php if (($pagination ?? '') !== ''): ?>
+            <div class="pager"><?= (string)$pagination ?></div>
         <?php endif; ?>
+
+        <section class="panel reply-panel" id="respond">
+            <div class="panel__head">
+                <h3><?= $view('partials/icon', ['name' => 'reply', 'size' => 16]) ?>发表评论</h3>
+                <span class="spacer"></span>
+                <span class="reply-panel__status"><?= e($replyStatus) ?></span>
+            </div>
+
+            <div class="panel__body">
+                <?php if (!$canReply): ?>
+                    <div role="alert" data-variant="warning">
+                        <?= $view('partials/icon', ['name' => 'lock', 'size' => 18]) ?>
+                        <div>
+                            <?php if ($isLocked): ?>
+                                该帖子已被锁定，无法继续评论。
+                            <?php elseif (!is_logged_in()): ?>
+                                请先 <a href="<?= e(url('/login')) ?>">登录</a> 后再评论。
+                            <?php else: ?>
+                                你没有在该版块评论的权限。
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <?php if ($replyTo !== null): ?>
+                        <div class="reply-to" style="margin-bottom:10px">
+                            正在评论 <strong><?= e((string)($replyTo['username'] ?? '')) ?></strong>
+                            <?php if ((int)($replyTo['floor'] ?? 0) > 0): ?>（<?= (int)$replyTo['floor'] ?> 楼）<?php endif; ?>
+                            · <a href="<?= e(url('/t/' . $threadId)) ?>#respond">取消</a>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php /* data-draft：按帖子区分草稿，不同帖子的评论互不覆盖 */ ?>
+                    <form method="post" action="<?= e(url('/t/' . $threadId . '/reply')) ?>"
+                          enctype="multipart/form-data" data-ajax data-ajax-redirect
+                          data-draft="reply-<?= (int)$threadId ?>">
+                        <?= csrf_field() ?>
+                        <?php if ($replyTo !== null): ?>
+                            <input type="hidden" name="parent_id" value="<?= (int)($replyTo['id'] ?? 0) ?>">
+                        <?php endif; ?>
+
+                        <?php
+                        /* 评论与发布/编辑帖子、编辑评论共用同一个编辑器组件（partials/editor），
+                           工具栏、字数统计、附件上传（行式列表 + 进度/复制）行为完全一致。 */
+                        ?>
+                        <?= $view('partials/editor', [
+                            'editorName'      => 'content',
+                            'editorId'        => 'reply',
+                            'editorMax'       => (int)config('app.post_max_length', 20000),
+                            'editorUpload'    => $uploadOn,
+                            'editorMaxMb'     => $maxMb,
+                            'editorValue'     => (string)old('content', ''),
+                            'editorPlaceholder' => '支持 Markdown：**加粗**、`代码`、> 引用、[链接](https://)',
+                        ]) ?>
+
+                        <div class="hstack mt-4">
+                            <button type="submit" class="button">
+                                <?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>
+                                <span>提交评论</span>
+                            </button>
+                            <?php if ($uploadOn): ?>
+                                <span class="text-light" style="font-size:12.5px">
+                                    附件会在选择后立即上传，请等待上传完成再提交。
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </section>
     </div>
-</section>
+
+    <?php /* 与首页同款右栏（共用 partials/sidebar；个人管理页面不带侧栏） */ ?>
+    <?= $view('partials/sidebar') ?>
+</div>

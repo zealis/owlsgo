@@ -85,6 +85,10 @@ $paths = [
     'arrow-left'    => '<path d="M20.4 12H3.6"/><path d="m9.6 5.8-6.2 6.2 6.2 6.2"/>',
     'arrow-right'   => '<path d="M3.6 12h16.8"/><path d="m14.4 5.8 6.2 6.2-6.2 6.2"/>',
     'dot'           => '<circle cx="12" cy="12" r="3.6"/>',
+    /* 三个横向点（「更多操作」，如帖子右下角的「⋯」菜单）；实心点必须显式 fill 覆盖父级 fill="none" */
+    'more'          => '<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/>'
+        . '<circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/>'
+        . '<circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
 ];
 
 $body = $paths[$name] ?? $paths['dot'];

@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS "posts" (
     "user_agent"   TEXT    NOT NULL DEFAULT '',
     "created_at"   INTEGER NOT NULL DEFAULT 0,
     "updated_at"   INTEGER NOT NULL DEFAULT 0,
+    "updated_by"   INTEGER NOT NULL DEFAULT 0,
     "deleted_at"   INTEGER DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS "idx_posts_thread" ON "posts" ("thread_id", "floor");

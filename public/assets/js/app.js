@@ -1197,7 +1197,8 @@
    * ===================================================================== */
 
   function initExternalLinks() {
-    var links = document.querySelectorAll('.floor__body a[href^="http"]');
+    /* 正文容器：帖子页是 .post-content（原 .floor__body，保留兼容插件输出） */
+    var links = document.querySelectorAll('.post-content a[href^="http"], .floor__body a[href^="http"]');
 
     Array.prototype.forEach.call(links, function (link) {
       if (link.hostname !== window.location.hostname) {
@@ -1809,7 +1810,8 @@
   /* =======================================================================
    * 13.7 图片灯箱（帖子 / 回帖 / 公告正文，适配自参考 image_lightbox 插件）
    * -----------------------------------------------------------------------
-   * 作用范围：.floor__body / .notice-card__body 里的正文插图（.content-image）。
+   * 作用范围：.post-content（帖子/楼层正文）/ .notice-card__body（公告）里的
+   * 正文插图（.content-image）。.floor__body 是旧类名，保留以兼容插件自定义模板。
    * - 页内自适应：长图钳制到一屏内完整可见（CSS max-height + object-fit）；
    * - 小图不放大约看：naturalWidth<120 或 naturalHeight<80 的图不可点；
    * - 灯箱内：滚轮/双击/拖拽/双指捏合自由缩放平移（1~5 倍，带边界回弹），
@@ -1818,11 +1820,11 @@
    * ===================================================================== */
 
   function initLightbox() {
-    const SCOPE = '.floor__body, .notice-card__body';
-    /* ⚠️ 不能把 SCOPE + ' img' 拼起来用：那会变成「.floor__body 本身 或 公告 img」，
+    const SCOPE = '.post-content, .floor__body, .notice-card__body';
+    /* ⚠️ 不能把 SCOPE + ' img' 拼起来用：那会变成「.post-content 本身 或 公告 img」，
        mark() 会把楼层容器当图处理、点击委托命中容器 —— 画廊整体失灵。
        图片匹配必须用完整的 SCOPE_IMG 选择器。 */
-    const SCOPE_IMG = '.floor__body img, .notice-card__body img';
+    const SCOPE_IMG = '.post-content img, .floor__body img, .notice-card__body img';
     let overlay = null;
     let image = null;
     let caption = null;

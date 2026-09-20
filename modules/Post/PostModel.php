@@ -18,6 +18,66 @@ final class PostModel extends Model
     protected static string $table = 'posts';
 
     /**
+     * 最后编辑人字段（帖子详情页「已编辑」的悬浮提示用）
+     *
+     * 这是**后加字段**，项目没有迁移机制，老站点靠 ensureUpdatedByColumn() 惰性补列。
+     */
+    public const UPDATED_BY_COLUMN = 'updated_by';
+
+    /**
+     * 保证「最后编辑人」字段存在（老站点惰性补列）
+     *
+     * ⚠️ 补列后**不能**指望 `Model::columns()` 立刻认得它：那是进程内静态缓存，
+     * 同一次请求里拿到的仍是旧列表，`filterColumns()` 会把新字段静默丢掉。
+     * 所以这个字段的写入一律走 `Database::update` 的裸 SQL，不经过模型白名单。
+     * （读取不受影响：行数据来自 `SELECT *`。）
+     */
+    public static function ensureUpdatedByColumn(): void
+    {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        if (Database::hasColumn(self::$table, self::UPDATED_BY_COLUMN)) {
+            return;
+        }
+
+        try {
+            Database::execute(
+                'ALTER TABLE ' . Database::identifier(self::$table)
+                . ' ADD COLUMN ' . Database::identifier(self::UPDATED_BY_COLUMN) . ' INTEGER NOT NULL DEFAULT 0'
+            );
+        } catch (\Throwable) {
+            // 并发请求可能同时补列，失败的一方忽略即可（列此时已由另一方建好）
+        }
+    }
+
+    /**
+     * 记录最后编辑人（0 = 清除 / 未知）
+     *
+     * 走 Database::update 而不是 updateById()：见 ensureUpdatedByColumn() 的说明，
+     * 新字段不在模型字段白名单里，updateById() 会把它丢掉。
+     */
+    public static function setUpdatedBy(int $postId, int $userId): void
+    {
+        if ($postId <= 0) {
+            return;
+        }
+
+        self::ensureUpdatedByColumn();
+
+        Database::update(
+            self::$table,
+            [self::UPDATED_BY_COLUMN => max(0, $userId)],
+            Database::identifier('id') . ' = ?',
+            [$postId]
+        );
+    }
+
+    /**
      * 帖子内评论分页（不含首帖）
      *
      * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int}
@@ -152,7 +212,7 @@ final class PostModel extends Model
     }
 
     /**
-     * 为评论列表补齐作者信息与附件
+     * 为评论列表补齐作者信息、附件，以及「被回复的那条评论」的指向
      *
      * @param list<array<string, mixed>> $posts
      * @return list<array<string, mixed>>
@@ -170,6 +230,34 @@ final class PostModel extends Model
         $attachments = \Modules\User\AttachmentModel::mapByPosts($postIds);
         $groups     = \Modules\User\UsergroupModel::all();
 
+        /*
+         * 楼中楼：补齐被回复评论的「作者名 + 楼层」，模板据此渲染 @用户名 #楼层 的跳转链接。
+         *
+         * 用 withTrashed()：被回复的评论即使用户已删除，@ 与楼层号依然成立 ——
+         * 模板对已删除的目标只输出文字、不给链接（避免跳到不存在的锚点）。
+         * 父评论的作者不一定在本页列表里，所以要把他们的用户一起查出来合并进 $users。
+         */
+        $parentIds = [];
+        foreach ($posts as $post) {
+            $parentId = (int)($post['parent_id'] ?? 0);
+            if ($parentId > 0) {
+                $parentIds[$parentId] = true;
+            }
+        }
+
+        $parents = [];
+        if ($parentIds !== []) {
+            foreach (static::withTrashed()->whereIn('id', array_keys($parentIds))->get() as $row) {
+                $parents[(int)$row['id']] = $row;
+            }
+
+            if ($parents !== []) {
+                $users += \Modules\User\UserModel::mapByIds(
+                    array_map(static fn (array $r): int => (int)$r['user_id'], $parents)
+                );
+            }
+        }
+
         foreach ($posts as &$post) {
             $author = $users[(int)$post['user_id']] ?? [
                 'id'       => 0,
@@ -184,6 +272,17 @@ final class PostModel extends Model
             $post['author_group_name']  = (string)($groups[$groupId]['name'] ?? '游客');
             $post['author_group_color'] = (string)($groups[$groupId]['color'] ?? '#999999');
             $post['attachments']        = $attachments[(int)$post['id']] ?? [];
+
+            /* 被回复的评论：不存在（被彻底删除）时为 null，模板据此提示 */
+            $parent = $parents[(int)($post['parent_id'] ?? 0)] ?? null;
+
+            $post['parent'] = is_array($parent) ? [
+                'id'       => (int)$parent['id'],
+                'username' => (string)($users[(int)$parent['user_id']]['username'] ?? '用户已删除'),
+                'floor'    => (int)($parent['floor'] ?? 0),
+                'is_first' => (int)($parent['is_first'] ?? 0) === 1,
+                'deleted'  => ($parent['deleted_at'] ?? null) !== null,
+            ] : null;
         }
         unset($post);
 

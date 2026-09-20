@@ -93,6 +93,20 @@ final class ThreadController extends Controller
 
         if ($firstPost !== null) {
             $firstPost = PostModel::decorate([$firstPost])[0];
+
+            /*
+             * 「已编辑」的悬浮提示要写出「谁最后编辑于何时」。
+             * 编辑人存在后加的 posts.updated_by 里（老站点惰性补列，见 PostModel::ensureUpdatedByColumn()），
+             * 只有确实被改过（updated_at > created_at）且记录到编辑人时才查这一次用户名 —— 不放进
+             * PostModel::decorate()，否则整页楼层会各查一次（N+1）。
+             */
+            $editorId = (int)($firstPost['updated_by'] ?? 0);
+
+            if ($editorId > 0 && (int)($firstPost['updated_at'] ?? 0) > (int)($firstPost['created_at'] ?? 0)) {
+                // byIds() 返回的是列表（不是 id => user 的映射）
+                $editors = UserModel::byIds([$editorId]);
+                $firstPost['editor_name'] = (string)($editors[0]['username'] ?? '');
+            }
         }
 
         $thread = ThreadModel::decorate([$thread])[0];
@@ -352,6 +366,13 @@ final class ThreadController extends Controller
         $firstPost = PostModel::firstPost((int)$thread['id']);
         if ($firstPost !== null) {
             PostModel::updateContent((int)$firstPost['id'], $content);
+
+            /*
+             * 记录最后编辑人：标题行的「已编辑」悬浮提示要写「最后由 X 编辑于 …」。
+             * 该字段是后加的（老站点靠 PostModel::ensureUpdatedByColumn() 惰性补列），
+             * 所以走 PostModel::setUpdatedBy() 的裸 SQL 写入，不经过模型字段白名单。
+             */
+            PostModel::setUpdatedBy((int)$firstPost['id'], (int)$user['id']);
 
             /*
              * 附件绑定：编辑页提交的完整附件列表（回显的已有附件 + 新上传的）。

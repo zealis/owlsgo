@@ -20,50 +20,56 @@ $titleValue   = (string)old('title', (string)($thread['title'] ?? ''));
 $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
 ?>
 
+<?php /* 与首页同款右栏：前台（除个人管理页面外）统一用 partials/sidebar */ ?>
+<div class="page-grid">
+    <div>
+    <section class="panel">
+        <div class="panel__head">
+            <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑帖子</h2>
+        </div>
 
-<section class="panel">
-    <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑帖子</h2>
+        <div class="panel__body">
+            <?php /* data-draft：编辑也有草稿，未保存的修改刷新后可选恢复 */ ?>
+            <form method="post" action="<?= e(url('/t/' . $threadId . '/edit')) ?>"
+                  data-ajax data-ajax-redirect data-draft="thread-edit-<?= (int)$threadId ?>">
+                <?= csrf_field() ?>
+
+                <div data-field>
+                    <label for="edit-title">帖子标题</label>
+                    <input type="text" id="edit-title" name="title" required
+                           maxlength="<?= $titleMax ?>" autocomplete="off"
+                           value="<?= e($titleValue) ?>">
+                    <?php if (old_error('title') !== ''): ?>
+                        <span class="field-error"><?= e(old_error('title')) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div data-field>
+                    <label for="edit-content">正文内容</label>
+                    <?= $view('partials/editor', [
+                        'editorId'    => 'edit-content',
+                        'editorValue' => $contentValue,
+                        'editorMax'   => $contentMax,
+                        'editorUpload' => $editorUpload,
+                        'editorMaxMb'  => $editorMaxMb,
+                        'editorAttachments' => $editorAttachments,
+                    ]) ?>
+                    <?php if (old_error('content') !== ''): ?>
+                        <span class="field-error"><?= e(old_error('content')) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div class="hstack mt-4">
+                    <button type="submit" class="button">
+                        <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
+                        <span>保存修改</span>
+                    </button>
+                    <a class="button ghost" href="<?= e(url('/t/' . $threadId)) ?>">取消</a>
+                </div>
+            </form>
+        </div>
+    </section>
     </div>
 
-    <div class="panel__body">
-        <?php /* data-draft：编辑也有草稿，未保存的修改刷新后可选恢复 */ ?>
-        <form method="post" action="<?= e(url('/t/' . $threadId . '/edit')) ?>"
-              data-ajax data-ajax-redirect data-draft="thread-edit-<?= (int)$threadId ?>">
-            <?= csrf_field() ?>
-
-            <div data-field>
-                <label for="edit-title">帖子标题</label>
-                <input type="text" id="edit-title" name="title" required
-                       maxlength="<?= $titleMax ?>" autocomplete="off"
-                       value="<?= e($titleValue) ?>">
-                <?php if (old_error('title') !== ''): ?>
-                    <span class="field-error"><?= e(old_error('title')) ?></span>
-                <?php endif; ?>
-            </div>
-
-            <div data-field>
-                <label for="edit-content">正文内容</label>
-                <?= $view('partials/editor', [
-                    'editorId'    => 'edit-content',
-                    'editorValue' => $contentValue,
-                    'editorMax'   => $contentMax,
-                    'editorUpload' => $editorUpload,
-                    'editorMaxMb'  => $editorMaxMb,
-                    'editorAttachments' => $editorAttachments,
-                ]) ?>
-                <?php if (old_error('content') !== ''): ?>
-                    <span class="field-error"><?= e(old_error('content')) ?></span>
-                <?php endif; ?>
-            </div>
-
-            <div class="hstack mt-4">
-                <button type="submit" class="button">
-                    <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
-                    <span>保存修改</span>
-                </button>
-                <a class="button ghost" href="<?= e(url('/t/' . $threadId)) ?>">取消</a>
-            </div>
-        </form>
-    </div>
-</section>
+    <?= $view('partials/sidebar') ?>
+</div>

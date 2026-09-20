@@ -219,6 +219,94 @@ if (!function_exists('render_content')) {
     }
 }
 
+if (!function_exists('content_attachment_ids')) {
+    /**
+     * 取出正文里引用过的附件 ID
+     *
+     * 正文里的图片与附件链接最终都是 `/attachment/{id}`（Markdown `![](…)`、`[](…)`
+     * 与 UBB `[img]` 三种写法落在同一个 URL 上），所以直接从**原始正文**里扫 ID 即可。
+     *
+     * 用途：判断「这张图是不是已经贴在正文里了」—— 贴出来了就不再在下方的附件列表里
+     * 重复列一遍（见 templates/partials/attach-list.php）。
+     *
+     * @return array<int, true> 附件 ID => true
+     */
+    function content_attachment_ids(string $raw): array
+    {
+        if ($raw === '' || !str_contains($raw, 'attachment/')) {
+            return [];
+        }
+
+        if (preg_match_all('#attachment/(\d+)#i', $raw, $matches) === false) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($matches[1] as $id) {
+            $id = (int)$id;
+            if ($id > 0) {
+                $ids[$id] = true;
+            }
+        }
+
+        return $ids;
+    }
+}
+
+if (!function_exists('content_attachment_lock')) {
+    /**
+     * 按当前用户权限处理正文里的附件图片
+     *
+     * 正文里的图片是 `<img src="/attachment/{id}">`，而附件路由对没有「下载附件」权限的用户
+     * 直接返回 403 —— 浏览器只会渲染一个破图图标 + alt 文字（用户反馈「直接显示没有加载不好看」）。
+     * 这里在**输出阶段**（不是写入时）把这类图换成「锁 + 文件名」的说明块，与楼层底部附件列表的
+     * 权限提示保持一致；有权限的用户原样输出，外链图片/头像等非附件资源完全不受影响。
+     *
+     * ⚠️ 必须放在输出阶段：正文 HTML 是写入时缓存的（posts.content_html），
+     * 权限是「每次请求」才知道的，缓存里不能固化权限判断。
+     *
+     * @param string $html 已渲染的正文 HTML
+     */
+    function content_attachment_lock(string $html): string
+    {
+        // 绝大多数内容里没有附件，先做一次字符串探测，省掉正则开销
+        if (!str_contains($html, '/attachment/')) {
+            return $html;
+        }
+
+        if (\Core\Permission::allows(auth_user(), 'attachment.download')
+            || \Core\Permission::allows(auth_user(), 'attachment.manage')) {
+            return $html;
+        }
+
+        return (string)preg_replace_callback(
+            '#<img\b[^>]*>#i',
+            static function (array $match): string {
+                // 只处理指向本站附件路由的图片（/attachment/{id}），外链与头像不碰
+                if (preg_match('#src\s*=\s*"([^"]*)"#i', $match[0], $src) !== 1) {
+                    return $match[0];
+                }
+
+                if (preg_match('#^(?:[a-z]+:)?//[^/]*/attachment/\d+#i', $src[1]) !== 1
+                    && preg_match('#^/?attachment/\d+#i', $src[1]) !== 1) {
+                    return $match[0];
+                }
+
+                $name = '附件图片';
+                if (preg_match('#alt\s*=\s*"([^"]*)"#i', $match[0], $alt) === 1 && trim($alt[1]) !== '') {
+                    $name = trim($alt[1]);
+                }
+
+                return '<span class="attach attach--locked" title="当前用户组没有查看附件的权限，请先登录或联系管理员">'
+                    . \Core\View::partial('partials/icon', ['name' => 'lock', 'size' => 17])
+                    . '<span>' . e($name) . '</span>'
+                    . '</span>';
+            },
+            $html
+        );
+    }
+}
+
 if (!function_exists('plain_text')) {
     /** 把正文转换为纯文本（用于摘要、SEO 描述） */
     function plain_text(string $raw, int $max = 120): string

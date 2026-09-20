@@ -28,7 +28,8 @@ $kindIcons = [
 ];
 
 /*
- * 全站通知（公告）区域。
+ * 通知（全站公告）区域 —— 面板标题就写「通知」（原来是「全站通知」），
+ * 与下面的「我的通知」配成一对：上面是站点广播，下面是发给自己的提醒。
  *  - 所有登录用户都能看到「公开显示」的公告；
  *  - 拥有 notice.manage（用户组里的「发布公告」）的用户额外看到：
  *    发布公告 / 通知中心设置，以及每条公告上的「编辑公告」；
@@ -50,199 +51,193 @@ $noticeTotal       = (int)($noticeTotal ?? 0);
 $noticeIntro       = trim((string)setting('notice_center_intro', ''));
 $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0;
 ?>
+<?php /*
+ * 与首页同款右栏（用户要求：通知中心也要有侧栏）。
+ * 通知中心其余页面（用户中心 / 设置）按设计仍不带右栏。
+ */ ?>
+<div class="page-grid">
+    <div>
+    <section class="panel mb-4">
+        <div class="panel__head">
+            <h2><?= $view('partials/icon', ['name' => 'megaphone', 'size' => 17]) ?>通知</h2>
+            <span class="spacer"></span>
+            <?php if ($canManage || $canAttachManage): ?>
+                <?php if ($canManage && $hiddenCount > 0): ?>
+                    <span class="badge outline" title="未公开的公告只有拥有发布权限的用户能看到"><?= $hiddenCount ?> 条未公开</span>
+                <?php endif; ?>
+                <?php if ($canManage): ?>
+                    <a class="button ghost small" href="<?= e(url('/notices/create')) ?>">
+                        <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
+                        <span>发布公告</span>
+                    </a>
+                <?php endif; ?>
+                <?php if ($canAttachManage): ?>
+                    <a class="button ghost small" href="<?= e(url('/notices/resources')) ?>">附件管理</a>
+                <?php endif; ?>
+                <?php if ($canManage): ?>
+                    <a class="button ghost small" href="<?= e(url('/notices/settings')) ?>">通知中心设置</a>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
 
-<section class="panel mb-4">
-    <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'megaphone', 'size' => 17]) ?>全站通知</h2>
-        <span class="spacer"></span>
-        <?php if ($canManage || $canAttachManage): ?>
-            <?php if ($canManage && $hiddenCount > 0): ?>
-                <span class="badge outline" title="未公开的公告只有拥有发布权限的用户能看到"><?= $hiddenCount ?> 条未公开</span>
-            <?php endif; ?>
-            <?php if ($canManage): ?>
-                <a class="button ghost small" href="<?= e(url('/notices/create')) ?>">
-                    <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
-                    <span>发布公告</span>
-                </a>
-            <?php endif; ?>
-            <?php if ($canAttachManage): ?>
-                <a class="button ghost small" href="<?= e(url('/notices/resources')) ?>">附件管理</a>
-            <?php endif; ?>
-            <?php if ($canManage): ?>
-                <a class="button ghost small" href="<?= e(url('/notices/settings')) ?>">通知中心设置</a>
-            <?php endif; ?>
+        <?php if ($noticeIntro !== ''): ?>
+            <div class="panel__body" style="padding-top:10px;padding-bottom:0">
+                <p style="margin:0;color:var(--qq-ink-3);font-size:13px"><?= e($noticeIntro) ?></p>
+            </div>
         <?php endif; ?>
-    </div>
 
-    <?php if ($noticeIntro !== ''): ?>
-        <div class="panel__body" style="padding-top:10px;padding-bottom:0">
-            <p style="margin:0;color:var(--qq-ink-3);font-size:13px"><?= e($noticeIntro) ?></p>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($notices === []): ?>
-        <div class="empty">
-            <?= $view('partials/icon', ['name' => 'megaphone', 'size' => 42]) ?>
-            <p>暂无公告。</p>
-        </div>
-    <?php else: ?>
-        <?php foreach ($notices as $notice): ?>
-            <?php
-            $noticeId   = (int)($notice['id'] ?? 0);
-            $isPublic   = (int)($notice['enabled'] ?? 0) === 1;
-            $noticeBody = trim((string)($notice['body'] ?? ''));
-            ?>
-            <article class="notice-card" id="notice-<?= (int)($notice['id'] ?? 0) ?>">
-                <?php
-                /*
-                 * 标题行：公告标题在左；「未公开」徽章与「编辑公告」贴在行的最右。
-                 * （原先标题上方还有一行灰字「站点公告」——那是公告名称，已去掉；
-                 *   未公开的提示合并到这一行，不再单独占一行。）
-                 */
-                ?>
-                <div class="notice-card__head">
-                    <h3 class="notice-card__title"><?= e((string)($notice['title'] ?? '')) ?></h3>
-                    <span class="spacer"></span>
-                    <?php if (!$isPublic): ?>
-                        <span class="badge outline">未公开</span>
-                    <?php endif; ?>
-                    <?php if ($canManage): ?>
-                        <a class="notice-card__edit" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
-                    <?php endif; ?>
-                </div>
-                <?php if ($noticeBody !== ''): ?>
-                    <div class="notice-card__body"><?= \Core\Text::toHtml($noticeBody) ?></div>
-                <?php endif; ?>
-
-                <?php
-                // 公告引用的附件：复用帖子里的 .attach-list / .attach 样式，观感与楼层一致；
-                // 权限口径也与楼层一致 —— 没有「下载附件」权限时只列文件名、不做成链接
-                $noticeFiles = is_array($notice['attachments'] ?? null) ? $notice['attachments'] : [];
-                $canDownloadAttach = \Core\Permission::allows(auth_user(), 'attachment.download')
-                    || \Core\Permission::allows(auth_user(), 'attachment.manage');
-                ?>
-                <?php if ($noticeFiles !== []): ?>
-                    <div class="attach-list">
-                        <?php foreach ($noticeFiles as $file): ?>
-                            <?php $isImage = (int)($file['is_image'] ?? 0) === 1; ?>
-                            <?php if ($canDownloadAttach): ?>
-                                <a class="attach" href="<?= e(url('/attachment/' . (int)$file['id'])) ?>"
-                                   <?= $isImage ? 'target="_blank" rel="noopener"' : '' ?>>
-                                    <?= $view('partials/icon', ['name' => $isImage ? 'image' : 'paperclip', 'size' => 17]) ?>
-                                    <span><?= e((string)($file['name'] ?? '附件')) ?></span>
-                                    <span class="attach__size"><?= e(format_size((int)($file['size'] ?? 0))) ?></span>
-                                </a>
-                            <?php else: ?>
-                                <span class="attach attach--locked"
-                                      title="当前用户组没有查看附件的权限，请先登录或联系管理员">
-                                    <?= $view('partials/icon', ['name' => 'lock', 'size' => 17]) ?>
-                                    <span><?= e((string)($file['name'] ?? '附件')) ?></span>
-                                    <span class="attach__size"><?= e(format_size((int)($file['size'] ?? 0))) ?></span>
-                                </span>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </article>
-        <?php endforeach; ?>
-    <?php endif; ?>
-
-    <?php /*
-      公告分页：条数超过每页上限（config app.per_page）时才出现，
-      与下方「我的通知」共用 .pager —— 全站分页同一个样式。
-    */ ?>
-    <?php if (($noticePagination ?? '') !== ''): ?>
-        <div class="pager"><?= (string)$noticePagination ?></div>
-    <?php endif; ?>
-</section>
-
-<section class="panel">
-    <div class="panel__head">
-        <h2><?= $view('partials/icon', ['name' => 'bell', 'size' => 17]) ?>我的通知</h2>
-        <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">共 <?= format_number((int)($result['total'] ?? 0)) ?> 条</span>
-        <?php if ($unread > 0): ?>
-            <span class="badge"><?= $unread ?> 条未读</span>
-            <form method="post" action="<?= e(url('/notifications/read')) ?>">
-                <?= csrf_field() ?>
-                <button type="submit" class="button small ghost">
-                    <?= $view('partials/icon', ['name' => 'check', 'size' => 15]) ?>
-                    <span>全部标为已读</span>
-                </button>
-            </form>
+        <?php if ($notices === []): ?>
+            <div class="empty">
+                <?= $view('partials/icon', ['name' => 'megaphone', 'size' => 42]) ?>
+                <p>暂无公告。</p>
+            </div>
         <?php else: ?>
-            <span class="badge outline">已全部读完</span>
-        <?php endif; ?>
-    </div>
-
-    <?php if ($items === []): ?>
-        <div class="empty">
-            <?= $view('partials/icon', ['name' => 'bell', 'size' => 46]) ?>
-            <p>暂时没有任何通知。</p>
-            <p class="text-light" style="font-size:13px">
-                当有人评论你的帖子、引用你的评论，或在帖子里 @ 你时，这里会出现提醒。
-            </p>
-        </div>
-    <?php else: ?>
-        <div class="panel__body--flush">
-            <?php foreach ($items as $notice): ?>
+            <?php foreach ($notices as $notice): ?>
                 <?php
                 $noticeId   = (int)($notice['id'] ?? 0);
-                $isRead     = (int)($notice['is_read'] ?? 0) === 1;
-                $kind       = (string)($notice['kind'] ?? 'system');
-                $kindName   = (string)($notice['kind_name'] ?? '通知');
-                $icon       = $kindIcons[$kind] ?? 'dot';
-                $link       = (string)($notice['link'] ?? '');
-                $sender     = is_array($notice['sender'] ?? null) ? $notice['sender'] : [];
-                $senderId   = (int)($sender['id'] ?? 0);
-                $senderName = (string)($sender['username'] ?? '系统');
-                $createdAt  = (int)($notice['created_at'] ?? 0);
+                $isPublic   = (int)($notice['enabled'] ?? 0) === 1;
+                $noticeBody = trim((string)($notice['body'] ?? ''));
                 ?>
-                <div class="notice-item<?= $isRead ? '' : ' notice-item--unread' ?>">
-                    <div class="notice-item__icon">
-                        <?= $view('partials/icon', ['name' => $icon, 'size' => 17]) ?>
+                <article class="notice-card" id="notice-<?= (int)($notice['id'] ?? 0) ?>">
+                    <?php
+                    /*
+                     * 标题行：公告标题在左；「未公开」徽章与「编辑公告」贴在行的最右。
+                     * （原先标题上方还有一行灰字「站点公告」——那是公告名称，已去掉；
+                     *   未公开的提示合并到这一行，不再单独占一行。）
+                     */
+                    ?>
+                    <div class="notice-card__head">
+                        <h3 class="notice-card__title"><?= e((string)($notice['title'] ?? '')) ?></h3>
+                        <span class="spacer"></span>
+                        <?php if (!$isPublic): ?>
+                            <span class="badge outline">未公开</span>
+                        <?php endif; ?>
+                        <?php if ($canManage): ?>
+                            <a class="notice-card__edit" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
+                        <?php endif; ?>
                     </div>
+                    <?php if ($noticeBody !== ''): ?>
+                        <?php /* content_attachment_lock：无「下载附件」权限时把正文附图换成锁 + 文件名，避免破图 */ ?>
+                        <div class="notice-card__body"><?= content_attachment_lock(\Core\Text::toHtml($noticeBody)) ?></div>
+                    <?php endif; ?>
 
-                    <div class="notice-item__body">
-                        <div class="notice-item__text">
-                            <span class="badge outline" style="margin-right:6px"><?= e($kindName) ?></span>
-
-                            <?php if ($senderId > 0): ?>
-                                <a href="<?= e(url('/u/' . $senderId)) ?>"><?= e($senderName) ?></a>
-                            <?php else: ?>
-                                <strong><?= e($senderName) ?></strong>
-                            <?php endif; ?>
-
-                            <?php if (trim((string)($notice['content'] ?? '')) !== ''): ?>
-                                <span class="text-light">·</span> <?= e((string)$notice['content']) ?>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="hstack" style="margin-top:6px;gap:12px">
-                            <time datetime="<?= e(date('c', $createdAt)) ?>"><?= e(human_time($createdAt)) ?></time>
-
-                            <?php if ($link !== ''): ?>
-                                <a href="<?= e($link) ?>" style="font-size:12.5px">查看详情</a>
-                            <?php endif; ?>
-
-                            <?php if (!$isRead && $noticeId > 0): ?>
-                                <form method="post" action="<?= e(url('/notifications/read')) ?>">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="id" value="<?= $noticeId ?>">
-                                    <button type="submit" class="button small ghost"
-                                            style="height:auto;padding:1px 8px;font-size:12.5px">
-                                        标为已读
-                                    </button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
+                    <?php
+                    /*
+                     * 公告引用的附件：与楼层同一套规则（partials/attach-list）——
+                     * 图片已经贴在公告正文里的不再重复列，非图片文件照旧列出；
+                     * 没有「下载附件」权限时只显示文件名 + 锁，不做成链接。
+                     */
+                    $noticeFiles = is_array($notice['attachments'] ?? null) ? $notice['attachments'] : [];
+                    $noticeFilesHtml = $view('partials/attach-list', [
+                        'attachments' => $noticeFiles,
+                        'embedded'    => content_attachment_ids($noticeBody),
+                    ]);
+                    ?>
+                    <?= $noticeFilesHtml ?>
+                </article>
             <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</section>
+        <?php endif; ?>
 
-<?php if (($pagination ?? '') !== ''): ?>
-    <div class="pager"><?= (string)$pagination ?></div>
-<?php endif; ?>
+        <?php /*
+          公告分页：条数超过每页上限（config app.per_page）时才出现，
+          与下方「我的通知」共用 .pager —— 全站分页同一个样式。
+        */ ?>
+        <?php if (($noticePagination ?? '') !== ''): ?>
+            <div class="pager"><?= (string)$noticePagination ?></div>
+        <?php endif; ?>
+    </section>
+
+    <section class="panel">
+        <div class="panel__head">
+            <h2><?= $view('partials/icon', ['name' => 'bell', 'size' => 17]) ?>我的通知</h2>
+            <span class="spacer"></span>
+            <span class="text-light" style="font-size:13px">共 <?= format_number((int)($result['total'] ?? 0)) ?> 条</span>
+            <?php if ($unread > 0): ?>
+                <span class="badge"><?= $unread ?> 条未读</span>
+                <form method="post" action="<?= e(url('/notifications/read')) ?>">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="button small ghost">
+                        <?= $view('partials/icon', ['name' => 'check', 'size' => 15]) ?>
+                        <span>全部标为已读</span>
+                    </button>
+                </form>
+            <?php else: ?>
+                <span class="badge outline">已全部读完</span>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($items === []): ?>
+            <div class="empty">
+                <?= $view('partials/icon', ['name' => 'bell', 'size' => 46]) ?>
+                <p>暂时没有任何通知。</p>
+                <p class="text-light" style="font-size:13px">
+                    当有人评论你的帖子、引用你的评论，或在帖子里 @ 你时，这里会出现提醒。
+                </p>
+            </div>
+        <?php else: ?>
+            <div class="panel__body--flush">
+                <?php foreach ($items as $notice): ?>
+                    <?php
+                    $noticeId   = (int)($notice['id'] ?? 0);
+                    $isRead     = (int)($notice['is_read'] ?? 0) === 1;
+                    $kind       = (string)($notice['kind'] ?? 'system');
+                    $kindName   = (string)($notice['kind_name'] ?? '通知');
+                    $icon       = $kindIcons[$kind] ?? 'dot';
+                    $link       = (string)($notice['link'] ?? '');
+                    $sender     = is_array($notice['sender'] ?? null) ? $notice['sender'] : [];
+                    $senderId   = (int)($sender['id'] ?? 0);
+                    $senderName = (string)($sender['username'] ?? '系统');
+                    $createdAt  = (int)($notice['created_at'] ?? 0);
+                    ?>
+                    <div class="notice-item<?= $isRead ? '' : ' notice-item--unread' ?>">
+                        <div class="notice-item__icon">
+                            <?= $view('partials/icon', ['name' => $icon, 'size' => 17]) ?>
+                        </div>
+
+                        <div class="notice-item__body">
+                            <div class="notice-item__text">
+                                <span class="badge outline" style="margin-right:6px"><?= e($kindName) ?></span>
+
+                                <?php if ($senderId > 0): ?>
+                                    <a href="<?= e(url('/u/' . $senderId)) ?>"><?= e($senderName) ?></a>
+                                <?php else: ?>
+                                    <strong><?= e($senderName) ?></strong>
+                                <?php endif; ?>
+
+                                <?php if (trim((string)($notice['content'] ?? '')) !== ''): ?>
+                                    <span class="text-light">·</span> <?= e((string)$notice['content']) ?>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="hstack" style="margin-top:6px;gap:12px">
+                                <time datetime="<?= e(date('c', $createdAt)) ?>"><?= e(human_time($createdAt)) ?></time>
+
+                                <?php if ($link !== ''): ?>
+                                    <a href="<?= e($link) ?>" style="font-size:12.5px">查看详情</a>
+                                <?php endif; ?>
+
+                                <?php if (!$isRead && $noticeId > 0): ?>
+                                    <form method="post" action="<?= e(url('/notifications/read')) ?>">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="id" value="<?= $noticeId ?>">
+                                        <button type="submit" class="button small ghost"
+                                                style="height:auto;padding:1px 8px;font-size:12.5px">
+                                            标为已读
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <?php if (($pagination ?? '') !== ''): ?>
+        <div class="pager"><?= (string)$pagination ?></div>
+    <?php endif; ?>
+    </div>
+
+    <?= $view('partials/sidebar') ?>
+</div>
