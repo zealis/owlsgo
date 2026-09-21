@@ -82,8 +82,8 @@ if (!function_exists('content_fold')) {
             return null;
         }
 
-        $defaults = ['topic' => 560, 'reply' => 420, 'notice' => 560];
-        $fallback = $defaults[$scope] ?? 420;
+        $defaults = ['topic' => 250, 'reply' => 180, 'notice' => 270];
+        $fallback = $defaults[$scope] ?? 180;
 
         $raw    = (string)setting('fold_' . $scope . '_height', '');
         $height = $raw === '' ? $fallback : (int)$raw;
@@ -91,7 +91,7 @@ if (!function_exists('content_fold')) {
         return [
             'id'     => 'fold-' . $scope . '-' . max(0, $id),
             // 与后台输入框的区间保持一致：越界值一律钳回来，前端就不必再防一次
-            'height' => max(200, min(2000, $height)),
+            'height' => max(100, min(2000, $height)),
         ];
     }
 }

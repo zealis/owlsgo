@@ -1273,6 +1273,23 @@
       var box = document.createElement('form');
       box.className = 'prompt-form';
 
+      /*
+       * ⚠️ method="dialog" 是必需的兜底。
+       *
+       * 这个 <form> 没有任何 action，默认 method=GET —— 一旦有谁触发原生提交
+       * （requestSubmit()、隐式提交、以后新加的按钮忘了写 type="button"），浏览器就会
+       * **导航到当前地址**，表现为「整页刷新」。改成 method="dialog" 后，原生提交只会
+       * 关掉弹层，绝不会导航；真正的「确定」逻辑由下面统一的 confirmPrompt() 负责。
+       */
+      box.method = 'dialog';
+
+      // 实际提交动作抽成一个函数：确定按钮、弹层内回车、以及「插入图片」选完图后自动收尾，
+      // 三处都走它。以前选完图是调 box.requestSubmit()，正是那次整页刷新的来源。
+      function confirmPrompt() {
+        dialog.returnValue = 'ok';
+        dialog.close('ok');
+      }
+
       fields.forEach(function (field) {
         var label = document.createElement('label');
         label.className = 'prompt-field';
@@ -1296,7 +1313,7 @@
       });
 
       if (decorate) {
-        decorate(box, inputs);
+        decorate(box, inputs, confirmPrompt);
       }
 
       body.appendChild(box);
@@ -1325,13 +1342,18 @@
       dialog.addEventListener('close', onClose);
 
       dialog.querySelector('[data-prompt-ok]').onclick = function () {
-        dialog.returnValue = 'ok';
-        dialog.close('ok');
+        confirmPrompt();
       };
       dialog.querySelector('[data-prompt-cancel]').onclick = function () {
         dialog.returnValue = 'cancel';
         dialog.close('cancel');
       };
+
+      // 兜底：万一还是走到了原生提交，拦下来交给 confirmPrompt，绝不让页面导航
+      box.addEventListener('submit', function (event) {
+        event.preventDefault();
+        confirmPrompt();
+      });
 
       // 在弹层里回车 = 确定（textarea 除外）
       box.addEventListener('keydown', function (event) {
@@ -1383,13 +1405,13 @@
     return uiPrompt('插入图片', [
       { name: 'url', label: '图片地址', value: 'https://', inputmode: 'url' },
       { name: 'alt', label: '图片描述', value: selected || '图片描述' }
-    ], function (box, inputs) {
+    ], function (box, inputs, confirmPrompt) {
       if (!upload) {
         return;
       }
 
       // 上传是主要入口：放在弹层最前面，选完图地址自动填好，再补描述
-      box.insertBefore(buildImagePicker(upload, inputs.url, box), box.firstChild);
+      box.insertBefore(buildImagePicker(upload, inputs.url, confirmPrompt), box.firstChild);
     }).then(function (values) {
       if (!values) {
         return;
@@ -1472,12 +1494,19 @@
   }
 
   /**
-   * 弹层里的选图区
+   * 弹层里的「上传本地图片」选择器。
    *
-   * 上传成功后把地址填进 URL 输入框并直接提交表单 —— 用户选完图就完了，
+   * 上传成功后把地址填进 URL 输入框并直接收尾 —— 用户选完图就完了，
    * 不需要再手点一次「确定」。
+   *
+   * @param {Object}   upload        上传通道（input / endpoint / list）
+   * @param {Element}  urlInput      「图片地址」输入框，上传完自动填上
+   * @param {Function} confirmPrompt 上传成功后收尾（等价于点「确定」）
+   *
+   * ⚠️ 收尾**不能**用 form.requestSubmit()：这个 form 是给 uiPrompt 用的，
+   *    原生提交会让浏览器导航到当前地址 → 用户看到的是「上传完图片整页刷新」。
    */
-  function buildImagePicker(upload, urlInput, box) {
+  function buildImagePicker(upload, urlInput, confirmPrompt) {
     var row = document.createElement('div');
     row.className = 'editor-picker';
 
@@ -1524,7 +1553,10 @@
         if (upload.list) {
           renderAttachment(upload.list, json);
         }
-        box.requestSubmit ? box.requestSubmit() : null;
+        // 走「确定」而不是提交表单：requestSubmit() 会让浏览器导航 → 整页刷新
+        if (typeof confirmPrompt === 'function') {
+          confirmPrompt();
+        }
       }).catch(function (error) {
         status.textContent = (error && error.message) || '上传失败，请换张图片试试。';
       }).then(function () {

@@ -43,9 +43,9 @@ final class AdminController extends AdminBaseController
         'attachment_quota' => [0, 1048576],
         'cache_ttl'       => [0, 86400],
         /* 长内容折叠：超过这个显示高度就折起来（单位 px，与前端 Clamp 区间一致） */
-        'fold_topic_height'  => [200, 2000],
-        'fold_reply_height'  => [200, 2000],
-        'fold_notice_height' => [200, 2000],
+        'fold_topic_height'  => [100, 2000],
+        'fold_reply_height'  => [100, 2000],
+        'fold_notice_height' => [100, 2000],
     ];
 
     /**

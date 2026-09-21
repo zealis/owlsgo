@@ -74,9 +74,9 @@ final class Settings
              * 降级等一律照旧。高度单位 px，与后台表单的 min/max（200–2000）一致。
              */
             'fold_long_content'  => '1',
-            'fold_topic_height'  => '560',   // 首楼
-            'fold_reply_height'  => '420',   // 回复楼层（通常比首楼短，阈值也小些）
-            'fold_notice_height' => '560',   // 通知中心的公告正文
+            'fold_topic_height'  => '250',   // 首楼
+            'fold_reply_height'  => '180',   // 回复楼层（通常比首楼短，阈值也小些）
+            'fold_notice_height' => '270',   // 通知中心的公告正文
 
             /* 附件 */
             'upload_enabled'     => '1',
