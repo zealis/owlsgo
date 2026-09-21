@@ -3254,6 +3254,82 @@ body[data-sidebar-layout] {
   opacity: 0.9;
 }
 
+/*
+ * 侧栏分组（「站点设置」这种「一个分组多个页面」的入口）
+ *
+ * 父项只负责展开/收起，子项才是页面链接，用原生 <details>/<summary> 实现：
+ * 无脚本也能用，「当前页所在分组默认展开」由 PHP 直接输出 open，不依赖前端状态。
+ *
+ * 必须压掉 OATUI 分层的 details 样式：oat.css 把 details 做成「带边框的卡片」
+ * （border / border-radius / overflow),summary 还带 var(--space-4) 内边距与
+ * 「展开内容 16px 外边距 + fade-in-up 动画」——放进侧栏会变成一个突兀的方框。
+ * theme.css 不在 @layer 里，无层规则天然压过分层规则，不需要堆特异性。
+ */
+[data-sidebar] nav details.nav-group {
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin: 0;
+}
+
+/* 与同级 <a> 完全一致的排版（字号 / 内边距 / 圆角 / 颜色） */
+[data-sidebar] nav details.nav-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--qq-ink-2);
+}
+
+[data-sidebar] nav details.nav-group > summary svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  opacity: 0.9;
+}
+
+[data-sidebar] nav details.nav-group > summary:hover {
+  background: var(--qq-soft-2);
+  color: var(--qq-blue-deep);
+}
+
+/* 展开中的父项用品牌色，但不上底色 —— 底色留给真正的「当前子项」 */
+[data-sidebar] nav details.nav-group[open] > summary {
+  color: var(--qq-blue-deep);
+}
+
+/* OATUI 自带的下拉箭头（mask 图标）：缩小并推到最右；展开时它自己会翻转 */
+[data-sidebar] nav details.nav-group > summary::after {
+  width: 13px;
+  height: 13px;
+  margin-inline-start: auto;
+  opacity: 0.75;
+}
+
+/*
+ * 子菜单：缩进 + 一条引导线，字号略小、不再每条都挂图标。
+ * 左边距 21+9(内边距)+10(链接内边距) ≈ 40px，与父项标题（12+17 图标+9 gap = 38px）对齐。
+ */
+[data-sidebar] nav details.nav-group > .nav-sub {
+  margin: 2px 0 2px 21px;
+  padding: 0 0 0 9px;
+  border-inline-start: 1px solid var(--qq-line);
+  gap: 1px;
+}
+
+[data-sidebar] nav .nav-sub a {
+  padding: 7px 10px;
+  font-size: 13.5px;
+}
+
+/* 取消 OATUI 给展开内容的 fade-in-up：侧栏里动画会带着整列跳一下 */
+[data-sidebar] nav details.nav-group[open] > .nav-sub {
+  animation: none;
+}
+
 .admin-topnav {
   background: var(--qq-card);
   border-bottom: 1px solid var(--qq-line);
@@ -4939,6 +5015,22 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   cursor: pointer;
 }
 
+/*
+ * 图标尺寸：按钮里放的是内联 SVG（不是 ‹ › × ↺ 字符）。
+ * 字符会被 place-items:center 按**行盒**居中，而角引号的墨迹偏下（实测低 4.5px）——
+ * 换成 SVG 后盒心即墨迹中心，这里只要给尺寸。
+ */
+.image-lightbox-nav svg {
+  width: 22px;
+  height: 22px;
+}
+
+.image-lightbox-close svg,
+.image-lightbox-reset svg {
+  width: 17px;
+  height: 17px;
+}
+
 .image-lightbox-close {
   top: 8px;
   right: 8px;
@@ -4946,7 +5038,6 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   min-width: 34px;
   height: 34px;
   min-height: 34px;
-  font-size: 20px;
 }
 
 .image-lightbox-reset {
@@ -4956,7 +5047,6 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   min-width: 34px;
   height: 34px;
   min-height: 34px;
-  font-size: 18px;
 }
 
 .image-lightbox-nav {
@@ -4965,7 +5055,6 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   min-width: 44px;
   height: 44px;
   min-height: 44px;
-  font-size: 28px;
   transform: translateY(-50%);
 }
 
@@ -4992,7 +5081,8 @@ html[data-theme="dark"] [data-theme-icon-moon] {
 
 @media (max-width: 720px) {
   .image-lightbox-dialog { height: 86vh; }
-  .image-lightbox-nav { width: 38px; min-width: 38px; height: 38px; min-height: 38px; font-size: 24px; }
+  .image-lightbox-nav { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  .image-lightbox-nav svg { width: 20px; height: 20px; }
 }
 
 /* 楼层操作图标：透明 ghost（与「置顶/精华/推荐/锁定」版主图标同款，用户要求）。

@@ -494,8 +494,9 @@
   /*  草稿自动保存（发帖 / 评论）：刷新、离开或误关页面都不丢内容        */
   /* ------------------------------------------------------------------ */
 
-  var DRAFT_PREFIX = 'owlsgo:draft:';
-  var draftTimers  = {};
+  var DRAFT_PREFIX      = 'owlsgo:draft:';
+  var DRAFT_SENT_PREFIX = 'owlsgo:draft-sent:';
+  var draftTimers       = {};
 
   /** localStorage 在隐私模式下可能不可用，取不到就整体降级为「不保存」 */
   function draftStorage() {
@@ -506,8 +507,73 @@
     }
   }
 
+  /** 「已提交」标记存在 sessionStorage：只跟当前标签页同生共死，跨刷新存活 */
+  function draftSession() {
+    try {
+      return window.sessionStorage;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function draftKey(form) {
     return DRAFT_PREFIX + form.getAttribute('data-draft');
+  }
+
+  function draftSentKey(form) {
+    return DRAFT_SENT_PREFIX + form.getAttribute('data-draft');
+  }
+
+  /**
+   * 「这一页的内容已经交给服务端了」——必须跨文档记住，不能只存内存。
+   *
+   * 本站 HTML 带 Cache-Control: no-store，浏览器「返回上一页」不会走 bfcache，
+   * 而是重新请求文档：JS 状态全新（内存里的 form.__draftSubmitted 随文档一起没了），
+   * 但浏览器会把表单控件值恢复出来（用户看到「内容还在」）。
+   * 于是：提交 → 返回（内容还在）→ 刷新，即将卸载的旧文档跑 pagehide → saveDraft()
+   * 看到「没提交过 + 控件里有内容」，就把已经发出去的正文又写回草稿；
+   * 新文档 initDrafts() 读到它 → 弹「检测到未提交的草稿」。
+   * 所以「已提交」这个事实要活过文档卸载，才挡得住这次回写。
+   */
+  function markDraftSent(form) {
+    if (!form.hasAttribute('data-draft')) {
+      return;
+    }
+
+    clearDraft(form);
+
+    var store = draftSession();
+    if (!store) {
+      return;
+    }
+
+    try {
+      store.setItem(draftSentKey(form), String(Date.now()));
+    } catch (e) { /* 存不下就算了，退化成内存标志 */ }
+  }
+
+  function unmarkDraftSent(form) {
+    var store = draftSession();
+    if (!store) {
+      return;
+    }
+
+    try {
+      store.removeItem(draftSentKey(form));
+    } catch (e) { /* ignore */ }
+  }
+
+  function draftWasSent(form) {
+    var store = draftSession();
+    if (!store) {
+      return false;
+    }
+
+    try {
+      return store.getItem(draftSentKey(form)) !== null;
+    } catch (e) {
+      return false;
+    }
   }
 
   function draftTime(ts) {
@@ -605,8 +671,11 @@
      * 已提交：内容已经交给服务端了。提交必然伴随页面卸载（跳转），
      * 卸载时的补存若照常执行，就会把刚提交的内容又写回草稿
      * —— 「点了提交，回来却又弹出草稿」就是这么来的。
+     *
+     * 两重判断：内存标志管本次文档（提交那一刻到卸载），跨文档的「已提交」标记
+     * 管浏览器返回/刷新导致文档重放的那一次（见 markDraftSent）。
      */
-    if (form.__draftSubmitted) {
+    if (form.__draftSubmitted || draftWasSent(form)) {
       return;
     }
 
@@ -749,9 +818,19 @@
 
   function initDrafts() {
     Array.prototype.forEach.call(document.querySelectorAll('form[data-draft]'), function (form) {
+      /*
+       * 这一页的内容其实已经提交过了（浏览器返回/刷新把控件值又恢复了出来）：
+       * 清掉残留草稿并置「已提交」，既不写草稿、也不弹「恢复草稿」。
+       * 用户重新输入时会在 resumeEditing() 里解锁（见下）。
+       */
+      if (draftWasSent(form)) {
+        clearDraft(form);
+        form.__draftSubmitted = true;
+      }
+
       var draft = readDraft(form);
 
-      if (draftDiffers(form, draft)) {
+      if (!form.__draftSubmitted && draftDiffers(form, draft)) {
         var notice = buildDraftNotice(form);
         notice.querySelector('.draft-notice__text').textContent =
           '检测到未提交的草稿（保存于 ' + draftTime(draft.saved_at) + '）';
@@ -765,10 +844,12 @@
       /**
        * 用户重新开始编辑（输入文字 / 点附件按钮）：
        *  - 撤掉「待恢复草稿」提示，视为已处理；
-       *  - 解除「已提交」状态 —— 提交被打回（422）后继续修改，自动保存要能恢复。
+       *  - 解除「已提交」状态 —— 提交被打回（422）后继续修改，自动保存要能恢复；
+       *    跨文档的「已提交」标记也要一起清掉，否则这一页永远存不了草稿。
        */
       function resumeEditing() {
         form.__draftSubmitted = false;
+        unmarkDraftSent(form);
 
         if (form.__draftPending && !form.__draftResolved) {
           form.__draftResolved = true;
@@ -810,13 +891,15 @@
       /*
        * 提交：草稿立刻作废，并置 __draftSubmitted 让随后的补存（pagehide /
        * visibilitychange / 尚未触发的防抖定时器）全部跳过。
+       * 同时把「已提交」写进 sessionStorage：本站页面带 no-store，浏览器返回是
+       * 重新加载文档，内存标志活不到那一刻，只有它能挡住「返回 → 刷新」时的回写。
        * 若提交被服务端打回（校验失败，页面留在原地），用户再次输入会复位该标志，
        * 自动保存照常恢复（见 resumeEditing）。
        */
       form.addEventListener('submit', function () {
         form.__draftSubmitted = true;
         form.__draftPending   = false;
-        clearDraft(form);
+        markDraftSent(form);
 
         if (form.__draftNotice && form.__draftNotice.parentNode) {
           form.__draftNotice.parentNode.removeChild(form.__draftNotice);
@@ -923,9 +1006,11 @@
           }
 
           notify(json.message || '操作失败，请稍后重试。', 'danger');
+          unmarkDraftSent(form);   // 没被收下：解除「已提交」，内容继续当草稿存
         })
         .catch(function () {
           notify('网络异常，请检查连接后重试。', 'danger');
+          unmarkDraftSent(form);
         })
         .then(function () {
           if (submitter) {
@@ -3148,30 +3233,54 @@
       caption = document.createElement('div');
       caption.className = 'image-lightbox-caption';
       caption.hidden = true;
+
+      /*
+       * 按钮里的图标一律用内联 SVG，**不用 ‹ › × ↺ 这些字符**。
+       *
+       * 字符在按钮里是「行盒居中」（place-items:center 居中的是 advance 宽 × line-height 高的行盒），
+       * 而角引号 / 乘号的墨迹本来就不在字形盒中心 —— 实测 ‹ › 的墨迹中心比按钮中心**低 4.5px**、
+       * × 低 3.5px，肉眼就是「图标没居中」。SVG 的盒子中心就是墨迹中心，天生的，不依赖字体。
+       *
+       * 路径与 partials/icon.php 同形（24 视窗、stroke 1.7、圆角端点），
+       * 只是把两个 chevron 在视窗里做了居中微调（icon.php 那对在水平方向偏 0.8），
+       * 让墨迹中心正好落在 (12,12)。尺寸由 theme.css 给。
+       */
+      const LIGHTBOX_ICONS = {
+        prev: '<path d="m15.4 5.2-6.8 6.8 6.8 6.8"/>',
+        next: '<path d="m8.6 5.2 6.8 6.8-6.8 6.8"/>',
+        close: '<path d="M6 6l12 12M18 6 6 18"/>',
+        reset: '<path d="M20.4 11.2A8.4 8.4 0 0 0 6 5.6L3.2 8.6"/><path d="M3.2 4v4.6h4.6"/>'
+          + '<path d="M3.6 12.8A8.4 8.4 0 0 0 18 18.4l2.8-3"/><path d="M20.8 20v-4.6h-4.6"/>'
+      };
+      const iconMarkup = name => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
+        + ' fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'
+        + ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
+        + LIGHTBOX_ICONS[name] + '</svg>';
+
       const closeButton = document.createElement('button');
       closeButton.type = 'button';
       closeButton.className = 'image-lightbox-close';
       closeButton.setAttribute('aria-label', '关闭图片预览');
-      closeButton.textContent = '\u00d7';
+      closeButton.innerHTML = iconMarkup('close');
       closeButton.addEventListener('click', close);
       previousButton = document.createElement('button');
       previousButton.type = 'button';
       previousButton.className = 'image-lightbox-nav image-lightbox-prev';
       previousButton.setAttribute('aria-label', '上一张图片');
-      previousButton.textContent = '\u2039';
+      previousButton.innerHTML = iconMarkup('prev');
       previousButton.addEventListener('click', () => navigate(-1));
       nextButton = document.createElement('button');
       nextButton.type = 'button';
       nextButton.className = 'image-lightbox-nav image-lightbox-next';
       nextButton.setAttribute('aria-label', '下一张图片');
-      nextButton.textContent = '\u203a';
+      nextButton.innerHTML = iconMarkup('next');
       nextButton.addEventListener('click', () => navigate(1));
       resetButton = document.createElement('button');
       resetButton.type = 'button';
       resetButton.className = 'image-lightbox-reset';
       resetButton.setAttribute('aria-label', '还原缩放');
       resetButton.title = '还原缩放';
-      resetButton.textContent = '\u21ba';
+      resetButton.innerHTML = iconMarkup('reset');
       resetButton.hidden = true;
       resetButton.addEventListener('click', resetView);
       image.addEventListener('wheel', event => {

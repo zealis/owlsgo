@@ -7,11 +7,13 @@ declare(strict_types=1);
 
 namespace Modules\Admin;
 
+use Core\App;
 use Core\Auth;
 use Core\Cache;
 use Core\Database;
 use Core\PluginManager;
 use Core\Request;
+use Core\Response;
 use Core\Router;
 use Core\Settings;
 use Modules\Forum\ForumModel;
@@ -24,29 +26,12 @@ use Modules\User\UserModel;
 
 final class AdminController extends AdminBaseController
 {
-    /** 布尔型设置项：表单未勾选时也必须显式写入 0 */
-    private const BOOL_KEYS = [
-        'register_enabled', 'register_verify', 'login_captcha', 'register_captcha',
-        'thread_need_audit', 'post_need_audit', 'guest_view',
-        'upload_enabled', 'site_closed', 'debug_mode',
-        /* 长内容折叠总开关（高度见下面的 fold_*_height） */
-        'fold_long_content',
-    ];
-
-    /** 数值型设置项 => [最小值, 最大值] */
-    private const INT_KEYS = [
-        'register_group'  => [1, 999],
-        'post_interval'   => [0, 86400],
-        'post_min_length' => [1, 1000],
-        'post_max_length' => [10, 200000],
-        'upload_max_size' => [1, 512],
-        'attachment_quota' => [0, 1048576],
-        'cache_ttl'       => [0, 86400],
-        /* 长内容折叠：超过这个显示高度就折起来（单位 px，与前端 Clamp 区间一致） */
-        'fold_topic_height'  => [100, 2000],
-        'fold_reply_height'  => [100, 2000],
-        'fold_notice_height' => [100, 2000],
-    ];
+    /*
+     * 站点设置的分组与「键 → 处理方式」全部登记在 SettingsPages 里（单一事实来源）：
+     * 侧栏下拉、每个分组页渲染哪些字段、保存时处理哪些键，三处共用同一份定义。
+     * 分组之后表单是「部分表单」，保存时**必须**按当前分组的键收窄 ——
+     * 否则把「附件」页一存，其它页未提交的布尔开关会被写成 0。
+     */
 
     /**
      * 后台概览
@@ -99,11 +84,6 @@ final class AdminController extends AdminBaseController
     }
 
     /**
-     * 站点设置页
-     *
-     * @param array<string, string> $params
-     */
-    /**
      * 清理 OPcache（PHP 字节码缓存）
      *
      * 为什么需要它：服务器一旦开启 opcache 且没有配置按时间校验源文件，
@@ -133,11 +113,34 @@ final class AdminController extends AdminBaseController
         ]);
     }
 
+    /**
+     * 站点设置（一个分组一页）
+     *
+     * 路由：`/admin/settings/{group}`；裸地址 `/admin/settings` 重定向到默认分组，
+     * 这样地址栏里的分组、侧栏高亮与面包屑永远是同一个事实。
+     *
+     * @param array<string, string> $params
+     */
     public function settings(array $params): string
     {
+        $slug = trim((string)($params['group'] ?? ''));
+
+        if ($slug === '') {
+            Response::redirect(Router::url(SettingsPages::path(SettingsPages::DEFAULT_SLUG)));
+        }
+
+        if (!SettingsPages::has($slug)) {
+            App::abort(404, '设置分组不存在。');
+        }
+
+        $page = SettingsPages::meta($slug);
+
         return $this->adminView('admin/settings', [
-            'pageTitle'    => '站点设置 - ' . (string)setting('site_name'),
-            'adminTitle'   => '站点设置',
+            'pageTitle'    => $page['label'] . ' - 站点设置 - ' . (string)setting('site_name'),
+            'adminTitle'   => $page['label'],
+            'adminSubtitle' => '站点设置',
+            'settingSlug'  => $slug,
+            'settingPage'  => $page,
             'settings'     => Settings::all(),
             'groups'       => UsergroupModel::options(),
             'uploadMax'    => (string)ini_get('upload_max_filesize'),
@@ -149,37 +152,41 @@ final class AdminController extends AdminBaseController
     }
 
     /**
-     * 保存站点设置
+     * 保存某个分组的站点设置
+     *
+     * 只处理当前分组登记的键：分组之后提交上来的是「部分表单」，
+     * 全量遍历会让「这个页面里没有的开关」被当成未勾选而写 0。
      *
      * @param array<string, string> $params
      */
     public function saveSettings(array $params): never
     {
+        // 兼容旧表单地址 POST /admin/settings（无分组）：按默认分组处理
+        $slug = trim((string)($params['group'] ?? ''));
+        $slug = $slug === '' ? SettingsPages::DEFAULT_SLUG : $slug;
+
+        if (!SettingsPages::has($slug)) {
+            App::abort(404, '设置分组不存在。');
+        }
+
+        if (!SettingsPages::meta($slug)['form']) {
+            App::abort(404, '该页面没有可提交的设置表单。');
+        }
+
         $input   = Request::allPost();
         $current = Settings::all();
-        $back    = Router::url('/admin/settings');
+        $back    = Router::url(SettingsPages::path($slug));
 
         $values = [];
 
-        /* ---------- 文本项 ---------- */
-        foreach ([
-            'site_name'          => 60,
-            'site_url'           => 191,
-            'site_description'   => 200,
-            'site_keywords'      => 200,
-            'site_icp'           => 60,
-            'site_closed_reason' => 200,
-        ] as $key => $limit) {
+        /* ---------- 文本项（本分组登记的才处理，未提交时保留库里的值） ---------- */
+        foreach (SettingsPages::textKeys($slug) as $key => $limit) {
             $values[$key] = mb_substr(trim((string)($input[$key] ?? ($current[$key] ?? ''))), 0, $limit);
         }
 
-        if ($values['site_name'] === '') {
-            $this->backWithErrors(['site_name' => '站点名称不能为空。'], $back);
-        }
-
-        // 站点地址若填写则必须是合法 URL（留空表示自动使用当前域名）
-        if ($values['site_url'] !== '' && !filter_var($values['site_url'], FILTER_VALIDATE_URL)) {
-            $this->backWithErrors(['site_url' => '站点地址格式不正确，请填写完整 URL（含 http:// 或 https://）。'], $back);
+        /* ---------- 允许上传的扩展名（白名单化） ---------- */
+        foreach (SettingsPages::extKeys($slug) as $key) {
+            $values[$key] = $this->normalizeExtensions((string)($input[$key] ?? ($current[$key] ?? '')));
         }
 
         /*
@@ -192,27 +199,38 @@ final class AdminController extends AdminBaseController
          * 表单不再提交、这里不再校验与保存。
          */
 
-        /* ---------- 允许上传的扩展名（白名单化） ---------- */
-        $values['upload_allow_ext'] = $this->normalizeExtensions((string)($input['upload_allow_ext'] ?? ''));
+        /* ---------- 校验：只在本页确实有该字段时执行 ---------- */
+        if (array_key_exists('site_name', $values) && $values['site_name'] === '') {
+            $this->backWithErrors(['site_name' => '站点名称不能为空。'], $back);
+        }
+
+        // 站点地址若填写则必须是合法 URL（留空表示自动使用当前域名）
+        if (array_key_exists('site_url', $values)
+            && $values['site_url'] !== ''
+            && !filter_var($values['site_url'], FILTER_VALIDATE_URL)) {
+            $this->backWithErrors(['site_url' => '站点地址格式不正确，请填写完整 URL（含 http:// 或 https://）。'], $back);
+        }
 
         /* ---------- 布尔项 ---------- */
-        foreach (self::BOOL_KEYS as $key) {
+        foreach (SettingsPages::boolKeys($slug) as $key) {
             $values[$key] = Request::bool($key) ? '1' : '0';
         }
 
         /* ---------- 数值项 ---------- */
-        foreach (self::INT_KEYS as $key => [$min, $max]) {
+        foreach (SettingsPages::intKeys($slug) as $key => [$min, $max]) {
             $value = (int)($input[$key] ?? ($current[$key] ?? 0));
             $values[$key] = (string)max($min, min($max, $value));
         }
 
         // 兜底：注册用户组必须真实存在，否则回退到「注册用户」
-        if (!isset(UsergroupModel::options()[(int)$values['register_group']])) {
+        if (isset($values['register_group'])
+            && !isset(UsergroupModel::options()[(int)$values['register_group']])) {
             $values['register_group'] = '3';
         }
 
         // 发帖长度上下限必须合理，避免出现 min > max 导致所有帖子都发不出去
-        if ((int)$values['post_min_length'] > (int)$values['post_max_length']) {
+        if (isset($values['post_min_length'], $values['post_max_length'])
+            && (int)$values['post_min_length'] > (int)$values['post_max_length']) {
             $values['post_min_length'] = '2';
             $values['post_max_length'] = '20000';
         }
@@ -220,9 +238,11 @@ final class AdminController extends AdminBaseController
         Settings::save($values);
         Cache::flush();
 
-        $this->audit('settings.save', 'settings', '更新站点设置');
+        $label = SettingsPages::label($slug);
 
-        $message = '站点设置已保存。';
+        $this->audit('settings.save', 'settings', '更新站点设置 · ' . $label);
+
+        $message = '「' . $label . '」设置已保存。';
 
         if (Request::wantsJson()) {
             $this->json(['ok' => true, 'message' => $message, 'redirect' => $back]);

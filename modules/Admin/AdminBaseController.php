@@ -26,7 +26,10 @@ abstract class AdminBaseController extends Controller
     /**
      * 后台导航定义
      *
-     * @return list<array{label:string, url:string, icon:string, permission:string}>
+     * 带 `children` 的项在侧栏渲染成可展开的分组（父项只负责展开/收起，子项才是链接）；
+     * 子项未声明 `permission` 时继承父项的权限。
+     *
+     * @return list<array{label:string, url:string, icon:string, permission:string, children?:list<array{label:string, url:string, icon:string}>}>
      */
     protected function nav(): array
     {
@@ -40,23 +43,56 @@ abstract class AdminBaseController extends Controller
             ['label' => '插件',    'url' => '/admin/plugins',     'icon' => 'plug',      'permission' => 'admin.plugin'],
             ['label' => '计划任务', 'url' => '/admin/cron',        'icon' => 'clock',     'permission' => 'admin.cron'],
             ['label' => '日志',    'url' => '/admin/logs',        'icon' => 'list',      'permission' => 'admin.logs'],
-            ['label' => '站点设置', 'url' => '/admin/settings',    'icon' => 'settings',  'permission' => 'admin.settings'],
+            /*
+             * 站点设置：一个分组一页，子项与分组定义同在 SettingsPages
+             * （新增分组只改那一处，侧栏自动出现）。
+             */
+            [
+                'label'      => '站点设置',
+                'url'        => '/admin/settings',
+                'icon'       => 'settings',
+                'permission' => 'admin.settings',
+                'children'   => SettingsPages::nav(),
+            ],
         ];
     }
 
     /**
      * 后台导航（已按权限过滤，并附加插件页面）
      *
-     * @return list<array{label:string, url:string, icon:string, permission:string}>
+     * @return list<array{label:string, url:string, icon:string, permission:string, children?:list<array{label:string, url:string, icon:string}>}>
      */
     protected function filteredNav(): array
     {
         $nav = [];
 
         foreach ($this->nav() as $item) {
-            if (Auth::can($item['permission'])) {
-                $nav[] = $item;
+            if (!Auth::can($item['permission'])) {
+                continue;
             }
+
+            /* 子项按自己的权限过滤（未声明则继承父项），全部被过滤掉时退化成普通链接 */
+            $children = [];
+
+            foreach ((array)($item['children'] ?? []) as $child) {
+                if (!Auth::can((string)($child['permission'] ?? $item['permission']))) {
+                    continue;
+                }
+
+                $children[] = [
+                    'label' => (string)$child['label'],
+                    'url'   => (string)$child['url'],
+                    'icon'  => (string)($child['icon'] ?? 'dot'),
+                ];
+            }
+
+            if ($children !== []) {
+                $item['children'] = $children;
+            } else {
+                unset($item['children']);
+            }
+
+            $nav[] = $item;
         }
 
         // 插件注册的后台页面（Plugin::adminPage）

@@ -114,13 +114,52 @@ $isCurrent = static function (string $url) use ($path): bool {
     <nav aria-label="后台导航">
         <ul>
             <?php foreach ($nav as $item): ?>
-                <?php $url = (string)$item['url']; ?>
-                <li>
-                    <a href="<?= e(url($url)) ?>" <?= $isCurrent($url) ? 'aria-current="page"' : '' ?>>
-                        <?= $view('partials/icon', ['name' => (string)($item['icon'] ?? 'dot'), 'size' => 17]) ?>
-                        <span><?= e((string)$item['label']) ?></span>
-                    </a>
-                </li>
+                <?php
+                $url      = (string)$item['url'];
+                $children = isset($item['children']) && is_array($item['children']) ? $item['children'] : [];
+                ?>
+                <?php if ($children !== []): ?>
+                    <?php
+                    /*
+                     * 分组项（如「站点设置」）：父项只是展开/收起的开关，子项才是页面链接。
+                     * 用原生 <details> 而不是 JS 点击展开 —— 无脚本也能用，
+                     * 而且「当前页所在分组默认展开」由 PHP 直接输出 open，不依赖任何前端状态。
+                     */
+                    $groupOpen = false;
+                    foreach ($children as $child) {
+                        if ($isCurrent((string)$child['url'])) {
+                            $groupOpen = true;
+                            break;
+                        }
+                    }
+                    ?>
+                    <li>
+                        <details class="nav-group"<?= $groupOpen ? ' open' : '' ?>>
+                            <summary>
+                                <?= $view('partials/icon', ['name' => (string)($item['icon'] ?? 'dot'), 'size' => 17]) ?>
+                                <span><?= e((string)$item['label']) ?></span>
+                            </summary>
+                            <?php /* 子项不再重复图标：同一组下 7 个图标只是噪音，缩进 + 引导线更清楚 */ ?>
+                            <ul class="nav-sub">
+                                <?php foreach ($children as $child): ?>
+                                    <?php $childUrl = (string)$child['url']; ?>
+                                    <li>
+                                        <a href="<?= e(url($childUrl)) ?>" <?= $isCurrent($childUrl) ? 'aria-current="page"' : '' ?>>
+                                            <span><?= e((string)$child['label']) ?></span>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </details>
+                    </li>
+                <?php else: ?>
+                    <li>
+                        <a href="<?= e(url($url)) ?>" <?= $isCurrent($url) ? 'aria-current="page"' : '' ?>>
+                            <?= $view('partials/icon', ['name' => (string)($item['icon'] ?? 'dot'), 'size' => 17]) ?>
+                            <span><?= e((string)$item['label']) ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
             <?php endforeach; ?>
         </ul>
     </nav>

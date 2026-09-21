@@ -98,8 +98,15 @@ return [
 
     /* ==================== 后台：概览与设置 ==================== */
     ['GET',  '/admin',          'Modules\Admin\AdminController@dashboard', 'admin.access'],
-    ['GET',  '/admin/settings', 'Modules\Admin\AdminController@settings',  'admin.settings'],
-    ['POST', '/admin/settings', 'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
+    /*
+     * 站点设置拆成「一个分组一页」（分组清单见 Modules\Admin\SettingsPages）：
+     * 裸地址 /admin/settings 由控制器 302 到默认分组，旧书签不会失效；
+     * 未知分组在控制器里 abort 404。
+     */
+    ['GET',  '/admin/settings',            'Modules\Admin\AdminController@settings',     'admin.settings'],
+    ['GET',  '/admin/settings/{group:[a-z-]+}', 'Modules\Admin\AdminController@settings', 'admin.settings'],
+    ['POST', '/admin/settings',            'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
+    ['POST', '/admin/settings/{group:[a-z-]+}', 'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
     ['POST', '/admin/maintenance/opcache', 'Modules\Admin\AdminController@clearOpcache', 'admin.settings'],
 
     /* ==================== 后台：版块 ==================== */
