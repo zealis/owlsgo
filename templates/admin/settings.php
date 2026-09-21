@@ -203,6 +203,48 @@ $toggles = [
         </div>
     </section>
 
+    <!-- 长内容折叠 -->
+    <section class="panel">
+        <div class="panel__head">
+            <h3><?= $view('partials/icon', ['name' => 'layers', 'size' => 16]) ?>长内容折叠</h3>
+        </div>
+        <div class="panel__body">
+            <label class="hstack" style="gap:8px;align-items:flex-start;margin-bottom:12px">
+                <input type="checkbox" class="switch" name="fold_long_content" value="1" <?= checked($isOn('fold_long_content', '1')) ?>>
+                <span>
+                    <strong style="font-size:14px">自动折叠过长的正文</strong>
+                    <span class="text-light" style="display:block;font-size:12.5px">
+                        超过下面设定的显示高度时，正文末尾出现「展开全文」；内容不够长则完全不出现按钮。
+                        只影响展示，不改动、不截断原文，也不影响搜索与引用。
+                    </span>
+                </span>
+            </label>
+
+            <div class="form-grid form-grid--3">
+                <div data-field>
+                    <label for="fold_topic_height">帖子正文高度（px）</label>
+                    <input type="number" id="fold_topic_height" name="fold_topic_height" min="200" max="2000"
+                           value="<?= e($val('fold_topic_height', '560')) ?>">
+                    <span data-hint>首楼正文超过这个显示高度就折叠，默认 560。</span>
+                </div>
+
+                <div data-field>
+                    <label for="fold_reply_height">回帖高度（px）</label>
+                    <input type="number" id="fold_reply_height" name="fold_reply_height" min="200" max="2000"
+                           value="<?= e($val('fold_reply_height', '420')) ?>">
+                    <span data-hint>评论楼层用这个阈值，默认 420（比首楼矮一档）。</span>
+                </div>
+
+                <div data-field>
+                    <label for="fold_notice_height">全站通知高度（px）</label>
+                    <input type="number" id="fold_notice_height" name="fold_notice_height" min="200" max="2000"
+                           value="<?= e($val('fold_notice_height', '560')) ?>">
+                    <span data-hint>通知中心里的公告正文，默认 560。</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 附件 -->
     <section class="panel">
         <div class="panel__head">

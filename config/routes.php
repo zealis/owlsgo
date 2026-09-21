@@ -43,6 +43,14 @@ return [
     ['POST', '/p/{id}/delete', 'Modules\Post\PostController@destroy'],
     ['POST', '/p/{id}/like',   'Modules\Post\PostController@toggleLike'],
 
+    /* ==================== 编辑器 ==================== */
+    /*
+     * 实时预览：把编辑器里的正文交给服务端渲染，返回 HTML 片段。
+     * 走服务端是为了与发布后的成稿逐字一致（正文由 Core\Text::toHtml 渲染后缓存）。
+     * 登录校验在控制器内完成；CSRF 默认开启，前端提交时带 _token。
+     */
+    ['POST', '/editor/preview', 'Modules\Editor\EditorController@preview'],
+
     /* ==================== 认证 ==================== */
     ['GET',  '/login',    'Modules\User\AuthController@showLogin'],
     ['POST', '/login',    'Modules\User\AuthController@login', '', false],

@@ -64,6 +64,38 @@ if (!function_exists('setting_bool')) {
     }
 }
 
+if (!function_exists('content_fold')) {
+    /**
+     * 长内容折叠：算出正文容器需要的折叠作用域
+     *
+     * 只负责「要不要折叠、折多高、容器 id 叫什么」，具体是否真的超长由前端按实际
+     * 渲染高度判断（图片、代码块、宽表格的实际高度服务端算不出来）。
+     * 返回 null 表示关闭，调用方据此不输出任何折叠标记与按钮 —— 页面回到老样子。
+     *
+     * @param string $scope topic（主题首楼）| reply（回帖）| notice（全站通知）
+     * @param int    $id    该楼层 / 公告的 id，用来拼出唯一容器 id
+     * @return array{id:string, height:int}|null
+     */
+    function content_fold(string $scope, int $id = 0): ?array
+    {
+        if (!setting_bool('fold_long_content', true)) {
+            return null;
+        }
+
+        $defaults = ['topic' => 560, 'reply' => 420, 'notice' => 560];
+        $fallback = $defaults[$scope] ?? 420;
+
+        $raw    = (string)setting('fold_' . $scope . '_height', '');
+        $height = $raw === '' ? $fallback : (int)$raw;
+
+        return [
+            'id'     => 'fold-' . $scope . '-' . max(0, $id),
+            // 与后台输入框的区间保持一致：越界值一律钳回来，前端就不必再防一次
+            'height' => max(200, min(2000, $height)),
+        ];
+    }
+}
+
 if (!function_exists('now')) {
     /** 当前 Unix 时间戳 */
     function now(): int

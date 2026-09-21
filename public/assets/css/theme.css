@@ -1289,6 +1289,7 @@ a.user-chip:hover {
   grid-template-areas:
     "avatar body"
     "content content"
+    "fold fold"
     "foot foot";
   column-gap: 12px;
   align-items: start;
@@ -1305,6 +1306,7 @@ a.user-chip:hover {
     "title title"
     "avatar body"
     "content content"
+    "fold fold"
     "foot foot";
 }
 
@@ -1693,8 +1695,153 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   color: var(--qq-ink-2);
 }
 
+/*
+ * 表格（Core\Text::parseTable 的输出）
+ *
+ * 全部用令牌取色，深色模式自动跟随。窄屏不换行、改为横向滚动 ——
+ * 表格一旦允许折行，列宽被挤到几个字，反而更难读。
+ */
+.content-table-wrap {
+  margin: 12px 0;
+  border: 1px solid var(--qq-line);
+  border-radius: var(--radius-medium);
+  overflow-x: auto;
+}
+
+.content-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.content-table th,
+.content-table td {
+  padding: 8px 12px;
+  border-inline-end: 1px solid var(--qq-line-soft);
+  border-block-end: 1px solid var(--qq-line-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.content-table th {
+  background: var(--qq-soft-2);
+  color: var(--qq-ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 末行、末列不画边线：外框已经由 .content-table-wrap 提供，避免出现双线 */
+.content-table tr:last-child > * {
+  border-block-end: 0;
+}
+
+.content-table tr > *:last-child {
+  border-inline-end: 0;
+}
+
+.md-align-left {
+  text-align: left;
+}
+
+.md-align-center {
+  text-align: center;
+}
+
+.md-align-right {
+  text-align: right;
+}
+
 .post-content table {
   font-size: 14px;
+}
+
+/* ---- 长内容折叠（帖子正文 / 回帖 / 全站通知）---- */
+
+/*
+ * 折叠态：限高 + 底部渐隐。
+ * 渐隐用 mask-image 而不是「盖一层白色渐变」—— 白盖层在深色模式下会露馅，
+ * 而且正文背景色在卡片/通知里并不总是同一个值。64px 是渐隐区高度，与按钮间距呼应。
+ */
+.post-content.is-folded,
+.notice-card__body.is-folded {
+  position: relative;
+  max-height: var(--fold-height);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 64px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 64px), transparent 100%);
+}
+
+.fold-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/*
+ * 楼层里的按钮必须显式落到 grid 的 `fold` 区。
+ * 不写 grid-area 的话它会被**自动排进隐式行的第 1 列**（44px 头像列）—— 按钮比列还宽，
+ * 就向右溢出成「贴左」，`justify-content: center` 也成了摆设（居中的是那 44px，不是整行）。
+ * （通知卡里父容器是普通块，本来就居中，不受影响。）
+ * 另外「夹在正文与落款之间」也是靠这个区域钉住的：grid 的隐式行排在所有显式行**之后**，
+ * 光凭 DOM 顺序会掉到 .post-foot 下面去 —— 所以 grid-template-areas 里加了一行 `fold`
+ * （`.post-entry` 与 `.post-entry.has-title` 两处都要有）。
+ */
+.post-entry > .fold-actions {
+  grid-area: fold;
+}
+
+/* 按钮还在 hidden（内容没超过阈值）时整行收掉，不占高度 */
+.fold-actions:has(.fold-toggle[hidden]) {
+  display: none;
+}
+
+.fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--qq-line);
+  border-radius: 999px;
+  background: var(--qq-card);
+  color: var(--qq-ink-3);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.fold-toggle:hover {
+  border-color: var(--qq-blue);
+  background: var(--qq-soft);
+  color: var(--qq-blue-deep);
+}
+
+.fold-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.fold-toggle[hidden] {
+  display: none;
+}
+
+/* 箭头：收起时朝下（提示「下面还有」），展开后翻转朝上 */
+.fold-toggle svg {
+  transition: transform 0.18s ease;
+}
+
+.fold-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* 窄屏把胶囊撑大一点，方便点按 */
+@media (max-width: 700px) {
+  .fold-toggle {
+    min-height: 36px;
+    padding-inline: 16px;
+  }
 }
 
 .post-content ul,
@@ -1919,31 +2066,497 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   }
 }
 
-.editor textarea {
-  min-height: 260px;
-  font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.7;
-  resize: vertical;
+/* ---- 正文编辑器（工具栏 / 表情 / 实时预览 / 全屏 / 附件）---- */
+
+/*
+ * 工具栏与正文框共享一条边框：工具栏去掉下边框、正文框去掉上边框，两者圆角各自
+ * 只保留外侧两个角 —— 与站点其它组件一样是「紧贴」的整合形态。
+ * 边框色统一取 --input（OATUI 输入框的边框令牌，深色下另有取值），
+ * 否则接缝处会从工具栏的线色跳到输入框的线色。
+ */
+.editor {
+  min-width: 0;
 }
 
 .editor-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--input);
+  border-bottom: 0;
+  border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+  background: var(--qq-soft);
   font-size: 12.5px;
   color: var(--qq-ink-3);
 }
 
-.editor-bar .spacer {
-  margin-left: auto;
+/* 把右侧那组（表情 / 预览 / 全屏）连同字数统计一起推到右边 */
+.editor-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.editor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  color: var(--qq-blue-deep);
+  cursor: pointer;
+}
+
+.editor-btn:hover {
+  border-color: var(--qq-line);
+  background: var(--qq-card);
+  color: var(--qq-blue-deep);
+}
+
+.editor-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* 激活态（预览 / 全屏已打开）：色系里的强调色 + 实底，与工具栏底色拉开 */
+.editor-btn.is-active {
+  border-color: var(--qq-blue);
+  background: var(--qq-card);
+  color: var(--qq-blue-deep);
+}
+
+.editor-split {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--qq-line);
+}
+
+.editor-bar .char-counter {
+  margin-left: 8px;
+  color: var(--qq-ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .char-counter[data-over="1"] {
   color: var(--qq-red);
   font-weight: 600;
+}
+
+.editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  /*
+   * OATUI 给所有表单控件加了 margin-block-start: var(--space-1)（4px）——
+   * 工具栏与正文框要贴成一体，这里的上外边距必须清零，否则中间会露出一条缝。
+   */
+  margin-block-start: 0;
+  border-top: 0;
+  border-radius: 0 0 var(--radius-medium) var(--radius-medium);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+/*
+ * 聚焦反馈只留「描边变色」，不额外画扩散光晕。
+ *
+ * 演进过程（两次都改在这里，别再走回头路）：
+ *  1. 最初是两层：工具栏一圈（:focus-within）+ 正文框自己一圈（全站 `textarea:focus`
+ *     的边框变色 + 3px 光晕），点进编辑框像套了两个框；深色下 --qq-blue 是石灰色，
+ *     里面那圈就是用户说的「灰色的高亮」；
+ *  2. 合并成一层后，整块 .editor 又多了一圈 3px 光晕 —— 那圈画在编辑器**外面**，
+ *     看着仍然像多出一圈外边框；
+ *  3. 现在：正文框的 box-shadow / outline 清空，整块也不再画光晕，
+ *     聚焦只把工具栏与正文框共有的那条描边换成主题蓝 —— 不新增任何框线。
+ */
+.editor textarea:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+/*
+ * ⚠️ 选择器带上 `[data-editor]` 是为了把特异性提到 (0,3,1)：
+ * `.editor textarea:focus` 是 (0,2,1)，若这里也写成 (0,2,1)，就全靠源码先后决出胜负，
+ * 一旦有人调整块顺序就会静默失效（实测过：顺序一变，正文框就不再跟着变色）。
+ */
+.editor[data-editor]:focus-within > .editor-bar {
+  border-color: var(--qq-blue);
+}
+
+.editor[data-editor]:focus-within > textarea {
+  border-color: var(--qq-blue);
+}
+
+.editor[data-editor]:focus-within > .editor-preview {
+  border-color: var(--qq-blue);
+}
+
+/*
+ * 工具栏左右两端的气泡都要改贴边展开。
+ * 卡片 .panel 是 overflow: hidden（圆角与渐变头部都靠它裁切），而 OATUI 默认把
+ * 气泡水平居中 —— 最右的按钮与卡片右缘几乎重合，最左的「上传附件」提示又很长
+ * （带大小上限），居中都会溢出卡片被裁掉。
+ */
+.editor-bar > .editor-btn:first-child[data-tooltip]::after {
+  inset-inline-start: 0;
+  transform: translateX(0) var(--_o);
+}
+
+.editor-bar .editor-btn--end[data-tooltip]::after {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  transform: translateX(0) var(--_o);
+}
+
+/* ---- 表情面板（fixed 浮层，位置由 JS 计算，优先向上弹）---- */
+
+.editor-panel {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 100%);
+  max-height: min(60vh, 320px);
+  border: 1px solid var(--qq-line);
+  border-radius: var(--radius-medium);
+  background: var(--qq-card);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 0.18);
+  overflow: hidden;
+}
+
+.editor-panel[hidden] {
+  display: none;
+}
+
+.editor-panel__pack {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  overflow-y: auto;
+}
+
+.editor-panel__pack[hidden] {
+  display: none;
+}
+
+.editor-panel__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  color: var(--qq-ink);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* 颜文字是文字型，字号跟正文一致，长条目自动变宽 */
+.editor-panel__item:not(:empty) {
+  font-size: 15px;
+}
+
+.editor-panel__item:hover {
+  border-color: var(--qq-line);
+  background: var(--qq-page);
+}
+
+.editor-panel__tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--qq-line);
+  background: var(--qq-soft);
+}
+
+.editor-panel__tab {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--qq-ink-3);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editor-panel__tab:hover {
+  background: var(--qq-card);
+  color: var(--qq-ink);
+}
+
+.editor-panel__tab.is-active {
+  background: var(--qq-card);
+  color: var(--qq-blue-deep);
+  font-weight: 600;
+}
+
+/* ---- 实时预览 ---- */
+
+.editor-preview {
+  margin-top: 0;
+  min-height: 140px;
+  max-height: 60vh;
+  padding: 12px 14px;
+  border: 1px solid var(--input);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-medium) var(--radius-medium);
+  background: var(--qq-card);
+  overflow: auto;
+}
+
+.editor-preview[hidden] {
+  display: none;
+}
+
+.editor-preview__empty {
+  margin: 0;
+  color: var(--qq-ink-3);
+  font-size: 13.5px;
+}
+
+/*
+ * 分栏：左写右看。
+ * 两栏共享中间那条竖线（正文框的右边框），所以预览框去掉左边框；
+ * 相接的角一律抹平，只留外侧的圆角。
+ */
+@media (min-width: 821px) {
+  .editor--live {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .editor--live > .editor-bar,
+  .editor--live > .editor-help {
+    grid-column: 1 / -1;
+  }
+
+  .editor--live > textarea {
+    border-end-end-radius: 0;
+    resize: none;
+  }
+
+  .editor--live > .editor-preview {
+    grid-column: 2;
+    border-inline-start: 0;
+    border-end-start-radius: 0;
+    max-height: 60vh;
+  }
+}
+
+/* 窄屏放不下两栏：预览改到正文框下方，仍然实时更新 */
+@media (max-width: 820px) {
+  .editor--live > textarea {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+}
+
+/* ---- 全屏写作 ---- */
+
+.editor--full {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 14px;
+  background: var(--qq-card);
+  overflow: auto;
+}
+
+.editor--full > .editor-bar {
+  flex: 0 0 auto;
+}
+
+.editor--full > textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 0;
+  resize: none;
+}
+
+.editor--full > .editor-preview {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+.editor--full > .editor-help {
+  display: none;
+}
+
+/* 全屏时锁住页面滚动，避免背景跟着滑 */
+body.editor-fullscreen {
+  overflow: hidden;
+}
+
+/* ---- 排版速查（默认收起）---- */
+
+.editor-help {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--qq-ink-3);
+}
+
+.editor-help > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.editor-help > summary:hover {
+  color: var(--qq-blue-deep);
+}
+
+.editor-help__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--qq-line);
+  border-radius: var(--radius-medium);
+  background: var(--qq-page);
+  line-height: 1.9;
+}
+
+.editor-help__body code {
+  padding: 2px 6px;
+  border: 1px solid var(--qq-line);
+  border-radius: 4px;
+  background: var(--qq-card);
+  color: var(--qq-ink-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre;
+}
+
+/* ---- 附件上传区 ---- */
+
+.editor-upload {
+  margin-top: 12px;
+}
+
+.editor-upload-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ---- 输入弹层（插入链接 / 插入图片）---- */
+
+.prompt-dialog {
+  width: min(460px, calc(100vw - 32px));
+}
+
+.prompt-dialog__title {
+  margin: 0;
+  padding: 18px 20px 0;
+  color: var(--qq-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.prompt-dialog__body {
+  padding: 14px 20px 4px;
+}
+
+.prompt-form {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-field {
+  display: grid;
+  gap: 5px;
+  color: var(--qq-ink-3);
+  font-size: 12.5px;
+}
+
+.prompt-input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.prompt-form .confirm-dialog__actions,
+.prompt-dialog > .confirm-dialog__actions {
+  padding: 14px 20px 16px;
+}
+
+/* 选图区：整个加号区域就是一个 label，点哪里都会触发文件选择 */
+.editor-picker {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.editor-picker__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 110px;
+  padding: 16px 14px;
+  border: 1px dashed var(--qq-line);
+  border-radius: var(--radius-medium);
+  background: var(--qq-page);
+  color: var(--qq-ink-3);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.editor-picker__pick:hover {
+  border-color: var(--qq-blue);
+  background: var(--qq-soft);
+  color: var(--qq-ink);
+}
+
+.editor-picker__pick.is-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.editor-picker__plus {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--qq-blue-deep);
+}
+
+.editor-picker__tip {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.editor-picker__status {
+  color: var(--qq-ink-3);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .check-row {
@@ -3830,12 +4443,27 @@ dialog menu.buttons {
   .post-ops,
   .pagination,
   .editor-bar,
+  .editor-help,           /* 排版速查 */
+  .editor-upload,         /* 附件上传区 */
+  .fold-actions,          /* 长内容折叠按钮 */
   .thread-toolbar {
     display: none !important;
   }
 
   body {
     background: #fff;
+  }
+
+  /*
+   * 折叠只是屏幕上的阅读辅助：打印时一律展开，
+   * 否则印出来的正文是「被 max-height 截断 + 底部渐隐」的半截内容。
+   */
+  .post-content.is-folded,
+  .notice-card__body.is-folded {
+    max-height: none;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 
   .panel,

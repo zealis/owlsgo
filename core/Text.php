@@ -20,6 +20,14 @@ final class Text
     /** 允许出现的 UBB 标签名（白名单） */
     private const UBB_TAGS = ['b', 'i', 'u', 's', 'code', 'quote', 'url', 'img', 'color', 'size', 'attach'];
 
+    /**
+     * 站内图片允许出现的前缀（静态资源目录）
+     *
+     * 只有这些目录下的站内地址才允许出现在 <img src>，其余站内地址一律降级为文字 ——
+     * 原因见 imageAllowed()。
+     */
+    private const IMAGE_PATH_PREFIXES = ['/attachment/', '/avatar/', '/media/', '/assets/'];
+
     /** @var list<string> 代码块占位符内容 */
     private static array $codeBlocks = [];
 
@@ -74,6 +82,8 @@ final class Text
         $text = preg_replace('/!\[[^\]]*\]\([^)]*\)/', ' ', $text) ?? $text;
         $text = preg_replace('/\[img\][\s\S]*?\[\/img\]/i', ' ', $text) ?? $text;
         $text = preg_replace('/\[attach[^\]]*\][\s\S]*?\[\/attach\]/i', ' ', $text) ?? $text;
+        // 表格：整行都是 | 分隔的单元格，摘要里没有保留的价值
+        $text = preg_replace('/^\s*\|.*$/m', ' ', $text) ?? $text;
         $text = preg_replace('/\[[^\]]*\]\([^)]*\)/', '$1', $text) ?? $text;
         $text = preg_replace('/\[[a-z]+(=[^\]]*)?\]/i', ' ', $text) ?? $text;
         $text = preg_replace('/\[\/[a-z]+\]/i', ' ', $text) ?? $text;
@@ -190,6 +200,7 @@ final class Text
     private static function parseBlocks(string $text): string
     {
         $lines  = explode("\n", $text);
+        $total  = count($lines);
         $output = [];
         $inList = null;   // 'ul' | 'ol' | null
         $inQuote = false;
@@ -201,8 +212,9 @@ final class Text
             }
         };
 
-        foreach ($lines as $line) {
-            $trimmed = trim($line);
+        // 表格要往下看一行（分隔行）并整块吃掉，所以这里用带下标的 for 而不是 foreach
+        for ($i = 0; $i < $total; $i++) {
+            $trimmed = trim($lines[$i]);
             $plain   = trim(preg_replace('/^&gt;\s?/', '', $trimmed) ?? $trimmed);
 
             // 分割线
@@ -236,6 +248,23 @@ final class Text
                 $inQuote  = false;
             }
 
+            /*
+             * 表格：本行含 | 且下一行是 |---|---| 形态的分隔行。
+             *
+             * 分隔行是表格的强制签名 —— 少了这一条，正文里随手写的「a | b」
+             * 就会被误判成表格，所以宁可要求用户写出完整表头。
+             */
+            if (str_contains($trimmed, '|') && $i + 1 < $total) {
+                [$tableHtml, $next] = self::parseTable($lines, $i);
+
+                if ($tableHtml !== '') {
+                    $closeList();
+                    $output[] = $tableHtml;
+                    $i        = $next - 1;   // for 的 $i++ 会把游标推到 $next
+                    continue;
+                }
+            }
+
             // 无序列表
             if (preg_match('/^[\-\*\+]\s+(.*)$/', $trimmed, $m)) {
                 if ($inList !== 'ul') {
@@ -247,14 +276,15 @@ final class Text
                 continue;
             }
 
-            // 有序列表
-            if (preg_match('/^\d+\.\s+(.*)$/', $trimmed, $m)) {
+            // 有序列表（保留起始序号：渲染成 <ol start="3"> 才不会与作者写下的编号对不上）
+            if (preg_match('/^(\d+)\.\s+(.*)$/', $trimmed, $m)) {
                 if ($inList !== 'ol') {
                     $closeList();
-                    $output[] = '<ol>';
+                    $start    = max(1, (int)$m[1]);
+                    $output[] = $start > 1 ? '<ol start="' . $start . '">' : '<ol>';
                     $inList   = 'ol';
                 }
-                $output[] = '<li>' . $m[1] . '</li>';
+                $output[] = '<li>' . $m[2] . '</li>';
                 continue;
             }
 
@@ -277,6 +307,155 @@ final class Text
     }
 
     /**
+     * 拆一行表格单元格
+     *
+     * 支持 `\|` 转义，且行内代码里的 | 不算分隔符（`a | b` 这种写法在代码里很常见）。
+     *
+     * @return list<string>
+     */
+    private static function tableCells(string $line): array
+    {
+        $line = trim($line);
+
+        // 首尾的竖线是可选的装饰，不属于任何单元格
+        if (str_starts_with($line, '|')) {
+            $line = substr($line, 1);
+        }
+
+        if (str_ends_with($line, '|')) {
+            $line = substr($line, 0, -1);
+        }
+
+        $cells   = [];
+        $cell    = '';
+        $code    = false;
+        $escaped = false;
+
+        for ($i = 0, $length = strlen($line); $i < $length; $i++) {
+            $char = $line[$i];
+
+            if ($escaped) {
+                $cell   .= $char;
+                $escaped = false;
+                continue;
+            }
+
+            if ($char === '\\') {
+                $cell   .= $char;
+                $escaped = true;
+                continue;
+            }
+
+            if ($char === '`') {
+                $code = !$code;
+            }
+
+            if ($char === '|' && !$code) {
+                $cells[] = trim(str_replace('\\|', '|', $cell));
+                $cell    = '';
+                continue;
+            }
+
+            $cell .= $char;
+        }
+
+        $cells[] = trim(str_replace('\\|', '|', $cell));
+
+        return $cells;
+    }
+
+    /**
+     * 表格分隔行判定
+     *
+     * @param  list<string> $cells 已拆分的一行
+     * @return list<string>|null   对齐方式列表（'' | 'left' | 'center' | 'right'）；不是分隔行时返回 null
+     */
+    private static function tableAligns(array $cells): ?array
+    {
+        if ($cells === [] || $cells === ['']) {
+            return null;
+        }
+
+        $aligns = [];
+
+        foreach ($cells as $cell) {
+            $cell = trim($cell);
+
+            // 至少要三个减号，避免把 `-` 这种普通文本当成表格
+            if (preg_match('/^:?-{3,}:?$/', $cell) !== 1) {
+                return null;
+            }
+
+            $left  = str_starts_with($cell, ':');
+            $right = str_ends_with($cell, ':');
+
+            $aligns[] = $left && $right ? 'center' : ($right ? 'right' : ($left ? 'left' : ''));
+        }
+
+        return $aligns;
+    }
+
+    /**
+     * 渲染表格
+     *
+     * 对齐不写内联 style，改用 class 交给 theme.css —— 内联样式在深色模式下
+     * 无法被主题变量覆盖，而且颜色与间距也不该散落在渲染器里。
+     *
+     * @param  list<string> $lines 已转义并按行拆好的正文
+     * @param  int          $start 表头所在行下标
+     * @return array{0:string,1:int} [表格 HTML（非法时为空串）, 首个未被消费的行下标]
+     */
+    private static function parseTable(array $lines, int $start): array
+    {
+        $headers = self::tableCells($lines[$start]);
+        $aligns  = self::tableAligns(self::tableCells($lines[$start + 1] ?? ''));
+
+        // 列数必须与分隔行一致，否则不认作表格（宁可当普通段落，也不要渲染出半截表）
+        if ($aligns === null || $headers === [] || count($headers) !== count($aligns)) {
+            return ['', $start];
+        }
+
+        $attr = static fn (string $align): string => $align === '' ? '' : ' class="md-align-' . $align . '"';
+
+        $html = '<div class="content-table-wrap"><table class="content-table"><thead><tr>';
+
+        foreach ($headers as $index => $header) {
+            $html .= '<th' . $attr((string)($aligns[$index] ?? '')) . '>' . $header . '</th>';
+        }
+
+        $html .= '</tr></thead><tbody>';
+
+        $cursor = $start + 2;
+
+        for ($count = count($lines); $cursor < $count; $cursor++) {
+            $line = trim($lines[$cursor]);
+
+            // 空行或不再含竖线的行 → 表格到此结束
+            if ($line === '' || !str_contains($line, '|')) {
+                break;
+            }
+
+            $cells = self::tableCells($lines[$cursor]);
+
+            if ($cells === ['']) {
+                break;
+            }
+
+            $html .= '<tr>';
+
+            // 以表头列数为准：多出来的单元格丢弃，缺的补空，行与行之间列数始终对齐
+            foreach (array_keys($headers) as $index) {
+                $html .= '<td' . $attr((string)($aligns[$index] ?? '')) . '>'
+                    . (string)($cells[$index] ?? '') . '</td>';
+            }
+
+            $html .= '</tr>';
+        }
+
+        return [$html . '</tbody></table></div>', $cursor];
+    }
+
+    /**
      * 行内元素解析：粗体、斜体、删除线、行内代码、链接、图片、提及
      */
     private static function parseInline(string $text): string
@@ -295,7 +474,9 @@ final class Text
             '/!\[([^\]]*)\]\(([^)\s]+)\)/',
             static function (array $m): string {
                 $url = self::safeUrl($m[2], true);
-                if ($url === '') {
+
+                // 站内地址必须落在静态资源目录，见 imageAllowed() 的说明
+                if ($url === '' || !self::imageAllowed($m[2])) {
                     return $m[1];
                 }
 
@@ -406,8 +587,10 @@ final class Text
         $text = preg_replace_callback(
             '/\[img\]([\s\S]*?)\[\/img\]/i',
             static function (array $m): string {
-                $url = self::safeUrl(trim($m[1]), true);
-                if ($url === '') {
+                $raw = trim($m[1]);
+                $url = self::safeUrl($raw, true);
+
+                if ($url === '' || !self::imageAllowed($raw)) {
                     return '';
                 }
 
@@ -486,13 +669,86 @@ final class Text
                 continue;
             }
 
-            $isBlock = preg_match('#^<(h[1-6]|ul|ol|li|blockquote|pre|hr|p|div|table)#i', $trimmed) === 1;
-            $isClose = preg_match('#^</(ul|ol|blockquote|pre|p|div|table)#i', $trimmed) === 1;
+            /*
+             * 表格各行的标签也要算块级：解析器生成的表格是多行 HTML，
+             * 漏掉 tr/td 就会被补上 <br>，表格里凭空多出一堆空行。
+             */
+            $isBlock = preg_match('#^<(h[1-6]|ul|ol|li|blockquote|pre|hr|p|div|table|thead|tbody|tr|td|th)#i', $trimmed) === 1;
+            $isClose = preg_match('#^</(ul|ol|blockquote|pre|p|div|table|thead|tbody|tr|td|th)#i', $trimmed) === 1;
 
             $output[] = ($isBlock || $isClose) ? $trimmed : $trimmed . '<br>';
         }
 
         return implode("\n", $output);
+    }
+
+    /**
+     * 站内图片地址白名单
+     *
+     * 图片会在**别人打开帖子时自动发出请求**，所以站内地址必须限制在静态资源目录，
+     * 否则 `![](/logout)` 这类写法会让每个看帖的人被动触发一次站内请求
+     * —— `/logout` 是 GET，看帖即被踢下线；将来若出现任何按 GET 触发副作用的接口，
+     * 后果只会更大。这是渲染器该守的边界，不能指望用户不这么写。
+     *
+     * 判定分三种情况：
+     *  - 协议相对地址（//host/…）与外站地址：指向别的站点，不会带本站 Cookie，放行；
+     *  - 本站地址（/… 或 http(s)://本站/…）：路径必须落在 IMAGE_PATH_PREFIXES 内；
+     *  - 其它（相对路径、data: 等）：不放行 —— data: 在 safeUrl 里已被拒绝。
+     *
+     * @param string $url 原始 URL（可能已 HTML 转义，这里会先解码再判定）
+     */
+    private static function imageAllowed(string $url): bool
+    {
+        $url = trim(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+        // 控制字符与空白一律非法：既拦 `java\nscript:`，也拦路径里的换行注入
+        if ($url === '' || preg_match('/[\x00-\x20\x7F]/', $url) === 1) {
+            return false;
+        }
+
+        if (str_starts_with($url, '//')) {
+            return true;
+        }
+
+        if (preg_match('#^https?://#i', $url) === 1) {
+            $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+            $self = strtolower((string)parse_url('//' . (string)($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST));
+
+            // 拿不到 Host（CLI 场景）或指向别的站点 → 不是本站请求，放行
+            if ($host === '' || $self === '' || $host !== $self) {
+                return true;
+            }
+
+            return self::staticPathAllowed((string)parse_url($url, PHP_URL_PATH));
+        }
+
+        if (!str_starts_with($url, '/')) {
+            return false;
+        }
+
+        return self::staticPathAllowed((string)parse_url($url, PHP_URL_PATH));
+    }
+
+    /**
+     * 路径是否落在站内静态资源目录
+     *
+     * 先解码再判 `..`：`/%2e%2e/logout` 这种写法解码后必须同样被拦下。
+     */
+    private static function staticPathAllowed(string $path): bool
+    {
+        $path = rawurldecode($path);
+
+        if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {
+            return false;
+        }
+
+        foreach (self::IMAGE_PATH_PREFIXES as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -530,8 +786,13 @@ final class Text
 
         // 允许 http / https
         if (preg_match('#^https?://#i', $url)) {
-            // 仅允许 ASCII 且长度合理的地址
-            if (strlen($url) > 2000 || !preg_match('#^https?://[A-Za-z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+$#', $url)) {
+            /*
+             * 仅允许 ASCII 且长度合理的地址。
+             * ⚠️ 字符类里的 # 必须写成 \# —— 分隔符就是 #，不转义的话 PCRE 会在类里那个 #
+             * 处提前收尾，整条正则编译失败（Unknown modifier '\'），于是**所有绝对地址
+             * 一律被拒**：外链与图片会悄悄退化成纯文本，且不报任何错。
+             */
+            if (strlen($url) > 2000 || !preg_match('#^https?://[A-Za-z0-9\-._~:/?\#\[\]@!$&\'()*+,;=%]+$#', $url)) {
                 return '';
             }
 

@@ -117,8 +117,18 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
                         <?php endif; ?>
                     </div>
                     <?php if ($noticeBody !== ''): ?>
+                        <?php
+                        /*
+                         * 公告正文也支持长内容折叠（阈值见后台「长内容折叠 · 全站通知高度」）。
+                         * 与楼层一样：按钮默认隐藏，是否真的超长由前端按实际渲染高度判断。
+                         */
+                        $noticeFold = content_fold('notice', $noticeId);
+                        ?>
                         <?php /* content_attachment_lock：无「下载附件」权限时把正文附图换成锁 + 文件名，避免破图 */ ?>
-                        <div class="notice-card__body"><?= content_attachment_lock(\Core\Text::toHtml($noticeBody)) ?></div>
+                        <div class="notice-card__body"<?= $noticeFold !== null ? ' id="' . e($noticeFold['id']) . '" data-fold data-fold-height="' . (int)$noticeFold['height'] . '"' : '' ?>><?= content_attachment_lock(\Core\Text::toHtml($noticeBody)) ?></div>
+                        <?php if ($noticeFold !== null): ?>
+                            <?= $view('partials/fold-toggle', ['foldTarget' => $noticeFold['id']]) ?>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <?php

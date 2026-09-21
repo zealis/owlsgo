@@ -29,6 +29,8 @@ final class AdminController extends AdminBaseController
         'register_enabled', 'register_verify', 'login_captcha', 'register_captcha',
         'thread_need_audit', 'post_need_audit', 'guest_view',
         'upload_enabled', 'site_closed', 'debug_mode',
+        /* 长内容折叠总开关（高度见下面的 fold_*_height） */
+        'fold_long_content',
     ];
 
     /** 数值型设置项 => [最小值, 最大值] */
@@ -40,6 +42,10 @@ final class AdminController extends AdminBaseController
         'upload_max_size' => [1, 512],
         'attachment_quota' => [0, 1048576],
         'cache_ttl'       => [0, 86400],
+        /* 长内容折叠：超过这个显示高度就折起来（单位 px，与前端 Clamp 区间一致） */
+        'fold_topic_height'  => [200, 2000],
+        'fold_reply_height'  => [200, 2000],
+        'fold_notice_height' => [200, 2000],
     ];
 
     /**

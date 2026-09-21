@@ -36,6 +36,7 @@ $owlsgoLoader->addNamespace('Modules\\Thread\\', APP_MODULES_DIR . '/Thread');
 $owlsgoLoader->addNamespace('Modules\\Post\\', APP_MODULES_DIR . '/Post');
 $owlsgoLoader->addNamespace('Modules\\Admin\\', APP_MODULES_DIR . '/Admin');
 $owlsgoLoader->addNamespace('Modules\\Notice\\', APP_MODULES_DIR . '/Notice');
+$owlsgoLoader->addNamespace('Modules\\Editor\\', APP_MODULES_DIR . '/Editor');
 $owlsgoLoader->addNamespace('Modules\\Install\\', APP_MODULES_DIR . '/Install');
 $owlsgoLoader->register();
 

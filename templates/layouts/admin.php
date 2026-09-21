@@ -162,5 +162,20 @@ echo (string)hook('footer_assets', '');
         <button type="button" class="button" data-variant="danger" data-confirm-ok>确定</button>
     </div>
 </dialog>
+
+<?php
+/*
+ * 全局输入对话框：app.js 的 uiPrompt() 使用（后台「发布公告」页也用同一个编辑器）。
+ * 字段由 JS 动态生成到 [data-prompt-body] 里，所以这里只放骨架。
+ */
+?>
+<dialog id="app-prompt" class="confirm-dialog prompt-dialog">
+    <p class="prompt-dialog__title" data-prompt-title></p>
+    <div class="prompt-dialog__body" id="app-prompt-body"></div>
+    <div class="confirm-dialog__actions">
+        <button type="button" class="button ghost" data-prompt-cancel>取消</button>
+        <button type="button" class="button" data-prompt-ok>确定</button>
+    </div>
+</dialog>
 </body>
 </html>

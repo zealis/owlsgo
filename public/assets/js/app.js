@@ -974,110 +974,1256 @@
   }
 
   /* =======================================================================
-   * 5. 字数统计（textarea[data-counter] 或 .editor 内的 textarea）
+   * 5. 编辑器（工具栏 / 表情 / 实时预览 / 全屏 / 列表续行 / 粘贴上传 / 字数）
+   * -----------------------------------------------------------------------
+   * 服务端只有一份 Markdown 渲染器（Core\Text::toHtml），预览走 POST /editor/preview
+   * 取它的输出，所以「边写边看」那一栏与发布后的成稿逐字一致 ——
+   * 前端不再自己实现一遍渲染，避免两边漂移。
+   *
+   * 结构钩子全部是 data-editor-*（见 templates/partials/editor.php），
+   * 页面里没有任何内联脚本，符合站点 CSP（script-src 'self'）。
    * ===================================================================== */
 
-  function initCounters() {
-    var areas = document.querySelectorAll('.editor textarea, textarea[data-counter]');
+  /** 表情面板分组：表情 / 手势 / 符号 / 颜文字（颜文字为 text 型，插入的是文字本身） */
+  var EDITOR_EMOJI = [
+    {
+      name: '表情',
+      items: [
+        '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊',
+        '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜', '🤪', '😝',
+        '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄',
+        '😬', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧',
+        '🥵', '🥶', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '🙁', '😮',
+        '😯', '😲', '🥺', '😦', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣',
+        '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '😈', '💀', '💩', '🤡',
+        '👻', '👽', '🤖', '😺', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'
+      ]
+    },
+    {
+      name: '手势',
+      items: [
+        '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇',
+        '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤝', '🙏', '💪', '🦾', '✍️', '💅',
+        '👏', '🙌', '👐', '🤲', '👀', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎',
+        '🖤', '🤍', '💔', '💕', '💞', '💖', '💘', '💌', '💯', '🔥'
+      ]
+    },
+    {
+      name: '符号',
+      items: [
+        '✨', '⭐', '🌟', '💫', '💥', '💢', '💦', '💨', '🎉', '🎊', '🎁', '🏆',
+        '🥇', '🎯', '🎈', '🎂', '🍰', '🍺', '🍻', '☕', '🍵', '🍎', '🍉', '🌹',
+        '🌸', '🌻', '🍀', '🌈', '☀️', '⛅', '🌧️', '❄️', '⚡', '🌙', '🐶', '🐱',
+        '🐼', '🐰', '🦊', '🐷', '🐔', '✅', '❌', '❗', '❓', '⚠️', '🔔', '💡',
+        '📌', '🔍', '📖', '💰', '🎵', '🚀', '⏰', '🔗', '📎', '🛠️', '💻'
+      ]
+    },
+    {
+      name: '颜文字',
+      items: [
+        'OwO', '(＾▽＾)', '(°▽°)', '(≧∇≦)', '(´・ω・)', '(￣▽￣)',
+        '(╯°□°)╯︵┻━┻', '￣﹃￣', '(/ω＼)', '∠( ᐛ 」∠)＿',
+        '(╯▽╰)', '(°Д°)', '(ｏ´_｀ｏ)', 'ヾ(≧∇≦*)ゝ', '(๑•̀ㅂ•́)و',
+        '(；′⌒`)', '(っ°Д°;)っ', 'Σ(っ °Д °;)っ', '＞﹏＜', 'o(*////▽////*)q'
+      ]
+    }
+  ];
 
-    Array.prototype.forEach.call(areas, function (area) {
-      var group = area.closest('.editor') || area.parentElement;
-      var counter = group ? group.querySelector('.char-counter') : null;
+  /** 编辑器里定位正文框：按容器找，而不是按 name —— 公告用的是 body，帖子用 content */
+  function editorTextarea(root) {
+    return root ? root.querySelector('textarea') : null;
+  }
 
-      if (!counter) {
+  function editorDispatchInput(textarea) {
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function editorSelected(textarea) {
+    var start = textarea.selectionStart || 0;
+    var end = textarea.selectionEnd || start;
+    return textarea.value.slice(start, end);
+  }
+
+  /** 替换 [start,end) 之间的内容，并把选区放到 [selStart,selEnd)（相对新片段的偏移） */
+  function editorReplaceRange(textarea, value, start, end, selStart, selEnd) {
+    textarea.value = textarea.value.slice(0, start) + value + textarea.value.slice(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + selStart, start + selEnd);
+    editorDispatchInput(textarea);
+  }
+
+  function editorReplaceSelection(textarea, value, selStart, selEnd) {
+    var start = textarea.selectionStart || 0;
+    var end = textarea.selectionEnd || start;
+    editorReplaceRange(textarea, value, start, end, selStart, selEnd);
+  }
+
+  /** 包一层标记：**已选文字** / *斜体* / `代码` */
+  function editorTemplate(textarea, before, after, placeholder) {
+    var content = editorSelected(textarea) || placeholder;
+    editorReplaceSelection(textarea, before + content + after, before.length, before.length + content.length);
+  }
+
+  /** 逐行加前缀：> 引用、- 列表、## 标题；numbered=true 时按 1. 2. 3. 编号 */
+  function editorLinePrefix(textarea, prefix, placeholder, numbered) {
+    var text = textarea.value;
+    var start = textarea.selectionStart || 0;
+    var end = textarea.selectionEnd || start;
+
+    // 行首标记作用于整行：光标停在行中间也不会把标记插进句子中央
+    var lineStart = text.lastIndexOf('\n', start - 1) + 1;
+    var lineEnd = text.indexOf('\n', end);
+    if (lineEnd < 0) {
+      lineEnd = text.length;
+    }
+
+    var content = text.slice(lineStart, lineEnd);
+    if (content.trim() === '') {
+      content = placeholder;
+    }
+
+    var lines = content.split('\n').map(function (line, index) {
+      return numbered ? (index + 1) + '. ' + line : prefix + line;
+    });
+
+    var value = lines.join('\n');
+    var head = numbered ? 3 : prefix.length;
+
+    editorReplaceRange(textarea, value, lineStart, lineEnd, head, value.length);
+  }
+
+  /** 插入整块内容（代码块 / 表格 / 分割线），必要时先在前面补一个换行 */
+  function editorInsertBlock(textarea, block, selStart, selEnd) {
+    var start = textarea.selectionStart || 0;
+    var head = start > 0 && textarea.value[start - 1] !== '\n' ? '\n' : '';
+    editorReplaceSelection(textarea, head + block, head.length + selStart, head.length + selEnd);
+  }
+
+  /* ---- 列表续行：回车自动接上标记，有序列表顺带重编号 ---- */
+
+  // 缩进、无序标记、序号、序号后的分隔符、正文
+  var EDITOR_LIST_RE = /^([ \t]*)(?:([-*])[ \t]+|(\d{1,9})([.)])[ \t]+)(.*)$/;
+
+  /** 光标是否落在 ``` 代码围栏内（围栏里回车就是普通换行） */
+  function editorInsideCodeFence(text, position) {
+    var lines = text.slice(0, position).split('\n');
+    var fences = 0;
+
+    for (var i = 0; i < lines.length - 1; i++) {
+      if (/^\s*```/.test(lines[i])) {
+        fences++;
+      }
+    }
+
+    return fences % 2 === 1;
+  }
+
+  function editorLineOffsets(lines) {
+    var offsets = [];
+    var position = 0;
+
+    for (var i = 0; i < lines.length; i++) {
+      offsets.push(position);
+      position += lines[i].length + 1;
+    }
+
+    return offsets;
+  }
+
+  /** 让光标所在的这段有序列表在源码里也保持连续编号（渲染器只认起始序号） */
+  function editorRenumberOrderedList(textarea, caret) {
+    var lines = textarea.value.split('\n');
+    var offsets = editorLineOffsets(lines);
+    var index = 0;
+
+    for (var i = 0; i < lines.length; i++) {
+      if (offsets[i] <= caret) {
+        index = i;
+      }
+    }
+
+    var current = EDITOR_LIST_RE.exec(lines[index]);
+    if (!current || !current[3]) {
+      return caret;
+    }
+
+    var start = index;
+    var end = index;
+
+    while (start > 0) {
+      var above = EDITOR_LIST_RE.exec(lines[start - 1]);
+      if (!above || !above[3]) {
+        break;
+      }
+      start--;
+    }
+
+    while (end < lines.length - 1) {
+      var below = EDITOR_LIST_RE.exec(lines[end + 1]);
+      if (!below || !below[3]) {
+        break;
+      }
+      end++;
+    }
+
+    var first = parseInt(EDITOR_LIST_RE.exec(lines[start])[3], 10);
+    var delta = 0;
+    var changed = false;
+
+    for (var j = start; j <= end; j++) {
+      var item = EDITOR_LIST_RE.exec(lines[j]);
+      var next = item[1] + (first + j - start) + item[4] + ' ' + item[5];
+
+      if (next === lines[j]) {
+        continue;
+      }
+
+      if (offsets[j] < caret) {
+        delta += next.length - lines[j].length;
+      }
+
+      lines[j] = next;
+      changed = true;
+    }
+
+    if (!changed) {
+      return caret;
+    }
+
+    textarea.value = lines.join('\n');
+
+    return caret + delta;
+  }
+
+  function editorHandleListEnter(event, textarea) {
+    var start = textarea.selectionStart || 0;
+
+    if (start !== (textarea.selectionEnd || start)) {
+      return;                       // 有选区时按普通换行处理
+    }
+
+    var value = textarea.value;
+
+    if (editorInsideCodeFence(value, start)) {
+      return;
+    }
+
+    var lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    var lineEnd = value.indexOf('\n', start);
+    if (lineEnd < 0) {
+      lineEnd = value.length;
+    }
+
+    var match = EDITOR_LIST_RE.exec(value.slice(lineStart, lineEnd));
+    if (!match) {
+      return;
+    }
+
+    // 光标还在标记里面时按普通换行处理
+    if (start < lineStart + (value.slice(lineStart, lineEnd).length - match[5].length)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (match[5].trim() === '') {
+      // 空列表项上回车 = 结束这个列表
+      editorReplaceRange(textarea, '', lineStart, lineEnd, 0, 0);
+      return;
+    }
+
+    var marker = match[2] ? match[2] + ' ' : (parseInt(match[3], 10) + 1) + match[4] + ' ';
+    var insert = '\n' + match[1] + marker;
+
+    editorReplaceRange(textarea, insert, start, start, insert.length, insert.length);
+
+    if (!match[3]) {
+      return;
+    }
+
+    var caret = editorRenumberOrderedList(textarea, textarea.selectionStart || 0);
+    textarea.setSelectionRange(caret, caret);
+    editorDispatchInput(textarea);
+  }
+
+  /* ---- 通用输入弹层（插入链接 / 插入图片）---- */
+
+  /**
+   * 打开输入弹层
+   *
+   * @param {string} title
+   * @param {Array<{name:string,label:string,value?:string,type?:string,inputmode?:string}>} fields
+   * @param {Function} [decorate] 可选：往表单里塞额外控件（如「插入图片」的上传区）
+   * @returns {Promise<Object|null>} 取消时 resolve(null)
+   */
+  function uiPrompt(title, fields, decorate) {
+    return new Promise(function (resolve) {
+      var dialog = document.getElementById('app-prompt');
+      var body = document.getElementById('app-prompt-body');
+
+      if (!dialog || !body || typeof dialog.showModal !== 'function') {
+        resolve(null);
         return;
       }
 
-      var max = parseInt(counter.getAttribute('data-max') || '0', 10) || 0;
+      dialog.querySelector('[data-prompt-title]').textContent = title;
+      body.innerHTML = '';
 
-      function update() {
-        var length = Array.from(area.value).length;
-        counter.textContent = max > 0 ? length + ' / ' + max : String(length);
+      var inputs = {};
+      var box = document.createElement('form');
+      box.className = 'prompt-form';
 
-        if (max > 0 && length > max) {
-          counter.setAttribute('data-over', '1');
-        } else {
-          counter.removeAttribute('data-over');
+      fields.forEach(function (field) {
+        var label = document.createElement('label');
+        label.className = 'prompt-field';
+
+        var caption = document.createElement('span');
+        caption.textContent = field.label;
+
+        var input = document.createElement('input');
+        input.type = field.type || 'text';
+        input.className = 'prompt-input';
+        input.value = field.value || '';
+        input.autocomplete = 'off';
+        if (field.inputmode) {
+          input.inputMode = field.inputmode;
         }
+
+        inputs[field.name] = input;
+        label.appendChild(caption);
+        label.appendChild(input);
+        box.appendChild(label);
+      });
+
+      if (decorate) {
+        decorate(box, inputs);
       }
 
-      area.addEventListener('input', update);
-      update();
+      body.appendChild(box);
+
+      var settled = false;
+      function done(value) {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        dialog.removeEventListener('close', onClose);
+        resolve(value);
+      }
+      function onClose() {
+        // 按 Esc 或点遮罩关闭都视为取消
+        done(dialog.returnValue === 'ok' ? collect() : null);
+      }
+      function collect() {
+        var values = {};
+        Object.keys(inputs).forEach(function (name) {
+          values[name] = inputs[name].value;
+        });
+        return values;
+      }
+
+      dialog.addEventListener('close', onClose);
+
+      dialog.querySelector('[data-prompt-ok]').onclick = function () {
+        dialog.returnValue = 'ok';
+        dialog.close('ok');
+      };
+      dialog.querySelector('[data-prompt-cancel]').onclick = function () {
+        dialog.returnValue = 'cancel';
+        dialog.close('cancel');
+      };
+
+      // 在弹层里回车 = 确定（textarea 除外）
+      box.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && event.target && event.target.tagName !== 'TEXTAREA') {
+          event.preventDefault();
+          dialog.querySelector('[data-prompt-ok]').click();
+        }
+      });
+
+      dialog.showModal();
+
+      var first = inputs[fields[0].name];
+      if (first) {
+        first.focus();
+        first.select();
+      }
     });
   }
 
-  /* =======================================================================
-   * 6. 编辑器插入语法（加粗 / 代码 / 引用 / 链接）
-   * ===================================================================== */
+  function editorInsertLink(textarea) {
+    var start = textarea.selectionStart || 0;
+    var end = textarea.selectionEnd || start;
+    var label = textarea.value.slice(start, end) || '链接文字';
 
-  function initEditorTools() {
-    document.addEventListener('click', function (event) {
-      var button = event.target.closest ? event.target.closest('[data-insert]') : null;
-
-      if (!button) {
+    return uiPrompt('插入链接', [
+      { name: 'url', label: '链接地址', value: 'https://', inputmode: 'url' },
+      { name: 'label', label: '链接文字', value: label }
+    ]).then(function (values) {
+      if (!values) {
         return;
       }
 
-      var editor = button.closest('.editor');
-      var area = editor ? editor.querySelector('textarea') : null;
+      var url = String(values.url || '').trim();
+      if (url === '' || url === 'https://') {
+        return;
+      }
 
-      if (!area) {
+      var text = String(values.label || '').trim() || '链接文字';
+      editorReplaceRange(textarea, '[' + text + '](' + url + ')', start, end, 1, 1 + text.length);
+    });
+  }
+
+  function editorInsertImage(root, textarea) {
+    var start = textarea.selectionStart || 0;
+    var end = textarea.selectionEnd || start;
+    var selected = textarea.value.slice(start, end);
+    var upload = editorUploadTarget(root);
+
+    return uiPrompt('插入图片', [
+      { name: 'url', label: '图片地址', value: 'https://', inputmode: 'url' },
+      { name: 'alt', label: '图片描述', value: selected || '图片描述' }
+    ], function (box, inputs) {
+      if (!upload) {
+        return;
+      }
+
+      // 上传是主要入口：放在弹层最前面，选完图地址自动填好，再补描述
+      box.insertBefore(buildImagePicker(upload, inputs.url, box), box.firstChild);
+    }).then(function (values) {
+      if (!values) {
+        return;
+      }
+
+      var url = String(values.url || '').trim();
+      if (url === '' || url === 'https://') {
+        return;
+      }
+
+      var alt = String(values.alt || '').trim() || '图片';
+      editorReplaceRange(textarea, '![' + alt + '](' + url + ')', start, end, 2, 2 + alt.length);
+    });
+  }
+
+  /* ---- 图片上传（编辑器内的「粘贴截图」与「插入图片」共用）---- */
+
+  /** 找到本编辑器对应的上传通道；站点没开附件上传时返回 null */
+  function editorUploadTarget(root) {
+    var form = root ? root.closest('form') : null;
+    var input = form ? form.querySelector('input[type="file"][data-upload]') : null;
+
+    if (!input || input.disabled) {
+      return null;
+    }
+
+    var target = document.querySelector(input.getAttribute('data-upload-target') || '');
+
+    return { input: input, endpoint: input.getAttribute('data-upload') || '', list: target };
+  }
+
+  /** 上传一张图片，解析成 {ok,id,name,is_image,size,size_text,url} */
+  function editorUploadImage(endpoint, file) {
+    return new Promise(function (resolve, reject) {
+      var body = new FormData();
+      body.append('file', file);
+
+      if (csrfToken()) {
+        body.append('_token', csrfToken());
+      }
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', endpoint);
+      xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      xhr.setRequestHeader('X-OWLSGO-Response', 'json');
+
+      xhr.addEventListener('load', function () {
+        var json = {};
+        try {
+          json = JSON.parse(xhr.responseText);
+        } catch (e) {
+          json = {};
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300 && json.ok !== false && json.id) {
+          resolve(json);
+          return;
+        }
+
+        reject(new Error(json.message || '上传失败'));
+      });
+
+      xhr.addEventListener('error', function () {
+        reject(new Error('网络异常'));
+      });
+
+      xhr.send(body);
+    });
+  }
+
+  /** 粘贴/选图时给个固定的文件名，便于在附件列表里认出这是粘贴进来的截图 */
+  function editorPasteName(type, index, total) {
+    var ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' })[String(type || '').toLowerCase()] || 'png';
+    var now = new Date();
+    var pad = function (value) { return String(value).length < 2 ? '0' + value : String(value); };
+    var stamp = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate())
+      + '-' + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+
+    return 'paste-' + stamp + (total > 1 ? '-' + (index + 1) : '') + '.' + ext;
+  }
+
+  /**
+   * 弹层里的选图区
+   *
+   * 上传成功后把地址填进 URL 输入框并直接提交表单 —— 用户选完图就完了，
+   * 不需要再手点一次「确定」。
+   */
+  function buildImagePicker(upload, urlInput, box) {
+    var row = document.createElement('div');
+    row.className = 'editor-picker';
+
+    var pick = document.createElement('label');
+    pick.className = 'editor-picker__pick';
+
+    var plus = document.createElement('span');
+    plus.className = 'editor-picker__plus';
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+
+    var tip = document.createElement('span');
+    tip.className = 'editor-picker__tip';
+    tip.textContent = '点击上传本地图片，或在正文里直接粘贴截图';
+
+    var file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'image/*';
+    file.hidden = true;
+
+    var status = document.createElement('span');
+    status.className = 'editor-picker__status';
+
+    pick.appendChild(plus);
+    pick.appendChild(tip);
+    pick.appendChild(file);
+
+    file.addEventListener('change', function () {
+      var picked = file.files && file.files[0];
+      if (!picked) {
+        return;
+      }
+
+      status.textContent = '正在上传……';
+      pick.classList.add('is-busy');
+
+      editorUploadImage(upload.endpoint, picked).then(function (json) {
+        if (!json.is_image) {
+          status.textContent = '这个文件没有被识别为图片，无法作为图片插入。';
+          return;
+        }
+
+        urlInput.value = json.url;
+        if (upload.list) {
+          renderAttachment(upload.list, json);
+        }
+        box.requestSubmit ? box.requestSubmit() : null;
+      }).catch(function (error) {
+        status.textContent = (error && error.message) || '上传失败，请换张图片试试。';
+      }).then(function () {
+        pick.classList.remove('is-busy');
+        file.value = '';
+      });
+    });
+
+    row.appendChild(pick);
+    row.appendChild(status);
+
+    return row;
+  }
+
+  /* ---- 表情面板 ---- */
+
+  var editorPanelOpen = null;      // { root, panel, button }
+
+  function editorBuildPanel(root) {
+    var panel = root.querySelector('.editor-panel');
+    if (panel) {
+      return panel;
+    }
+
+    panel = document.createElement('div');
+    panel.className = 'editor-panel';
+    panel.hidden = true;
+
+    var lists = [];
+
+    EDITOR_EMOJI.forEach(function (pack, index) {
+      var list = document.createElement('div');
+      list.className = 'editor-panel__pack';
+      list.hidden = index !== 0;
+
+      pack.items.forEach(function (item) {
+        var cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'editor-panel__item';
+        cell.textContent = item;
+        cell.title = item;
+        cell.setAttribute('data-editor-insert', item);
+        list.appendChild(cell);
+      });
+
+      panel.appendChild(list);
+      lists.push(list);
+    });
+
+    var tabs = document.createElement('div');
+    tabs.className = 'editor-panel__tabs';
+
+    EDITOR_EMOJI.forEach(function (pack, index) {
+      var tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'editor-panel__tab' + (index === 0 ? ' is-active' : '');
+      tab.textContent = pack.name;
+
+      tab.addEventListener('click', function () {
+        lists.forEach(function (list, i) { list.hidden = i !== index; });
+        Array.prototype.forEach.call(tabs.children, function (item, i) {
+          item.classList.toggle('is-active', i === index);
+        });
+        layoutEditorPanel();
+      });
+
+      tabs.appendChild(tab);
+    });
+
+    panel.appendChild(tabs);
+    root.appendChild(panel);
+
+    return panel;
+  }
+
+  /** 面板挂在工具栏上方（放不下就翻到下方），并夹在视口内 */
+  function layoutEditorPanel() {
+    if (!editorPanelOpen) {
+      return;
+    }
+
+    var panel = editorPanelOpen.panel;
+    var bar = editorPanelOpen.root.querySelector('.editor-bar');
+    if (!bar) {
+      return;
+    }
+
+    var barRect = bar.getBoundingClientRect();
+    var anchor = editorPanelOpen.button.getBoundingClientRect();
+    var width = Math.min(360, Math.max(240, barRect.width));
+
+    panel.style.width = width + 'px';
+
+    var height = panel.offsetHeight;
+    var left = Math.min(anchor.right - width, barRect.right - width);
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+
+    var above = barRect.top - height - 6;
+    var top = above >= 8 ? above : Math.min(barRect.bottom + 6, window.innerHeight - height - 8);
+
+    panel.style.left = Math.round(left) + 'px';
+    panel.style.top = Math.round(Math.max(8, top)) + 'px';
+  }
+
+  function editorClosePanels() {
+    Array.prototype.forEach.call(document.querySelectorAll('.editor-panel'), function (panel) {
+      panel.hidden = true;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-editor-emoji]'), function (button) {
+      button.classList.remove('is-active');
+    });
+    editorPanelOpen = null;
+  }
+
+  /* ---- 实时预览（服务端渲染）---- */
+
+  function editorPreviewBox(root) {
+    var box = root.querySelector('.editor-preview');
+
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'editor-preview post-content';
+      box.hidden = true;
+      box.setAttribute('aria-live', 'polite');
+      root.appendChild(box);
+    }
+
+    return box;
+  }
+
+  function editorPreviewMessage(box, text) {
+    box.innerHTML = '';
+    var line = document.createElement('p');
+    line.className = 'editor-preview__empty';
+    line.textContent = text;
+    box.appendChild(line);
+  }
+
+  function editorRenderPreview(root) {
+    var textarea = editorTextarea(root);
+    var url = root.getAttribute('data-editor-preview') || '';
+    var box = root.querySelector('.editor-preview');
+
+    if (!textarea || !url || !box || box.hidden) {
+      return;
+    }
+
+    var text = textarea.value;
+    var state = root.__previewState || {};
+    if (state.text === text) {
+      return;                       // 内容没变（例如只是切分区）就不重复请求
+    }
+
+    state.text = text;
+    if (state.controller) {
+      state.controller.abort();
+    }
+    state.controller = null;
+    root.__previewState = state;
+
+    if (text.trim() === '') {
+      editorPreviewMessage(box, '还没有内容，写点什么就会显示在这里。');
+      return;
+    }
+
+    var controller = window.AbortController ? new AbortController() : null;
+    state.controller = controller;
+
+    if (box.childElementCount === 0) {
+      editorPreviewMessage(box, '正在生成预览……');
+    }
+
+    var form = root.closest('form');
+    var token = form ? form.querySelector('input[name="_token"]') : null;
+    var data = new FormData();
+    data.append('content', text);
+    data.append('_token', token ? token.value : csrfToken());
+
+    var options = {
+      method: 'POST',
+      body: data,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    };
+    if (controller) {
+      options.signal = controller.signal;
+    }
+
+    fetch(url, options)
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (box.hidden || root.__previewState !== state || state.controller !== controller) {
+          return;
+        }
+
+        if (result && result.ok) {
+          box.innerHTML = result.html || '';
+        } else {
+          editorPreviewMessage(box, (result && result.message) || '预览失败，请稍后再试。');
+        }
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') {
+          return;
+        }
+        if (!box.hidden) {
+          editorPreviewMessage(box, '预览失败，请稍后再试。');
+        }
+      });
+  }
+
+  function editorSchedulePreview(root) {
+    clearTimeout(root.__previewTimer);
+    root.__previewTimer = setTimeout(function () { editorRenderPreview(root); }, 400);
+  }
+
+  function editorTogglePreview(root, button) {
+    var box = editorPreviewBox(root);
+    var on = box.hidden;
+
+    box.hidden = !on;
+    root.classList.toggle('editor--live', on);
+    if (button) {
+      button.classList.toggle('is-active', on);
+    }
+
+    clearTimeout(root.__previewTimer);
+
+    if (on) {
+      root.__previewState = null;
+      editorRenderPreview(root);
+    }
+
+    var textarea = editorTextarea(root);
+    if (textarea) {
+      textarea.focus();
+    }
+  }
+
+  function editorToggleFullscreen(root, button) {
+    var on = root.classList.toggle('editor--full');
+    document.body.classList.toggle('editor-fullscreen', on);
+    if (button) {
+      button.classList.toggle('is-active', on);
+    }
+
+    var textarea = editorTextarea(root);
+    if (textarea) {
+      textarea.focus();
+    }
+  }
+
+  function editorExitFullscreen() {
+    var root = document.querySelector('.editor--full');
+    if (!root) {
+      return false;
+    }
+
+    var button = root.querySelector('[data-editor-action="fullscreen"]');
+    editorToggleFullscreen(root, button);
+
+    return true;
+  }
+
+  /* ---- 工具栏动作分发 ---- */
+
+  function editorApplyAction(action, root, button) {
+    if (action === 'preview') {
+      editorTogglePreview(root, button);
+      return;
+    }
+
+    if (action === 'fullscreen') {
+      editorToggleFullscreen(root, button);
+      return;
+    }
+
+    var textarea = editorTextarea(root);
+    if (!textarea) {
+      return;
+    }
+
+    switch (action) {
+      case 'bold':       editorTemplate(textarea, '**', '**', '加粗文字'); break;
+      case 'italic':     editorTemplate(textarea, '*', '*', '斜体文字'); break;
+      case 'strike':     editorTemplate(textarea, '~~', '~~', '删除线文字'); break;
+      case 'heading':    editorLinePrefix(textarea, '## ', '标题', false); break;
+      case 'quote':      editorLinePrefix(textarea, '> ', '引用内容', false); break;
+      case 'code':       editorTemplate(textarea, '`', '`', '代码'); break;
+      case 'code_block': editorInsertBlock(textarea, '```\n代码\n```\n', 4, 6); break;
+      case 'ul':         editorLinePrefix(textarea, '- ', '列表项', false); break;
+      case 'ol':
+        editorLinePrefix(textarea, '', '列表项', true);
+        var caret = editorRenumberOrderedList(textarea, textarea.selectionEnd || 0);
+        if (caret !== (textarea.selectionEnd || 0)) {
+          textarea.setSelectionRange(caret, caret);
+          editorDispatchInput(textarea);
+        }
+        break;
+      case 'link':       editorInsertLink(textarea); break;
+      case 'image':      editorInsertImage(root, textarea); break;
+      case 'table':      editorInsertBlock(textarea, '| 表头 | 表头 |\n| --- | --- |\n| 内容 | 内容 |\n', 2, 4); break;
+      case 'hr':         editorInsertBlock(textarea, '\n---\n\n', 1, 4); break;
+      default: break;
+    }
+  }
+
+  /* ---- 事件绑定 ---- */
+
+  function initEditors() {
+    var roots = document.querySelectorAll('.editor[data-editor]');
+
+    if (roots.length === 0) {
+      return;
+    }
+
+    Array.prototype.forEach.call(roots, function (root) {
+      var textarea = editorTextarea(root);
+      var counter = root.querySelector('.char-counter');
+
+      if (!textarea) {
+        return;
+      }
+
+      /* 字数统计：超上限时标红（仍然是提示，不阻断提交） */
+      if (counter) {
+        var max = parseInt(counter.getAttribute('data-max') || '0', 10) || 0;
+
+        var update = function () {
+          var length = Array.from(textarea.value).length;
+          counter.textContent = max > 0 ? length + ' / ' + max : String(length);
+          if (max > 0 && length > max) {
+            counter.setAttribute('data-over', '1');
+          } else {
+            counter.removeAttribute('data-over');
+          }
+        };
+
+        textarea.addEventListener('input', update);
+        update();
+      }
+    });
+
+    document.addEventListener('click', function (event) {
+      var target = event.target instanceof Element ? event.target : null;
+      if (!target) {
+        return;
+      }
+
+      /* 表情项：把字符插到光标处 */
+      var item = target.closest('[data-editor-insert]');
+      if (item) {
+        var itemRoot = item.closest('.editor');
+        var itemArea = editorTextarea(itemRoot);
+        if (itemArea) {
+          event.preventDefault();
+          var value = item.getAttribute('data-editor-insert') || '';
+          editorReplaceSelection(itemArea, value, value.length, value.length);
+          editorClosePanels();
+        }
+        return;
+      }
+
+      /* 表情按钮：开关面板 */
+      var emoji = target.closest('[data-editor-emoji]');
+      if (emoji) {
+        event.preventDefault();
+        var emojiRoot = emoji.closest('.editor');
+        if (!emojiRoot) {
+          return;
+        }
+
+        var panel = editorBuildPanel(emojiRoot);
+        var open = panel.hidden;
+        editorClosePanels();
+
+        if (open) {
+          panel.hidden = false;
+          editorPanelOpen = { root: emojiRoot, panel: panel, button: emoji };
+          layoutEditorPanel();
+          emoji.classList.add('is-active');
+        }
+        return;
+      }
+
+      var button = target.closest('[data-editor-action]');
+      if (button) {
+        var root = button.closest('.editor');
+        if (!root) {
+          return;
+        }
+        event.preventDefault();
+        editorApplyAction(button.getAttribute('data-editor-action') || '', root, button);
+        return;
+      }
+
+      if (!target.closest('.editor-panel')) {
+        editorClosePanels();
+      }
+    });
+
+    /* 输入：实时预览（仅当预览那一栏打开时） */
+    document.addEventListener('input', function (event) {
+      var target = event.target;
+      var textarea = target && target.closest ? target.closest('.editor textarea') : null;
+      if (!textarea) {
+        return;
+      }
+
+      var root = textarea.closest('.editor');
+      if (root && root.classList.contains('editor--live')) {
+        editorSchedulePreview(root);
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        if (editorExitFullscreen()) {
+          return;
+        }
+        editorClosePanels();
+        return;
+      }
+
+      if (event.key !== 'Enter') {
+        return;
+      }
+
+      // 中文输入法里的回车是在选词，不能当成换行处理
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+
+      var textarea = event.target instanceof Element ? event.target.closest('.editor textarea') : null;
+      if (!textarea) {
+        return;
+      }
+
+      var root = textarea.closest('.editor');
+
+      /* Ctrl / Cmd + Enter 直接提交（没有提交按钮的表单交给浏览器默认行为） */
+      if (event.ctrlKey || event.metaKey) {
+        if (!root || !root.hasAttribute('data-editor-hotkey')) {
+          return;
+        }
+
+        var form = textarea.closest('form');
+        if (!form) {
+          return;
+        }
+
+        event.preventDefault();
+        var submit = form.querySelector('button[type="submit"]');
+        form.requestSubmit ? form.requestSubmit(submit || undefined) : form.submit();
+        return;
+      }
+
+      if (event.shiftKey || event.altKey) {
+        return;
+      }
+
+      editorHandleListEnter(event, textarea);
+    });
+
+    /* 粘贴截图 → 直接上传并插入（仅当该编辑器开了 data-editor-paste 且站点允许上传） */
+    document.addEventListener('paste', function (event) {
+      var target = event.target instanceof Element ? event.target : null;
+      var textarea = target ? target.closest('.editor textarea') : null;
+      var clipboard = event.clipboardData;
+      var items = (clipboard && clipboard.items) || [];
+      var files = [];
+
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind !== 'file' || String(items[i].type || '').indexOf('image/') !== 0) {
+          continue;
+        }
+        var blob = items[i].getAsFile();
+        if (blob) {
+          files.push(blob);
+        }
+      }
+
+      // 粘的不是图片（比如往弹层输入框里粘链接）就放行，交给输入框默认行为
+      if (!files.length || !textarea) {
+        return;
+      }
+
+      var root = textarea.closest('.editor');
+      if (!root || !root.hasAttribute('data-editor-paste')) {
+        return;
+      }
+
+      var upload = editorUploadTarget(root);
+      if (!upload) {
         return;
       }
 
       event.preventDefault();
 
-      var kind = button.getAttribute('data-insert');
-      var start = area.selectionStart;
-      var end = area.selectionEnd;
-      var selected = area.value.slice(start, end);
-      var before = '';
-      var after = '';
-      var placeholder = '';
-      var cursorOffset = 0;
+      /*
+       * 先插一个占位标记，上传完成后再换成真正的 Markdown：
+       * 逐张上传期间用户还可能继续打字，事后按光标位置插入会插错地方。
+       */
+      var marker = '<!-- editor-upload:' + Date.now().toString(36) + Math.random().toString(36).slice(2) + ' -->';
+      editorReplaceSelection(textarea, marker, marker.length, marker.length);
+      notify(files.length > 1 ? '正在上传 ' + files.length + ' 张粘贴的图片……' : '正在上传粘贴的图片……');
 
-      if (kind === 'bold') {
-        before = '**';
-        after = '**';
-        placeholder = '加粗文字';
-      } else if (kind === 'italic') {
-        before = '*';
-        after = '*';
-        placeholder = '斜体文字';
-      } else if (kind === 'code') {
-        before = '`';
-        after = '`';
-        placeholder = '代码';
-      } else if (kind === 'quote') {
-        before = '> ';
-        after = '';
-        placeholder = '引用内容';
-      } else if (kind === 'codeblock') {
-        before = '```\n';
-        after = '\n```';
-        placeholder = '代码块';
-      } else if (kind === 'link') {
-        before = '[';
-        after = '](https://)';
-        placeholder = '链接文字';
-        cursorOffset = after.length - 1;
-      } else {
-        return;
-      }
+      var done = [];
+      var failed = 0;
 
-      var text = selected || placeholder;
+      var next = function (index) {
+        if (index >= files.length) {
+          return Promise.resolve();
+        }
 
-      area.setRangeText(before + text + after, start, end, 'end');
+        var named = new File([files[index]], editorPasteName(files[index].type, index, files.length), {
+          type: files[index].type || 'image/png'
+        });
 
-      // 链接的话把光标定位到 URL 位置，方便直接粘贴
-      if (cursorOffset > 0) {
-        var position = start + before.length + text.length + cursorOffset;
-        area.setSelectionRange(position, position);
-      }
+        return editorUploadImage(upload.endpoint, named).then(function (json) {
+          done.push(attachmentMarkdown(json));
+          if (upload.list) {
+            renderAttachment(upload.list, json);
+          }
+        }).catch(function () {
+          failed++;
+        }).then(function () {
+          return next(index + 1);
+        });
+      };
 
-      area.focus();
-      area.dispatchEvent(new Event('input', { bubbles: true }));
+      next(0).then(function () {
+        var index = textarea.value.indexOf(marker);
+        if (index >= 0) {
+          var before = textarea.value.slice(0, index);
+          var after = textarea.value.slice(index + marker.length);
+          var markdown = done.join('\n');
+          var prefix = markdown !== '' && before !== '' && before.slice(-1) !== '\n' ? '\n' : '';
+          var suffix = markdown !== '' && after !== '' && after.slice(0, 1) !== '\n' ? '\n' : '';
+          var value = prefix + markdown + suffix;
+
+          textarea.value = before + value + after;
+          var caret = index + value.length;
+          textarea.setSelectionRange(caret, caret);
+          editorDispatchInput(textarea);
+        }
+
+        if (failed && !done.length) {
+          notify('粘贴的图片上传失败。', 'danger');
+        } else if (failed) {
+          notify('已插入 ' + done.length + ' 张，' + failed + ' 张上传失败。', 'warning');
+        } else {
+          notify('已插入 ' + done.length + ' 张图片。', 'success');
+        }
+      });
     });
+
+    window.addEventListener('resize', layoutEditorPanel);
+    window.addEventListener('scroll', layoutEditorPanel, true);
+  }
+
+  /* =======================================================================
+   * 6. 长内容折叠（帖子正文 / 回帖 / 全站通知）
+   * -----------------------------------------------------------------------
+   * 与服务端的分工：服务端只给出「阈值 + 容器 id」（helpers.php 的 content_fold），
+   * 是否真的超长由这里按**实际渲染高度**（scrollHeight）判断 —— 图片、代码块、
+   * 宽表格渲染出来多高，服务端算不出来。
+   * 按钮默认 hidden，不够长就一直是隐藏的：无 JS 时页面就是完整正文，与老站点一致。
+   * ===================================================================== */
+
+  /** 与服务端 content_fold() 的兜底值保持一致 */
+  var FOLD_FALLBACK_HEIGHT = 420;
+
+  function foldReduceMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  /** 折叠按钮：与容器用 aria-controls 关联，容器 id 唯一所以不会串台 */
+  function foldToggleOf(content) {
+    if (!content.id) {
+      return null;
+    }
+
+    if (!content.__foldToggle) {
+      content.__foldToggle = document.querySelector(
+        '[data-fold-toggle][aria-controls="' + content.id + '"]'
+      );
+    }
+
+    return content.__foldToggle;
+  }
+
+  /**
+   * 量一次并按结果同步状态
+   *
+   * 幂等：折叠只改容器高度（max-height），不影响 scrollHeight，
+   * 因此 ResizeObserver 回调里再调一次也不会来回抖动。
+   */
+  function foldEvaluate(content) {
+    var toggle = foldToggleOf(content);
+    if (!toggle) {
+      return;
+    }
+
+    var limit = parseInt(content.getAttribute('data-fold-height') || '', 10) || FOLD_FALLBACK_HEIGHT;
+    limit = Math.max(200, Math.min(2000, limit));
+    content.style.setProperty('--fold-height', limit + 'px');
+
+    // +8 容忍亚像素与行高取整的误差，避免「刚好卡在阈值上」的正文被折
+    var overflowing = content.scrollHeight > limit + 8;
+    var expanded = toggle.getAttribute('aria-expanded') === 'true';
+    var label = toggle.querySelector('[data-fold-label]');
+
+    toggle.hidden = !overflowing;
+    content.classList.toggle('is-folded', overflowing && !expanded);
+
+    // 展开着但内容被改短了（例如图片没加载出来）→ 复位成收起态，免得按钮文案骗人
+    if (!overflowing && expanded) {
+      toggle.setAttribute('aria-expanded', 'false');
+      if (label) {
+        label.textContent = '展开全文';
+      }
+    }
+  }
+
+  function foldApply(content, toggle) {
+    var expanding = toggle.getAttribute('aria-expanded') !== 'true';
+    var label = toggle.querySelector('[data-fold-label]');
+
+    toggle.setAttribute('aria-expanded', expanding ? 'true' : 'false');
+    if (label) {
+      label.textContent = expanding ? '收起全文' : '展开全文';
+    }
+    content.classList.toggle('is-folded', !expanding);
+
+    /*
+     * 收起时正文顶部往往已经滚到视口上方（长文读到底部才收起），
+     * 不滚回去的话用户会「跳」到楼层中部，看起来像内容丢了。
+     */
+    if (!expanding && content.getBoundingClientRect().top < 0) {
+      var top = window.scrollY + content.getBoundingClientRect().top - 16;
+      window.scrollTo({ top: Math.max(0, top), behavior: foldReduceMotion() ? 'auto' : 'smooth' });
+    }
+  }
+
+  function foldEnhance(content) {
+    if (!(content instanceof Element) || content.getAttribute('data-fold-ready') === '1') {
+      return;
+    }
+    content.setAttribute('data-fold-ready', '1');
+
+    var toggle = foldToggleOf(content);
+    if (!toggle) {
+      return;
+    }
+
+    toggle.addEventListener('click', function () {
+      foldApply(content, toggle);
+    });
+
+    /* 图片是异步长出来的：加载完再量一次，否则会把「还没撑开」的正文误判成不够长 */
+    Array.prototype.forEach.call(content.querySelectorAll('img'), function (image) {
+      if (!image.complete) {
+        image.addEventListener('load', function () { foldEvaluate(content); }, { once: true });
+      }
+    });
+
+    /* 窗口/字号变化、图片回流都会改高度 */
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(function () { foldEvaluate(content); }).observe(content);
+    }
+
+    foldEvaluate(content);
+  }
+
+  function initContentFold() {
+    function scan(root) {
+      if (root instanceof Element && root.hasAttribute('data-fold')) {
+        foldEnhance(root);
+      }
+      if (root.querySelectorAll) {
+        Array.prototype.forEach.call(root.querySelectorAll('[data-fold]'), foldEnhance);
+      }
+    }
+
+    scan(document);
+
+    /* AJAX 追加的楼层、动态插入的公告卡片走同一条逻辑 */
+    if (window.MutationObserver && document.body) {
+      new MutationObserver(function (records) {
+        records.forEach(function (record) {
+          Array.prototype.forEach.call(record.addedNodes, function (node) {
+            if (node instanceof Element) {
+              scan(node);
+            }
+          });
+        });
+      }).observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   /* =======================================================================
@@ -2473,8 +3619,7 @@
     initInstallForm();
     initCaptcha();
     initNavToggle();
-    initCounters();
-    initEditorTools();
+    initEditors();
     initFilePreview();
     initCopy();
     initDropdownAutoClose();
@@ -2486,6 +3631,7 @@
     initThemeToggle();
     initSchemeManager();
     initLightbox();
+    initContentFold();
     initPluginUpload();
     initAdminBulk();
     syncInsertButtons();

@@ -272,8 +272,19 @@ $entryClass = 'post-entry'
         'attachments' => $attachments,
         'embedded'    => content_attachment_ids((string)($post['content'] ?? '')),
     ]);
+
+    /*
+     * 长内容折叠：首楼与回帖用不同的高度阈值（见 helpers.php 的 content_fold()）。
+     * 这里只输出标记与按钮，是否真的超长由前端按**实际渲染高度**判断 ——
+     * 图片、代码块、宽表格渲染出来多高，服务端算不出来。
+     */
+    $fold = content_fold($isFirst ? 'topic' : 'reply', $postId);
     ?>
-    <div class="post-content"><?= $postHtml ?></div>
+    <div class="post-content"<?= $fold !== null ? ' id="' . e($fold['id']) . '" data-fold data-fold-height="' . (int)$fold['height'] . '"' : '' ?>><?= $postHtml ?></div>
+
+    <?php if ($fold !== null): ?>
+        <?= $view('partials/fold-toggle', ['foldTarget' => $fold['id']]) ?>
+    <?php endif; ?>
 
     <?php if ($attachHtml !== '' || (!$isFirst && $signature !== '')): ?>
         <div class="post-foot">
