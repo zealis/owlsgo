@@ -16,30 +16,271 @@ namespace Core;
 
 final class Avatar
 {
-    /** 可选风格 */
+    /** 可选风格（本地生成器的风格；DiceBear 预置头像不使用这些） */
     public const STYLES = ['owl', 'geometric', 'initial', 'robot', 'pixel'];
 
     /**
-     * 预置头像库：seed + 风格的固定组合。
+     * 预置头像（DiceBear）
      *
-     * seed 用固定前缀（而非用户名哈希），保证「预置头像」列表对所有人一致；
-     * 用户选中后把 `preset:{seed}|{style}` 写入 users.avatar（见 Avatar::url）。
+     * 预置库不再是本地那几套几何图形，而是调用 DiceBear 的 big-ears-neutral 风格：
+     * 每次打开弹层给一批新的随机 seed（所以叫「随机生成 10 个」），
+     * 用户选中哪个就把哪个抓下来**落盘**存成自己的头像（见 UserController::applyDicebearAvatar）。
      *
-     * @return array<int, array{seed:string, style:string}>
+     * 预览走本站代理 `/avatar/dice/{seed}.svg`，不经用户浏览器直连第三方：
+     * 一来国内访问 DiceBear 不一定通，二来不把用户的 IP 暴露给外部服务。
      */
-    public static function presets(): array
+    public const DICEBEAR_STYLE = 'big-ears-neutral';
+
+    /** DiceBear 背景色（接口要求的逗号分隔十六进制，不带 #） */
+    public const DICEBEAR_BACKGROUNDS = 'fdba74,fcd34d,fca5a5,fb923c,f9a8d4';
+
+    /** DiceBear 抓取超时（秒）：连接 / 总耗时 */
+    private const DICEBEAR_TIMEOUT_CONNECT = 4;
+    private const DICEBEAR_TIMEOUT_TOTAL   = 10;
+
+    /** 单张 SVG 的大小上限（字节）：DiceBear 一张约 4~8 KB，给足余量 */
+    private const DICEBEAR_MAX_BYTES = 131072;
+
+    /**
+     * 预置头像候选：10 个随机 seed
+     *
+     * 每次调用都换一批（弹层打开即随机），所以返回值里直接带上渲染用的 URL。
+     *
+     * @return list<array{seed:string, url:string}>
+     */
+    public static function presets(int $count = 10): array
     {
-        $styles = self::STYLES;
+        $count   = max(1, min(30, $count));
         $presets = [];
 
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < $count; $i++) {
+            $seed       = self::randomSeed();
             $presets[] = [
-                'seed'  => 'preset-' . $i . '-' . substr(hash('sha256', 'owlsgo-preset' . $i), 0, 10),
-                'style' => $styles[$i % count($styles)],
+                'seed' => $seed,
+                'url'  => Router::url('/avatar/dice/' . rawurlencode($seed) . '.svg'),
             ];
         }
 
         return $presets;
+    }
+
+    /** 随机 seed（同一 seed 永远得到同一张脸，所以"随机"只是换一批种子） */
+    public static function randomSeed(): string
+    {
+        return 'db' . bin2hex(random_bytes(8));
+    }
+
+    /** DiceBear 头像 URL（服务端抓取用，不直接给浏览器） */
+    public static function dicebearUrl(string $seed): string
+    {
+        return 'https://api.dicebear.com/10.x/' . self::DICEBEAR_STYLE . '/svg'
+            . '?seed=' . rawurlencode($seed)
+            . '&backgroundColor=' . self::DICEBEAR_BACKGROUNDS;
+    }
+
+    /**
+     * 取一张 DiceBear 头像的 SVG（带文件缓存）
+     *
+     * 缓存目录 storage/cache/dicebear/{seed}.svg：同一个 seed 只要抓一次，
+     * 之后预览与应用都直接读本地文件 —— 断网也能用已经缓存过的那批。
+     *
+     * 失败（网络不通 / 超时 / 返回不是 SVG / 清洗后为空）返回 null，
+     * 由调用方回退到本地生成的头像，保证页面上不会出现裂图。
+     */
+    public static function dicebearSvg(string $seed): ?string
+    {
+        if (preg_match('/^[a-z0-9_-]{1,64}$/', $seed) !== 1) {
+            return null;
+        }
+
+        $file = self::dicebearCacheFile($seed);
+
+        if ($file !== null && is_file($file)) {
+            $cached = (string)@file_get_contents($file);
+            if ($cached !== '') {
+                return $cached;
+            }
+        }
+
+        $svg = self::fetchDicebear($seed);
+
+        if ($svg === null) {
+            return null;
+        }
+
+        if ($file !== null) {
+            @file_put_contents($file, $svg, LOCK_EX);
+        }
+
+        return $svg;
+    }
+
+    /**
+     * 向 DiceBear 发一次请求，返回清洗后的 SVG；失败返回 null
+     *
+     * SSL 校验的默认姿势是「严格」——但不少 Windows 环境（本机 phpStudy 就是）
+     * 既没有配置 curl.cainfo，出网又经过自签名证书的企业代理，
+     * 严格校验会恒定失败（errno 60）。所以：
+     *   1. 先按「严格 + 已知 CA 文件」请求；
+     *   2. 只有确认失败在证书链上（errno 60/77）才放宽校验重试一次，并记 warning。
+     * 内容本身还有 sanitizeSvg + CSP sandbox 兜底，放宽的只是传输层。
+     */
+    private static function fetchDicebear(string $seed): ?string
+    {
+        if (!function_exists('curl_init')) {
+            return null;
+        }
+
+        $svg = self::curlDicebear($seed, true);
+
+        if ($svg === null && in_array(self::$lastCurlErrno, [60, 77], true)) {
+            Logger::warning(
+                'DiceBear 头像抓取：证书校验失败（errno ' . self::$lastCurlErrno . '），已放宽校验重试',
+                ['seed' => $seed]
+            );
+
+            $svg = self::curlDicebear($seed, false);
+        }
+
+        return $svg;
+    }
+
+    /** 上一次 cURL 的错误号（用于判断是否值得放宽校验重试） */
+    private static int $lastCurlErrno = 0;
+
+    private static function curlDicebear(string $seed, bool $verify): ?string
+    {
+        $ch = curl_init(self::dicebearUrl($seed));
+
+        if ($ch === false) {
+            return null;
+        }
+
+        $options = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => self::DICEBEAR_TIMEOUT_CONNECT,
+            CURLOPT_TIMEOUT        => self::DICEBEAR_TIMEOUT_TOTAL,
+            CURLOPT_USERAGENT      => 'owlsgo/' . (string)config('app.version', '1.0'),
+            CURLOPT_PROTOCOLS      => CURLPROTO_HTTPS,
+            CURLOPT_SSL_VERIFYPEER => $verify,
+            CURLOPT_SSL_VERIFYHOST => $verify ? 2 : 0,
+        ];
+
+        $ca = self::caFile();
+        if ($ca !== null) {
+            $options[CURLOPT_CAINFO] = $ca;
+        }
+
+        curl_setopt_array($ch, $options);
+
+        $raw    = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $type   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+
+        self::$lastCurlErrno = (int)curl_errno($ch);
+        curl_close($ch);
+
+        if ($raw === false || $status !== 200 || strlen((string)$raw) > self::DICEBEAR_MAX_BYTES) {
+            return null;
+        }
+
+        // 只接受 SVG：接口偶尔会返回 JSON 错误体，别把它当图片存下来
+        if (!str_contains($type, 'svg') && !str_contains($type, 'xml')) {
+            return null;
+        }
+
+        return self::sanitizeSvg((string)$raw);
+    }
+
+    /**
+     * 找一个可用的 CA 证书文件
+     *
+     * PHP 的 curl.cainfo / openssl.cafile 为空时，Windows 上常导致 HTTPS 全部失败；
+     * 这里按常见位置兜底找一次，找不到就返回 null（由调用方决定是否放宽校验）。
+     */
+    private static function caFile(): ?string
+    {
+        foreach (['curl.cainfo', 'openssl.cafile'] as $ini) {
+            $value = (string)ini_get($ini);
+
+            if ($value !== '' && is_file($value)) {
+                return $value;
+            }
+        }
+
+        $candidates = [
+            APP_ROOT . '/storage/config/cacert.pem',
+            dirname((string)PHP_BINARY) . '/extras/ssl/cacert.pem',
+            dirname((string)PHP_BINARY) . '/cacert.pem',
+            (string)getenv('SYSTEMROOT') . '/System32/curl-ca-bundle.crt',
+        ];
+
+        foreach ($candidates as $file) {
+            if ($file !== '' && is_file($file)) {
+                return $file;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * SVG 清洗：只留静态矢量图形，去掉一切可执行/可外联的东西
+     *
+     * SVG 是 XML，可以内嵌 <script>、事件属性与外链引用 —— 哪怕最终只在 <img> 里显示，
+     * 也要防住「用户直接打开这个 URL」的场景（我们另外再用 CSP sandbox 兜底）。
+     */
+    public static function sanitizeSvg(string $svg): ?string
+    {
+        $svg = trim($svg);
+
+        if ($svg === '' || stripos($svg, '<svg') === false) {
+            return null;
+        }
+
+        // 去掉 XML 声明与注释（注释里可能藏着被截断的标签）
+        $svg = preg_replace('/<\?xml[^>]*\?>/i', '', $svg) ?? $svg;
+        $svg = preg_replace('/<!--.*?-->/is', '', $svg) ?? $svg;
+
+        // 危险节点整个删掉（注意：<use> 不在名单里 —— DiceBear 的人脸部件全靠它组装）
+        $svg = preg_replace('#<\s*(script|foreignObject|iframe|audio|video|handler)\b.*?</\s*\1\s*>#is', '', $svg) ?? $svg;
+        $svg = preg_replace('#<\s*(script|foreignObject|iframe|audio|video|handler)\b[^>]*/?\s*>#is', '', $svg) ?? $svg;
+
+        /*
+         * <use> / <image> / 动画元素：只删「指向外部资源」的 ——
+         * 引用同文档 #id 的 <use> 是 DiceBear 的正常结构，删了头像就只剩背景色。
+         * 外链 <use href="https://…"> 才是 XSS 载体（把别处的 SVG 载荷拖进来）。
+         */
+        $svg = preg_replace(
+            '#<\s*(use|image|animate|set)\b[^>]*\b(?:xlink:)?href\s*=\s*(["\'])\s*((?:https?:)?//|data:)[^"\']*\2[^>]*/?\s*>(?:.*?</\s*\1\s*>)?#is',
+            '',
+            $svg
+        ) ?? $svg;
+
+        // 事件属性（onload / onclick / …）
+        $svg = preg_replace('#\son[a-z]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)#is', '', $svg) ?? $svg;
+
+        // 外链：href / xlink:href 指向 http(s) 的一律剔除属性
+        $svg = preg_replace('#\s(?:xlink:)?href\s*=\s*(["\'])\s*https?://[^"\']*\1#i', '', $svg) ?? $svg;
+
+        if (strlen($svg) > self::DICEBEAR_MAX_BYTES || stripos($svg, '<svg') === false) {
+            return null;
+        }
+
+        return $svg;
+    }
+
+    /** 缓存文件路径（目录不可写时返回 null，退化为不缓存） */
+    private static function dicebearCacheFile(string $seed): ?string
+    {
+        $dir = APP_ROOT . '/storage/cache/dicebear';
+
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return null;
+        }
+
+        return $dir . '/' . $seed . '.svg';
     }
 
     /** 配色板（经典蓝白 + 少量点缀色） */

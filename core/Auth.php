@@ -45,6 +45,20 @@ final class Auth
 
         self::$resolved = true;
 
+        /*
+         * 会话绑定 UA 指纹（防「Cookie 文件被窃 → 异地/异浏览器重放」）：
+         * 指纹不符 → 清登录态、更新指纹。会话 Cookie 留在浏览器里也无妨，
+         * 它对应的登录态已经没了；「记住我」Cookie 的 HMAC 同样绑定 UA，
+         * 重放依旧过不了校验（见 Security::makeAuthCookie）。
+         */
+        $uaHash = Request::userAgentHash();
+        if (isset($_SESSION['ua']) && $_SESSION['ua'] !== $uaHash) {
+            Session::delete(self::SESSION_KEY);
+            $_SESSION['ua'] = $uaHash;
+        } elseif (!isset($_SESSION['ua'])) {
+            $_SESSION['ua'] = $uaHash;
+        }
+
         $userId = (int)Session::get(self::SESSION_KEY, 0);
 
         if ($userId > 0) {
@@ -62,7 +76,7 @@ final class Auth
         if ($user !== null && Ban::isBanned($user)) {
             // 被封禁的账号立即失效
             Session::delete(self::SESSION_KEY);
-            Response::forgetCookie(self::cookieName());
+            self::forgetAuthCookies();
             $user = null;
         }
 
@@ -181,11 +195,11 @@ final class Auth
             }
 
             if ($passwordHash !== '') {
-                $expires = time() + (int)config('app.cookie_ttl', 15552000);
+                $expires = time() + (int)config('app.cookie_ttl', 2592000);
 
                 Response::cookie(
                     self::cookieName(),
-                    Security::makeAuthCookie($userId, $expires, $passwordHash),
+                    Security::makeAuthCookie($userId, $expires, $passwordHash, Request::userAgentHash()),
                     $expires,
                     ['httponly' => true, 'samesite' => 'Lax']
                 );
@@ -206,7 +220,7 @@ final class Auth
     {
         $userId = self::id();
 
-        Response::forgetCookie(self::cookieName());
+        self::forgetAuthCookies();
         Session::destroy();
 
         self::$resolved = false;
@@ -279,10 +293,20 @@ final class Auth
     /*  内部实现                                                            */
     /* ------------------------------------------------------------------ */
 
-    /** 「记住我」Cookie 名称 */
+    /** 「记住我」Cookie 名称（HTTPS 下带 `__Host-` 前缀，见 Security::hostCookieName） */
     public static function cookieName(): string
     {
-        return (string)config('app.cookie_prefix', 'owlsgo_') . 'auth';
+        return \Core\Security::hostCookieName((string)config('app.cookie_prefix', 'owlsgo_') . 'auth');
+    }
+
+    /**
+     * 清掉「记住我」Cookie：新名 + 升级前的裸名一起清，
+     * 否则升级后旧 Cookie 会一直躺在浏览器里直到自然过期。
+     */
+    private static function forgetAuthCookies(): void
+    {
+        self::forgetAuthCookies();
+        Response::forgetCookie((string)config('app.cookie_prefix', 'owlsgo_') . 'auth');
     }
 
     /**
@@ -300,9 +324,10 @@ final class Auth
 
         // Cookie 中不含 uid，需要先试解析出用户 ID 再校验签名；
         // 因此这里先把 uid 取出来，再拉用户记录完成完整校验。
+        // 格式（4 段）：uid|expires|uaHash|hmac —— 三段式的旧 Cookie 走不进这里，自然作废。
         $parts = explode('|', $raw);
-        if (count($parts) !== 3 || !ctype_digit($parts[0])) {
-            Response::forgetCookie(self::cookieName());
+        if (count($parts) !== 4 || !ctype_digit($parts[0])) {
+            self::forgetAuthCookies();
 
             return null;
         }
@@ -310,16 +335,32 @@ final class Auth
         $user = UserModel::find((int)$parts[0]);
 
         if ($user === null || (int)($user['status'] ?? 1) !== 1) {
-            Response::forgetCookie(self::cookieName());
+            self::forgetAuthCookies();
 
             return null;
         }
 
-        $parsed = Security::parseAuthCookie($raw, (string)$user['password_hash']);
+        $parsed = Security::parseAuthCookie($raw, (string)$user['password_hash'], Request::userAgentHash());
 
         if ($parsed === null) {
             Logger::warning('记住我 Cookie 校验失败', ['user_id' => (int)$user['id'], 'ip' => Request::ip()]);
-            Response::forgetCookie(self::cookieName());
+            /*
+             * 这里**不**主动发删除 Set-Cookie：在本项目实际部署的 Windows/PHP 构建
+             * 上，恢复失败路径里发 setcookie 会直接崩掉进程（实测 500，无任何
+             * fatal 输出）。凭据本身已失效 —— 三段式旧格式过不了解析、新格式
+             * 过不了 UA 绑定 —— 用户重新登录时它会被同名覆盖。
+             */
+
+            return null;
+        }
+
+        /*
+         * 有效期上限跟随当前配置：Cookie 里签的是「签发当时算起的天数」，
+         * 站点把时长改短之后，早先签发的那批不能继续用到原定日期 ——
+         * 超出当前上限的一律作废，用户重新登录一次即可。
+         */
+        if ((int)$parsed['expires'] > time() + (int)config('app.cookie_ttl', 2592000)) {
+            self::forgetAuthCookies();
 
             return null;
         }

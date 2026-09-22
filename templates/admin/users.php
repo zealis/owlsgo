@@ -96,11 +96,11 @@ $groups   = is_array($groups ?? null) ? $groups : [];
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <table class="admin-list admin-list--users">
                 <thead>
                 <tr>
                     <th class="bulk-check"></th>
-                    <th>用户</th>
+                    <th style="width:240px">用户</th>
                     <th style="width:200px">邮箱</th>
                     <th style="width:70px">帖子</th>
                     <th style="width:70px">评论</th>
@@ -135,22 +135,27 @@ $groups   = is_array($groups ?? null) ? $groups : [];
                             <div class="hstack" style="gap:9px;align-items:flex-start">
                                 <?= avatar_img($user, 32) ?>
                                 <span style="min-width:0">
-                                    <a href="<?= e(url('/admin/users/' . $userId)) ?>">
-                                        <?= e((string)($user['username'] ?? '')) ?>
-                                    </a>
-                                    <span class="badge outline" style="margin-left:6px;color:<?= e($groupCol) ?>">
-                                        <?= e((string)($user['group_name'] ?? '游客')) ?>
+                                    <div class="cell-row">
+                                        <a class="cell-title" href="<?= e(url('/admin/users/' . $userId)) ?>"
+                                           title="<?= e((string)($user['username'] ?? '')) ?>">
+                                            <?= e((string)($user['username'] ?? '')) ?>
+                                        </a>
+                                        <span class="badge outline" style="color:<?= e($groupCol) ?>">
+                                            <?= e((string)($user['group_name'] ?? '游客')) ?>
+                                        </span>
+                                    </div>
+                                <?php /* UID 不在这里显示：用户自己用不到，管理员要定位有搜索与邮箱 */ ?>
+                                <?php if (trim((string)($user['bio'] ?? '')) !== ''): ?>
+                                    <span class="cell-title text-light" style="display:block;font-size:11.5px">
+                                        <?= e(mb_substr(trim((string)$user['bio']), 0, 24)) ?>
                                     </span>
-                                    <span class="text-light mono" style="display:block;font-size:11.5px">
-                                        #<?= $userId ?>
-                                        <?php if (trim((string)($user['bio'] ?? '')) !== ''): ?>
-                                            · <?= e(mb_substr(trim((string)$user['bio']), 0, 24)) ?>
-                                        <?php endif; ?>
-                                    </span>
+                                <?php endif; ?>
                                 </span>
                             </div>
                         </td>
-                        <td class="text-light mono"><?= e((string)($user['email'] ?? '')) ?></td>
+                        <td class="text-light mono">
+                            <span class="cell-title" title="<?= e((string)($user['email'] ?? '')) ?>"><?= e((string)($user['email'] ?? '')) ?></span>
+                        </td>
                         <td><?= number_format((int)($user['thread_count'] ?? 0)) ?></td>
                         <?php /* 评论数要减掉本人帖子数（post_count 含首帖），见 user_comment_count() */ ?>
                         <td><?= number_format(user_comment_count($user)) ?></td>

@@ -116,14 +116,15 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <?php /* admin-list：固定列宽 + 长文本截断（详情最多两行），见 theme.css「后台列表」一节 */ ?>
+            <table class="admin-list admin-list--logs">
                 <thead>
                 <tr>
                     <th style="width:150px">时间</th>
                     <th style="width:150px">操作者</th>
                     <th style="width:150px">动作</th>
                     <th style="width:170px">对象</th>
-                    <th>详情</th>
+                    <th style="width:300px">详情</th>
                     <th style="width:130px">IP</th>
                 </tr>
                 </thead>
@@ -160,7 +161,7 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
                         <td class="mono text-light" style="font-size:12.5px">
                             <?= e((string)($log['target'] ?? '') !== '' ? (string)$log['target'] : '—') ?>
                         </td>
-                        <td><?= e((string)($log['detail'] ?? '')) ?></td>
+                        <td><span class="cell-title"><?= e((string)($log['detail'] ?? '')) ?></span></td>
                         <td class="mono text-light" style="font-size:12.5px">
                             <?= e((string)($log['ip'] ?? '') !== '' ? (string)$log['ip'] : '—') ?>
                         </td>

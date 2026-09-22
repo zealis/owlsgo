@@ -38,6 +38,20 @@
                 <span>个性装扮</span>
             </a>
         </li>
+        <?php /*
+              「后台管理」只给有后台准入权限（admin.access）的人显示；
+              判定口径与 /admin 路由的准入、维护模式的放行一致（Auth::can）。
+        */ ?>
+        <?php if (auth_user() !== null && \Core\Auth::can('admin.access')): ?>
+            <li>
+                <a role="menuitem" href="<?= e(url('/admin')) ?>">
+                    <span class="user-gear__item-icon" aria-hidden="true">
+                        <?= $view('partials/icon', ['name' => 'dashboard', 'size' => 16]) ?>
+                    </span>
+                    <span>后台管理</span>
+                </a>
+            </li>
+        <?php endif; ?>
         <?php /* 退出只对已登录用户显示；与上面两项用一条分隔线隔开（样式见 theme.css 18 节） */ ?>
         <?php if (auth_user() !== null): ?>
             <li class="user-gear__logout">

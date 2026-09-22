@@ -33,10 +33,10 @@ $total = (int)($total ?? count($rows));
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <table class="admin-list admin-list--forums">
                 <thead>
                 <tr>
-                    <th>版块</th>
+                    <th style="width:280px">版块</th>
                     <th style="width:120px">标识</th>
                     <th style="width:130px">权限限制</th>
                     <th style="width:80px">帖子</th>
@@ -73,31 +73,40 @@ $total = (int)($total ?? count($rows));
                                     <span class="text-light mono" aria-hidden="true">└</span>
                                 <?php endif; ?>
                                 <span style="min-width:0">
-                                    <a href="<?= e(url('/f/' . $forumId)) ?>" target="_blank" rel="noopener">
-                                        <?= e((string)($forum['name'] ?? '')) ?>
-                                    </a>
-                                    <?php if ((int)($forum['allow_thread'] ?? 1) !== 1): ?>
-                                        <span class="badge outline" style="margin-left:6px">禁止发帖</span>
-                                    <?php endif; ?>
-                                    <?php if ((int)($forum['allow_reply'] ?? 1) !== 1): ?>
-                                        <span class="badge outline" style="margin-left:4px">禁止评论</span>
-                                    <?php endif; ?>
+                                    <div class="cell-row">
+                                        <a class="cell-title" href="<?= e(url('/f/' . $forumId)) ?>"
+                                           target="_blank" rel="noopener"
+                                           title="<?= e((string)($forum['name'] ?? '')) ?>">
+                                            <?= e((string)($forum['name'] ?? '')) ?>
+                                        </a>
+                                        <?php if ((int)($forum['allow_thread'] ?? 1) !== 1): ?>
+                                            <span class="badge outline">禁止发帖</span>
+                                        <?php endif; ?>
+                                        <?php if ((int)($forum['allow_reply'] ?? 1) !== 1): ?>
+                                            <span class="badge outline">禁止评论</span>
+                                        <?php endif; ?>
+                                    </div>
                                     <?php if ((string)($forum['description'] ?? '') !== ''): ?>
-                                        <span class="text-light" style="display:block;font-size:12.5px">
+                                        <span class="cell-title text-light" style="display:block;font-size:12.5px"
+                                              title="<?= e((string)$forum['description']) ?>">
                                             <?= e((string)$forum['description']) ?>
                                         </span>
                                     <?php endif; ?>
                                 </span>
                             </div>
                         </td>
-                        <td class="mono text-light"><?= e((string)($forum['slug'] ?? '') !== '' ? (string)$forum['slug'] : '—') ?></td>
+                        <td class="mono text-light">
+                            <span class="cell-title"><?= e((string)($forum['slug'] ?? '') !== '' ? (string)$forum['slug'] : '—') ?></span>
+                        </td>
                         <td>
                             <?php if ($limits === []): ?>
                                 <span class="text-light" style="font-size:12.5px">公开</span>
                             <?php else: ?>
+                                <div class="cell-row">
                                 <?php foreach ($limits as $limit): ?>
-                                    <span class="badge outline" style="margin:1px 0"><?= e($limit) ?></span>
+                                    <span class="badge outline"><?= e($limit) ?></span>
                                 <?php endforeach; ?>
+                                </div>
                             <?php endif; ?>
                         </td>
                         <td><?= format_number((int)($forum['thread_count'] ?? 0)) ?></td>

@@ -826,17 +826,14 @@ a.user-chip:hover {
 
 /* 计划任务页的两张表：表头与短内容列不换行（「执行次数」这类词原来被列宽挤成两行），
    任务描述列单独放开换行 */
+/*
+ * 计划任务：除「任务」列外都短且不该换行。
+ * 「任务」列（含下面的描述小字）由 .cell-title 单行截断统一处理 ——
+ * 这里不能再给 first-child 开 white-space: normal，否则会把截断规则顶掉。
+ */
 .cron-table th,
 .cron-table td {
   white-space: nowrap;
-}
-
-.cron-table td:first-child {
-  white-space: normal;
-}
-
-.cron-table td:first-child > div {
-  white-space: normal;
 }
 
 .forum-group + .forum-group {
@@ -3621,18 +3618,238 @@ body[data-sidebar-layout] {
   height: 36px;
 }
 
-/* 后台帖子标题：独占一行，超长显示省略号 */
-.admin-thread-title {
-  min-width: 0;
-  max-width: 480px;
+/*
+ * 后台列表：长文本列一律截断
+ *
+ * 表格默认按内容自动定宽，一条长标题 / 长摘要就能把那一列撑开、把别的列挤扁，
+ * 移动端更是整张表横向拉长（滚不到头，也读不出哪一列是什么）。所以：
+ *   1. table-layout: fixed —— 列宽只由表头 width 决定，内容再多也不回推列宽；
+ *   2. 文本列自己负责截断：.cell-title 单行省略（后台所有列表都用它，不再有「两行」特例）；
+ *   3. 单元格 overflow: hidden 兜底 —— 万一漏了类，也只是被裁，不会顶破表格。
+ * 用法：给这类表格加 class="admin-list admin-list--{slug}"（见 templates/admin/ 下各列表页）。
+ *
+ * 修饰类一览：threads 帖子 / posts 回帖 / recycle 回收站 / files 附件 / logs 日志 /
+ *            recent 概览最新帖子 / forums 版块 / groups 用户组 / users 用户 /
+ *            plugins 插件 / cron 计划任务。
+ */
+.admin-list {
+  width: 100%;
+  table-layout: fixed;
 }
 
-.admin-thread-title > a:first-child {
-  display: block;
-  max-width: 100%;
-  white-space: nowrap;
+/*
+ * 固定列宽之后，表格再也不会被内容推宽 —— 那么窗口比「各列固定宽度之和」还窄时，
+ * 剩下的那一列（标题 / 摘要 / 详情）会被压成 0 宽，文字整条消失。
+ * 所以给它一个下限：低于此宽度时由 .table-scroll 横向滚动，而不是继续压缩列宽。
+ */
+.table-scroll > .admin-list {
+  min-width: 1000px;
+}
+
+/*
+ * 列数少 / 列宽和小的表按自己的列宽和下限，别套 1000px：
+ * 概览那张「最新帖子」在两栏布局里容器没那么宽，套 1000 会平白发一根横向滚动条。
+ */
+.table-scroll > .admin-list--recent {
+  min-width: 620px;
+}
+
+.table-scroll > .admin-list--plugins {
+  min-width: 780px;
+}
+
+/*
+ * 计划任务那页是两栏布局，容器只有 ~680px：
+ * 套 1000px 会平白出现横向滚动条，让它跟容器走（列宽按比例压缩，靠 .cell-title 截断）。
+ */
+.table-scroll > .admin-list--cron {
+  min-width: 640px;
+}
+
+.admin-list > tbody > tr > td {
+  overflow: hidden;
+}
+
+/*
+ * 单元格里的 hstack（图标 + 文本块）必须不换行：
+ * 文本块是 flex:1 1 auto，basis 取的是「超长文本的完整宽度」，
+ * 于是 flex-wrap 先判定放不下、把图标和文字竖排 —— 行高凭空多一倍。
+ */
+.admin-list .hstack {
+  flex-wrap: nowrap;
+}
+
+.admin-list .hstack > * {
+  min-width: 0;
+}
+
+/*
+ * 表头也要裁：列宽用百分比时（概览 / 计划任务那两页容器只有 ~680px），
+ * 「执行次数」这类四字表头的最小内容宽会超过 8% 的列宽，把表格撑出滚动条。
+ */
+.admin-list > * > tr > th {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 操作列放的是按钮：不裁切，否则窄屏下按钮会被切掉一半、点都点不到 */
+.admin-list > tbody > tr > td:last-child {
+  overflow: visible;
+}
+
+/*
+ * 窄屏：次要列整列隐藏，只留「主值 + 操作」，表格也不再需要横向滚动。
+ * 用 nth-child 而不是给每个单元格加类 —— 列宽写在表头的 inline style 上（CSS 改不动它），
+ * 而 display:none 不受 inline width 影响；列序以各模板表头为准（含首列复选框）。
+ * 「状态」列在窄屏可以整列藏掉：待审核的帖子 / 评论都在主值旁挂了徽章（见各模板）。
+ */
+@media (max-width: 860px) {
+  /* 帖子：作者 / 版块 / 评论 / 浏览 / 状态 / 发表时间 */
+  .admin-list--threads > * > tr > :nth-child(3),
+  .admin-list--threads > * > tr > :nth-child(4),
+  .admin-list--threads > * > tr > :nth-child(5),
+  .admin-list--threads > * > tr > :nth-child(6),
+  .admin-list--threads > * > tr > :nth-child(7),
+  .admin-list--threads > * > tr > :nth-child(8),
+  /* 回帖：作者 / 所属帖子 / 楼层 / 状态 / 发表时间 */
+  .admin-list--posts > * > tr > :nth-child(3),
+  .admin-list--posts > * > tr > :nth-child(4),
+  .admin-list--posts > * > tr > :nth-child(5),
+  .admin-list--posts > * > tr > :nth-child(6),
+  .admin-list--posts > * > tr > :nth-child(7),
+  /* 回收站：作者 / 版块 / 删除时间（类型与内容保留） */
+  .admin-list--recycle > * > tr > :nth-child(4),
+  .admin-list--recycle > * > tr > :nth-child(5),
+  .admin-list--recycle > * > tr > :nth-child(6),
+  /* 附件：关联内容 / 大小 / 上传者 / 下载次数 / 上传时间 */
+  .admin-list--files > * > tr > :nth-child(3),
+  .admin-list--files > * > tr > :nth-child(4),
+  .admin-list--files > * > tr > :nth-child(5),
+  .admin-list--files > * > tr > :nth-child(6),
+  .admin-list--files > * > tr > :nth-child(7),
+  /* 日志：时间 / 操作者 / 对象 / IP（动作与详情保留） */
+  .admin-list--logs > * > tr > :nth-child(1),
+  .admin-list--logs > * > tr > :nth-child(2),
+  .admin-list--logs > * > tr > :nth-child(4),
+  .admin-list--logs > * > tr > :nth-child(6),
+  /* 概览最新帖子：版块 / 评论 / 发表时间（标题 + 作者保留） */
+  .admin-list--recent > * > tr > :nth-child(3),
+  .admin-list--recent > * > tr > :nth-child(4),
+  .admin-list--recent > * > tr > :nth-child(5),
+  /* 版块：标识 / 权限限制 / 帖子 / 评论 / 排序 / 状态 */
+  .admin-list--forums > * > tr > :nth-child(2),
+  .admin-list--forums > * > tr > :nth-child(3),
+  .admin-list--forums > * > tr > :nth-child(4),
+  .admin-list--forums > * > tr > :nth-child(5),
+  .admin-list--forums > * > tr > :nth-child(6),
+  .admin-list--forums > * > tr > :nth-child(7),
+  /* 用户组：标识 / 权限开启情况 / 附件空间 / 排序 / 类型（用户组名 + 成员保留） */
+  .admin-list--groups > * > tr > :nth-child(2),
+  .admin-list--groups > * > tr > :nth-child(4),
+  .admin-list--groups > * > tr > :nth-child(5),
+  .admin-list--groups > * > tr > :nth-child(6),
+  .admin-list--groups > * > tr > :nth-child(7),
+  /* 用户：邮箱 / 帖子 / 评论 / 积分 / 状态 / 注册时间 */
+  .admin-list--users > * > tr > :nth-child(3),
+  .admin-list--users > * > tr > :nth-child(4),
+  .admin-list--users > * > tr > :nth-child(5),
+  .admin-list--users > * > tr > :nth-child(6),
+  .admin-list--users > * > tr > :nth-child(7),
+  .admin-list--users > * > tr > :nth-child(8),
+  /* 插件：钩子 / 配置项 / 状态 */
+  .admin-list--plugins > * > tr > :nth-child(2),
+  .admin-list--plugins > * > tr > :nth-child(3),
+  .admin-list--plugins > * > tr > :nth-child(4),
+  /* 计划任务：所属插件 / 间隔 / 执行次数 / 上次状态 / 状态（任务 + 下次执行保留） */
+  .admin-list--cron > * > tr > :nth-child(2),
+  .admin-list--cron > * > tr > :nth-child(3),
+  .admin-list--cron > * > tr > :nth-child(4),
+  .admin-list--cron > * > tr > :nth-child(6),
+  .admin-list--cron > * > tr > :nth-child(7) {
+    display: none;
+  }
+
+  /*
+   * 操作列窄屏收窄 —— 覆盖表头的 inline width，必须 !important。
+   * 按钮会换行（.admin-table-actions 允许 wrap），但不会被切掉；
+   * 让位给正文列：手机上「看得见正文」比「按钮排一行」重要得多。
+   */
+  .admin-list--threads > * > tr > :nth-child(9),
+  .admin-list--posts > * > tr > :nth-child(8),
+  .admin-list--recycle > * > tr > :nth-child(7) {
+    width: 124px !important;
+  }
+
+  .admin-list--files > * > tr > :nth-child(8) {
+    width: 110px !important;
+  }
+
+  .admin-list--forums > * > tr > :nth-child(8),
+  .admin-list--groups > * > tr > :nth-child(8),
+  .admin-list--users > * > tr > :nth-child(9),
+  .admin-list--plugins > * > tr > :nth-child(5),
+  .admin-list--cron > * > tr > :nth-child(8) {
+    width: 124px !important;
+  }
+
+  /* 勾选列也收窄：手机上批量操作的优先级最低 */
+  .admin-list > * > tr > .bulk-check {
+    width: 30px;
+    padding-left: 10px;
+  }
+
+  /*
+   * 正文列恢复自适应：窄屏下其它列都藏了，剩下这点宽度全给它，
+   * 比锁死一个 px 宽度更划算（表头的 width 是 inline 的，得用 !important 覆盖）。
+   */
+  .admin-list--threads > * > tr > :nth-child(2),
+  .admin-list--posts > * > tr > :nth-child(2),
+  .admin-list--recycle > * > tr > :nth-child(3),
+  .admin-list--files > * > tr > :nth-child(2),
+  .admin-list--logs > * > tr > :nth-child(5),
+  .admin-list--recent > * > tr > :nth-child(1),
+  .admin-list--forums > * > tr > :nth-child(1),
+  .admin-list--groups > * > tr > :nth-child(1),
+  .admin-list--users > * > tr > :nth-child(2),
+  .admin-list--plugins > * > tr > :nth-child(1),
+  .admin-list--cron > * > tr > :nth-child(1) {
+    width: auto !important;
+  }
+
+  .table-scroll > .admin-list {
+    min-width: 0;
+  }
+}
+
+/* 单行省略：标题、所属帖子、文件名这类「一行说清」的值 */
+.cell-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 单行截断（标题 / 名称 / 邮箱 / 描述 / 摘要 / 详情，一律如此） */
+
+/* 一行里「主值 + 徽章」：主值吃掉剩余宽度并截断，徽章保持原样、不参与换行 */
+.cell-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cell-row--top {
+  align-items: flex-start;
+}
+
+.cell-row > .cell-title {
+  flex: 1 1 auto;
+}
+
+.cell-row > *:not(.cell-title) {
+  flex: none;
 }
 
 /* 系统日志：文件切换标签 + 内容区 */
@@ -4076,23 +4293,41 @@ pre.snippet code {
   padding: 4px 20px 10px;
 }
 
+/*
+ * 预置头像候选：头像是圆的，选中/悬停的框也用圆环描边（贴合轮廓，不出现方形边框）。
+ * 用 box-shadow 画环而不是 border —— border 会占布局、把 5 列网格挤歪。
+ */
 .avatar-preset {
-  border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  padding: 3px;
   background: transparent;
+  box-shadow: 0 0 0 2px transparent;
   cursor: pointer;
   display: grid;
   place-items: center;
+  transition: box-shadow 0.15s ease;
 }
 
+/*
+ * 尺寸必须写死：弹层 5 列每列只有 56px，全局的 img{max-width:100%} 会把
+ * width=72 的头像压成 50×72 的矩形 —— 999px 圆角作用在矩形上就成了圆角方块。
+ */
 .avatar-preset img {
+  width: 50px;
+  height: 50px;
+  max-width: none;
   border-radius: 999px;
   display: block;
 }
 
-.avatar-preset:hover {
-  border-color: var(--qq-blue);
+.avatar-preset:hover,
+.avatar-preset:focus-visible {
+  box-shadow: 0 0 0 2px var(--qq-blue);
+}
+
+.avatar-preset[aria-current="true"] {
+  box-shadow: 0 0 0 2px var(--qq-blue);
 }
 
 /*
@@ -4422,6 +4657,32 @@ ot-dropdown [popover] hr {
 .floor__body .content-image {
   display: block;
   margin: 12px 0;
+}
+
+/*
+ * 懒加载图片的 Skeleton 占位（对应 OATUI 的 skeleton 观感）：
+ * 加载完成前用一条扫过的渐变垫底，完成后 app.js 给图片加 .is-loaded 撤掉。
+ * 正文图（content-image）与正文/楼层里的站内小图都覆盖；
+ * 头像 50px 内基本瞬时加载，不参与，避免每张头像都闪一下动画。
+ */
+.post-content img[loading="lazy"]:not(.is-loaded),
+.floor__body img[loading="lazy"]:not(.is-loaded) {
+  background: var(--qq-line-soft);
+  animation: qq-skeleton 2s infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, var(--qq-line-soft) 0%, var(--qq-card) 50%, var(--qq-line-soft) 100%);
+}
+
+.post-content img[loading="lazy"].is-loaded,
+.floor__body img[loading="lazy"].is-loaded {
+  animation: none;
+  background: none;
+  background-image: none;
+}
+
+@keyframes qq-skeleton {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 
 .post-content .mention,

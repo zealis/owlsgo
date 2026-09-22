@@ -382,6 +382,10 @@ final class PostModel extends Model
     /**
      * 后台评论列表（支持搜索范围）
      *
+     * 只列**回帖**：`is_first = 1` 是帖子首帖（主题正文），它已经作为一条帖子出现在
+     * 「帖子」页签里，再混进评论列表就是同一条内容出现两次，既容易看混也让人误以为
+     * 评论数翻倍。首帖的审核 / 删除一律走帖子那条路径（连帖子一起处理）。
+     *
      * @param string $scope content=评论内容｜user=作者名｜id=评论 ID｜thread=所属帖子 ID
      */
     public static function adminPaginate(
@@ -391,7 +395,7 @@ final class PostModel extends Model
         int $perPage = 20,
         string $scope = 'content'
     ): array {
-        $query = static::query();
+        $query = static::query()->where('is_first', 0);
 
         if ($keyword !== '') {
             self::applyAdminSearch($query, $keyword, $scope);
@@ -645,12 +649,19 @@ final class PostModel extends Model
         );
     }
 
-    /** 待审核评论数量 */
+    /**
+     * 待审核的**回帖**条数
+     *
+     * 与 adminPaginate 同一口径：不含首帖 —— 待审核的首帖由
+     * ThreadModel::pendingCount()（待审核帖子）统计，两处都算就会双计。
+     */
     public static function pendingCount(): int
     {
         return (int)Database::value(
             'SELECT COUNT(*) FROM ' . Database::identifier('posts')
-            . ' WHERE ' . Database::identifier('deleted_at') . ' IS NULL AND ' . Database::identifier('status') . ' = 0'
+            . ' WHERE ' . Database::identifier('deleted_at') . ' IS NULL'
+            . ' AND ' . Database::identifier('is_first') . ' = 0'
+            . ' AND ' . Database::identifier('status') . ' = 0'
         );
     }
 

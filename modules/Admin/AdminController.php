@@ -129,6 +129,13 @@ final class AdminController extends AdminBaseController
             Response::redirect(Router::url(SettingsPages::path(SettingsPages::DEFAULT_SLUG)));
         }
 
+        /* 旧的分组地址（站点开关 / 系统维护）合并后重定向到新页面，别直接 404 */
+        $canonical = SettingsPages::canonical($slug);
+
+        if ($canonical !== $slug) {
+            Response::redirect(Router::url(SettingsPages::path($canonical)));
+        }
+
         if (!SettingsPages::has($slug)) {
             App::abort(404, '设置分组不存在。');
         }
@@ -169,7 +176,12 @@ final class AdminController extends AdminBaseController
             App::abort(404, '设置分组不存在。');
         }
 
-        if (!SettingsPages::meta($slug)['form']) {
+        /*
+         * 门槛是「这一组有没有登记键」而不是 form 标志：
+         * 「系统与维护」页为了放两个独立表单（保存开关 / 清 OPcache）不套外壳表单，
+         * 但它确实有可保存的设置项。
+         */
+        if (SettingsPages::keys($slug) === []) {
             App::abort(404, '该页面没有可提交的设置表单。');
         }
 

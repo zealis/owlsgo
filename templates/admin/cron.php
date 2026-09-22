@@ -170,17 +170,21 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
-                    <table class="cron-table">
+                    <table class="cron-table admin-list admin-list--cron">
                         <thead>
                         <tr>
-                            <th>任务</th>
-                            <th>所属插件</th>
-                            <th>间隔</th>
-                            <th>执行次数</th>
-                            <th>下次执行</th>
-                            <th>上次状态</th>
-                            <th>状态</th>
-                            <th>操作</th>
+                            <?php /*
+                                    这一页是两栏布局、容器只有 ~680px，列宽用百分比：
+                                    固定 px 之和会超过容器宽，表格会被撑出横向滚动条。
+                                   */ ?>
+                            <th style="width:17%">任务</th>
+                            <th style="width:11%">所属插件</th>
+                            <th style="width:7%">间隔</th>
+                            <th style="width:11%">执行次数</th>
+                            <th style="width:13%">下次执行</th>
+                            <th style="width:11%">上次状态</th>
+                            <th style="width:14%">状态</th>
+                            <th style="width:16%">操作</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -194,15 +198,18 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                             ?>
                             <tr>
                                 <td>
-                                    <strong><?= e((string)($task['name'] ?? '')) ?></strong>
+                                    <strong class="cell-title" title="<?= e((string)($task['name'] ?? '')) ?>">
+                                        <?= e((string)($task['name'] ?? '')) ?>
+                                    </strong>
                                     <?php if ((string)($task['description'] ?? '') !== ''): ?>
-                                        <div class="text-light" style="font-weight:400;font-size:12.5px;margin-top:3px;white-space:normal;max-width:420px">
+                                        <div class="cell-title text-light" style="font-weight:400;font-size:12.5px;margin-top:3px"
+                                             title="<?= e((string)$task['description']) ?>">
                                             <?= e((string)$task['description']) ?>
                                         </div>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-light mono">
-                                    <?= e($plugin !== '' ? $plugin : '系统') ?>
+                                    <span class="cell-title"><?= e($plugin !== '' ? $plugin : '系统') ?></span>
                                 </td>
                                 <td class="text-light"><?= e($intervalText((int)($task['interval'] ?? 0))) ?></td>
                                 <td class="text-light"><?= number_format((int)($task['run_count'] ?? 0)) ?></td>
@@ -231,9 +238,9 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                                 </td>
                                 <td>
                                     <?php if (!$enabled): ?>
-                                        <span class="text-light">已停用</span>
+                                        <span class="cell-title text-light">已停用</span>
                                     <?php elseif (empty($task['plugin_active'])): ?>
-                                        <span class="text-light" title="插件当前未启用，任务无法执行">插件未启用</span>
+                                        <span class="cell-title text-light" title="插件当前未启用，任务无法执行">插件未启用</span>
                                     <?php else: ?>
                                         <form class="inline-form" method="post"
                                               action="<?= e(url('/admin/cron/' . $taskId . '/toggle')) ?>">

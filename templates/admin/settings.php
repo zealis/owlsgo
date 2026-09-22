@@ -47,7 +47,7 @@ $isOn = static function (string $key, string $default = '0') use ($settings): bo
 
 /*
  * 分组页面本体。先渲染成字符串，再决定要不要套表单：
- * 系统维护页自带两个独立表单（清 OPcache / 看日志），套进来会变成 form 嵌套。
+ * 「系统与维护」页自带多个独立表单（保存站点开关 / 清 OPcache），套进来会变成 form 嵌套。
  */
 $fields = $view('admin/settings-' . $slug, [
     'val'              => $val,

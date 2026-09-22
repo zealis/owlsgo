@@ -64,17 +64,18 @@ $stats   = is_array($stats ?? null) ? $stats : [];
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <?php /* admin-list：固定列宽 + 长文本自己截断（见 theme.css「后台列表」一节） */ ?>
+            <table class="admin-list admin-list--files">
                 <thead>
                 <tr>
                     <th class="bulk-check"></th>
-                    <th>文件</th>
+                    <th style="width:240px">文件</th>
                     <th style="width:190px">关联内容</th>
                     <th style="width:90px">大小</th>
                     <th style="width:140px">上传者</th>
                     <th style="width:70px">下载</th>
                     <th style="width:120px">上传时间</th>
-                    <th style="width:150px">操作</th>
+                    <th style="width:178px">操作</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -95,11 +96,13 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                         </td>
                         <td>
                             <div class="hstack" style="gap:8px">
-                                <span class="text-light">
+                                <span class="text-light" style="flex:none">
                                     <?= $view('partials/icon', ['name' => $isImage ? 'image' : 'file', 'size' => 16]) ?>
                                 </span>
-                                <span style="min-width:0">
-                                    <a href="<?= e($downloadUrl) ?>" target="_blank" rel="noopener">
+                                <?php /* 文件名单行截断：附件名普遍偏长，铺开会把整张表撑宽 */ ?>
+                                <span style="flex:1 1 auto;min-width:0">
+                                    <a class="cell-title" href="<?= e($downloadUrl) ?>" target="_blank" rel="noopener"
+                                       title="<?= e((string)($file['name'] ?? '')) ?>">
                                         <?= e((string)($file['name'] ?? '')) ?>
                                     </a>
                                     <span class="text-light mono" style="display:block;font-size:11.5px">
@@ -114,7 +117,8 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                         <td class="text-light">
                             <?php if ($noticeOwner !== null): ?>
                                 <?php /* 公告引用的附件：公告没有 thread_id/post_id，归属要向 notices 反查 */ ?>
-                                <a href="<?= e(url('/notifications')) ?>">
+                                <a class="cell-title" href="<?= e(url('/notifications')) ?>"
+                                   title="<?= e((string)$noticeOwner['title']) ?>">
                                     公告《<?= e((string)$noticeOwner['title']) ?>》
                                 </a>
                                 <?php if ((int)$noticeOwner['enabled'] !== 1): ?>

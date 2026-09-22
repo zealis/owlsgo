@@ -91,12 +91,13 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <?php /* admin-list：固定列宽 + 长文本自己截断（见 theme.css「后台列表」一节） */ ?>
+            <table class="admin-list admin-list--recycle">
                 <thead>
                 <tr>
                     <th class="bulk-check"></th>
                     <th style="width:70px">类型</th>
-                    <th>内容</th>
+                    <th style="width:260px">内容</th>
                     <th style="width:130px">作者</th>
                     <th style="width:120px">版块</th>
                     <th style="width:120px">删除时间</th>
@@ -127,23 +128,31 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                         <td>
                             <span class="badge outline"><?= e((string)($item['type_label'] ?? '')) ?></span>
                         </td>
+                        <?php
+                        /*
+                         * 「内容」列统一成「一行主值 + 一行次要信息」，两行各自截断：
+                         * 标题/摘要长的能有多长有多长，直接铺开会把这列撑爆，
+                         * 其余列被挤成一条缝，移动端更是横向滚不到头。
+                         */
+                        if ($isUser) {
+                            $cellMain = $label !== '' ? $label : '（无用户名）';
+                            $cellSub  = (string)($item['email'] ?? '');
+                        } elseif ($isThread) {
+                            $cellMain = $excerpt !== '' ? $excerpt : '（无标题）';
+                            $cellSub  = '';
+                        } else {
+                            $threadTitle = (string)($item['thread_title'] ?? '');
+                            $cellMain    = $threadTitle !== '' ? $threadTitle : '（所属帖子已删除）';
+                            $cellSub     = $excerpt !== '' ? $excerpt : '（无正文）';
+                        }
+                        ?>
                         <td>
-                            <?php if ($isUser): ?>
-                                <?php /* 用户行：主值是用户名，邮箱带出来便于确认要恢复的是哪个账号 */ ?>
-                                <span title="<?= e($label) ?>"><?= e($label !== '' ? $label : '（无用户名）') ?></span>
+                            <div class="cell-row">
+                                <span class="cell-title" title="<?= e($label) ?>"><?= e($cellMain) ?></span>
                                 <span class="text-light mono" style="font-size:12px">#<?= $itemId ?></span>
-                                <?php if ((string)($item['email'] ?? '') !== ''): ?>
-                                    <div class="text-light" style="font-size:12.5px;margin-top:4px"><?= e((string)$item['email']) ?></div>
-                                <?php endif; ?>
-                            <?php elseif ($isThread): ?>
-                                <span title="<?= e($label) ?>"><?= e($excerpt !== '' ? $excerpt : '（无标题）') ?></span>
-                                <span class="text-light mono" style="font-size:12px">#<?= $itemId ?></span>
-                            <?php else: ?>
-                                <span class="text-light" style="font-size:12.5px">
-                                    所属帖子：<?= e((string)($item['thread_title'] ?? '')) ?>
-                                </span>
-                                <span class="text-light mono" style="font-size:12px">#<?= $itemId ?></span>
-                                <div style="margin-top:4px"><?= e($excerpt !== '' ? $excerpt : '（无正文）') ?></div>
+                            </div>
+                            <?php if ($cellSub !== ''): ?>
+                                <div class="cell-title text-light" style="font-size:12.5px;margin-top:3px"><?= e($cellSub) ?></div>
                             <?php endif; ?>
                         </td>
                         <td class="text-light"><?= e((string)($item['author_name'] ?? '')) ?></td>

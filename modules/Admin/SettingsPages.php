@@ -79,8 +79,8 @@ final class SettingsPages
     /**
      * 分组定义
      *
-     * `form` 为 false 表示该页不是「保存设置」表单（页内自带独立表单/动作），
-     * 外壳模板不会给它套 <form>，控制器也拒绝它的 POST。
+     * `form` 为 false 表示该页不由外壳套 <form>（页内自带独立表单/动作，避免 form 嵌套）。
+     * 它**不等于**「不能保存」：能否提交看的是 keys 是否为空（见 AdminController::saveSettings）。
      *
      * 页面模板文件名 = `templates/admin/settings-{slug}.php`。
      *
@@ -135,25 +135,31 @@ final class SettingsPages
             ],
         ],
 
-        'switch' => [
-            'label'   => '站点开关',
-            'icon'    => 'shield',
-            'summary' => '维护模式、维护提示语与调试模式',
-            'form'    => true,
+        /*
+         * 「系统与维护」= 原来的「站点开关」+「系统维护」合成一页：
+         * 关站点、开调试与「改完没效果就来清 OPcache」本来就是同一件事的两半。
+         *
+         * form = false：页内自带两个独立 <form>（保存站点开关 / 清理 OPcache），
+         * 外壳不给它套表单（否则 form 嵌套）。但 keys 非空 ——
+         * 保存与否看的是「这一组有没有登记键」，不是 form 标志（见 AdminController::saveSettings）。
+         */
+        'system' => [
+            'label'   => '系统与维护',
+            'icon'    => 'server',
+            'summary' => '维护模式、调试模式，以及清理 OPcache 与查看系统日志',
+            'form'    => false,
             'keys'    => ['site_closed', 'site_closed_reason', 'debug_mode'],
         ],
+    ];
 
-        /*
-         * 系统维护刻意留在设置分组里（而不是挪到侧栏一级菜单）：
-         * 它和「站点设置」是同一件事的两半 —— 改完设置发现页面没变，就来这里清 OPcache。
-         */
-        'maintenance' => [
-            'label'   => '系统维护',
-            'icon'    => 'server',
-            'summary' => '清理 OPcache 与站点缓存、查看系统日志',
-            'form'    => false,
-            'keys'    => [],
-        ],
+    /**
+     * 旧分组 slug => 新 slug（合并/改名后，老书签与旧链接重定向过去，别直接 404）
+     *
+     * @var array<string, string>
+     */
+    private const ALIASES = [
+        'switch'      => 'system',
+        'maintenance' => 'system',
     ];
 
     /**
@@ -169,6 +175,22 @@ final class SettingsPages
     public static function has(string $slug): bool
     {
         return isset(self::PAGES[$slug]);
+    }
+
+    /**
+     * 旧 slug → 新 slug（不存在则返回原值）
+     *
+     * 分组合并/改名后，旧地址靠它 302 到新页面，别让用户的书签直接 404。
+     */
+    public static function canonical(string $slug): string
+    {
+        return self::ALIASES[$slug] ?? $slug;
+    }
+
+    /** 该分组登记的键（保存门槛与自检都看它：没有键 = 没有可提交的设置） */
+    public static function keys(string $slug): array
+    {
+        return self::meta($slug)['keys'];
     }
 
     /**

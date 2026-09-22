@@ -178,14 +178,30 @@ final class Security
     }
 
     /**
+     * 登录身份类 Cookie 的名称（HTTPS 下加 `__Host-` 前缀）
+     *
+     * `__Host-` 是浏览器强制的安全前缀：带它的话浏览器会拒绝「缺 Secure、
+     * Path 不是 /、声明了 Domain」的 Cookie —— 从机制上杜绝子域名
+     * （或被攻破的相邻应用）覆写主站登录 Cookie 这一类攻击。
+     * 仅在 HTTPS 下启用（`__Host-` 必须配 Secure，HTTP 站点设不上），
+     * HTTP 开发环境自动退回裸名，行为不变。
+     */
+    public static function hostCookieName(string $base): string
+    {
+        return self::cookieSecure() ? '__Host-' . $base : $base;
+    }
+
+    /**
      * 生成「记住我」登录 Cookie 的内容
      *
-     * 格式：uid|expires|hmac(uid.expires.password_hash)
-     * 使用用户密码哈希作为密钥的一部分，改密码后所有旧 Cookie 立即失效。
+     * 格式：uid|expires|uaHash|hmac(前三段)
+     * 密钥含用户密码哈希：改密码后所有旧 Cookie 立即失效。
+     * HMAC 覆盖 UA 指纹：Cookie 被从本机窃走后换环境重放无法通过校验。
+     * （$uaHash 传空 = 不绑定 UA，仅供测试；正式签发一律传 Request::userAgentHash()）
      */
-    public static function makeAuthCookie(int $userId, int $expires, string $passwordHash): string
+    public static function makeAuthCookie(int $userId, int $expires, string $passwordHash, string $uaHash = ''): string
     {
-        $payload = $userId . '|' . $expires;
+        $payload = $userId . '|' . $expires . '|' . $uaHash;
         $mac     = hash_hmac('sha256', $payload, self::authKey() . $passwordHash);
 
         return $payload . '|' . $mac;
@@ -196,29 +212,35 @@ final class Security
      *
      * @return array{user_id:int, expires:int}|null
      */
-    public static function parseAuthCookie(string $cookie, string $passwordHash): ?array
+    public static function parseAuthCookie(string $cookie, string $passwordHash, string $uaHash = ''): ?array
     {
         $parts = explode('|', $cookie);
-        if (count($parts) !== 3) {
-            return null;
+        if (count($parts) !== 4) {
+            return null;   // 旧的三段式 Cookie（未绑 UA）在升级后自然失效，重新登录一次即可
         }
 
-        [$rawId, $rawExpires, $mac] = $parts;
+        [$rawId, $rawExpires, $rawUa, $mac] = $parts;
 
-        if (!ctype_digit($rawId) || !ctype_digit($rawExpires)) {
+        if (!ctype_digit($rawId) || !ctype_digit($rawExpires) || !preg_match('/^[0-9a-f]{0,16}$/', $rawUa)) {
             return null;
         }
 
         $userId  = (int)$rawId;
         $expires = (int)$rawExpires;
+        $ua      = (string)$rawUa;
 
         if ($expires < time()) {
             return null;
         }
 
-        $expected = hash_hmac('sha256', $userId . '|' . $expires, self::authKey() . $passwordHash);
+        $expected = hash_hmac('sha256', $userId . '|' . $expires . '|' . $ua, self::authKey() . $passwordHash);
 
         if (!hash_equals($expected, $mac)) {
+            return null;
+        }
+
+        // Cookie 是给当前浏览器环境签的：UA 指纹对不上 = 换了环境重放
+        if ($ua !== $uaHash) {
             return null;
         }
 

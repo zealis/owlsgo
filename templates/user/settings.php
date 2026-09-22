@@ -42,7 +42,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                                     头像三件套：
                                     1. 「上传头像」→ 选文件后弹裁切对话框（缩放 + 居中裁切），
                                        「上传并应用」把裁切结果直接 POST 到 /settings/avatar，上传即生效；
-                                    2. 「预置头像」→ 打开内置头像库（SVG 实时生成，不占磁盘）。
+                                    2. 「预置头像」→ 打开随机生成的一批头像（选中即保存）。
                                     原生 file input 隐藏（不显示文件名），由按钮代理。
                                 -->
                                 <form method="post" action="<?= e(url('/settings/avatar')) ?>" enctype="multipart/form-data">
@@ -70,8 +70,8 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                             <?php else: ?>
                                 <?php /*
                                         上传被站点关闭时，只收起「上传头像」。
-                                        「预置头像」是 SVG 实时生成的，不落盘、不占用上传通道，
-                                        所以不受上传开关影响（详见 Core\Avatar::presets()）。
+                                        「预置头像」由服务端抓取并落盘，走的是自己的路由，
+                                        不经过上传通道，所以不受上传开关影响（见 Core\Avatar）。
                                 */ ?>
                                 <div data-field>
                                     <button type="button" class="button ghost small" id="avatar-preset-open">
@@ -271,8 +271,8 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
 /*
  * 头像相关的两个对话框：
  *  - #avatar-crop：上传裁切（缩放 + 居中裁切，app.js 的 canvas 实现负责绘制与导出）；
- *  - #avatar-preset-dialog：预置头像库（Core\Avatar::presets()，SVG 实时生成不占磁盘）。
- * 选择预置头像通过 #avatar-preset-form 提交到 /settings/avatar/preset。
+ *  - #avatar-preset-dialog：预置头像库（DiceBear 随机一批，见 Core\Avatar::presets()），
+ *    预览走本站代理 /avatar/dice/{seed}.svg，选中的那张由 /settings/avatar/dice 抓下来落盘。
  */
 $presets = \Core\Avatar::presets();
 ?>
@@ -293,24 +293,26 @@ $presets = \Core\Avatar::presets();
 
 <dialog id="avatar-preset-dialog" class="avatar-dialog">
     <div class="avatar-dialog__head">选择预置头像</div>
-    <div class="avatar-preset-grid">
+    <div class="avatar-preset-grid" id="avatar-preset-grid"
+         data-endpoint="<?= e(url('/avatar/candidates.json')) ?>">
         <?php foreach ($presets as $preset): ?>
             <button type="button" class="avatar-preset"
                     data-preset-seed="<?= e($preset['seed']) ?>"
-                    data-preset-style="<?= e($preset['style']) ?>"
                     title="使用该头像">
-                <img src="<?= e(url('/avatar/' . rawurlencode($preset['seed']) . '.svg', ['s' => 96, 'style' => $preset['style']])) ?>"
-                     width="72" height="72" alt="">
+                <img src="<?= e($preset['url']) ?>" width="72" height="72" alt="" loading="lazy">
             </button>
         <?php endforeach; ?>
     </div>
+    <p class="text-light" id="avatar-preset-hint" style="font-size:12.5px;margin:6px 20px 0">
+        每次打开都是随机的一批；选中的那张会保存到你的账号。
+    </p>
     <div class="confirm-dialog__actions">
+        <button type="button" class="button ghost" id="avatar-preset-more">换一批</button>
         <button type="button" class="button ghost" data-preset-cancel>取消</button>
     </div>
 </dialog>
 
-<form method="post" action="<?= e(url('/settings/avatar/preset')) ?>" id="avatar-preset-form" hidden>
+<form method="post" action="<?= e(url('/settings/avatar/dice')) ?>" id="avatar-preset-form" hidden>
     <?= csrf_field() ?>
     <input type="hidden" name="seed" value="">
-    <input type="hidden" name="style" value="">
 </form>

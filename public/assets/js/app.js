@@ -477,13 +477,60 @@
         });
       }
 
+      /*
+       * 「换一批」：向服务端要 10 个新 seed 换掉网格里的候选。
+       * 走服务端是因为预览地址是本站代理（/avatar/dice/{seed}.svg），
+       * 前端自己拼 seed 也能用，但那样就可能造出服务端没见过的种子（失去缓存意义）。
+       */
+      var moreBtn = presetDialog.querySelector('#avatar-preset-more');
+      var grid = presetDialog.querySelector('#avatar-preset-grid');
+      var hint = presetDialog.querySelector('#avatar-preset-hint');
+
+      if (moreBtn && grid) {
+        moreBtn.addEventListener('click', function () {
+          var endpoint = grid.getAttribute('data-endpoint') || '/avatar/candidates.json';
+          moreBtn.disabled = true;
+
+          fetch(endpoint + '?n=10', { headers: { Accept: 'application/json' } })
+            .then(function (res) { return res.json(); })
+            .then(function (json) {
+              var items = (json && json.items) || [];
+              var btns = grid.querySelectorAll('.avatar-preset');
+
+              items.forEach(function (item, i) {
+                var btn = btns[i];
+                if (!btn) {
+                  return;
+                }
+
+                btn.setAttribute('data-preset-seed', item.seed);
+                var img = btn.querySelector('img');
+                if (img) {
+                  img.src = item.url;
+                }
+              });
+
+              if (hint) {
+                hint.textContent = items.length ? '已换一批。' : '换一批失败，请稍后重试。';
+              }
+            })
+            .catch(function () {
+              if (hint) {
+                hint.textContent = '换一批失败，请检查网络后重试。';
+              }
+            })
+            .then(function () {
+              moreBtn.disabled = false;
+            });
+        });
+      }
+
       Array.prototype.forEach.call(presetDialog.querySelectorAll('.avatar-preset'), function (btn) {
         btn.addEventListener('click', function () {
           if (!presetForm) {
             return;
           }
           presetForm.querySelector('[name="seed"]').value = btn.getAttribute('data-preset-seed') || '';
-          presetForm.querySelector('[name="style"]').value = btn.getAttribute('data-preset-style') || '';
           presetForm.submit();
         });
       });
@@ -3751,6 +3798,120 @@
     });
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  懒加载图片的 Skeleton 收尾：加载完成（或失败）后撤掉占位动画          */
+  /* ------------------------------------------------------------------ */
+
+  function initLazyImages() {
+    // img 的 load/error 不冒泡，必须用捕获阶段委托
+    var mark = function (e) {
+      var t = e.target;
+      if (t && t.tagName === 'IMG' && t.loading === 'lazy' && !t.classList.contains('is-loaded')) {
+        t.classList.add('is-loaded');
+      }
+    };
+    document.addEventListener('load', mark, true);
+    document.addEventListener('error', mark, true);
+    // 缓存里直接取出的图没有 load 事件 —— 初始化时把已完成的补标记
+    Array.prototype.forEach.call(document.querySelectorAll('img[loading="lazy"]'), function (img) {
+      if (img.complete && img.naturalWidth > 0) img.classList.add('is-loaded');
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  链接预加载：悬停 65ms 即 prefetch（instant.page 方案）               */
+  /*                                                                    */
+  /*  Chromium 预取请求自带 Sec-Purpose: prefetch 头，服务端据此把响应    */
+  /*  改发 private, max-age=10 —— 用户随后 10 秒内点进去直接吃缓存。      */
+  /*  黑名单：登出/安装页、带 token 的地址、新窗口与下载链接。             */
+  /* ------------------------------------------------------------------ */
+
+  function initLinkPrefetch() {
+    if (!window.fetch || !window.URL) return;
+
+    var prefetched = {};
+    var timer = null;
+    var current = null;
+
+    var eligible = function (a) {
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return false;
+      var href = a.getAttribute('href') || '';
+      if (href === '' || href.charAt(0) === '#') return false;
+      if (href.indexOf('?_token=') > -1) return false;
+      if (/^\/(logout|install)\b/.test(href)) return false;
+      try {
+        var u = new URL(href, location.href);
+        return u.origin === location.origin;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    var prefetch = function (a) {
+      try {
+        var u = new URL(a.getAttribute('href'), location.href);
+        var key = u.pathname + u.search;
+        if (key === location.pathname + location.search) return;   // 当前页不预取
+        if (prefetched[key]) return;
+        prefetched[key] = true;
+        var link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = u.href;
+        document.head.appendChild(link);
+      } catch (e) { /* ignore */ }
+    };
+
+    document.addEventListener('mouseover', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!eligible(a)) return;
+      if (a === current) return;
+      current = a;
+      clearTimeout(timer);
+      timer = setTimeout(function () { prefetch(a); }, 65);
+    }, { passive: true });
+
+    document.addEventListener('mouseout', function (e) {
+      if (current && e.target && e.target.closest && e.target.closest('a[href]') === current) {
+        clearTimeout(timer);
+        current = null;
+      }
+    }, { passive: true });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  耗时操作异步化：账号设置页空闲时预取一批 DiceBear 候选头像           */
+  /*                                                                    */
+  /*  首次打开预置弹层要等服务端逐张抓取（每张最多 10s）；把抓取挪到       */
+  /*  页面空闲期后台做掉，用户点开弹层时候选已经在缓存里，秒显示。          */
+  /* ------------------------------------------------------------------ */
+
+  function prefetchDicebearCandidates() {
+    var grid = document.getElementById('avatar-preset-grid');
+    if (!grid) return;   // 不在账号设置页
+
+    var warm = function () {
+      var endpoint = grid.getAttribute('data-endpoint') || '/avatar/candidates.json';
+      fetch(endpoint + '?n=10', { headers: { Accept: 'application/json' } })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (json) {
+          var items = (json && json.items) || [];
+          items.forEach(function (item) {
+            if (item && item.url) {
+              var img = new Image();
+              img.src = item.url;   // 触发服务端抓取（同 seed 有文件缓存）
+            }
+          });
+        })
+        .catch(function () { /* 预取失败无所谓，打开弹层时再抓 */ });
+    };
+
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(warm, { timeout: 4000 });
+    } else {
+      setTimeout(warm, 2000);
+    }
+  }
+
   function boot() {
     initFlash();
     initConfirm();
@@ -3775,6 +3936,9 @@
     initContentFold();
     initPluginUpload();
     initAdminBulk();
+    initLazyImages();
+    initLinkPrefetch();
+    prefetchDicebearCandidates();
     syncInsertButtons();
   }
 

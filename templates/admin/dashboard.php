@@ -124,14 +124,15 @@ $todoCards = [
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
-                    <table>
+                    <table class="admin-list admin-list--recent">
                         <thead>
                         <tr>
-                            <th>标题</th>
-                            <th style="width:130px">作者</th>
-                            <th style="width:110px">版块</th>
-                            <th style="width:90px">评论</th>
-                            <th style="width:120px">发表时间</th>
+                            <?php /* 概览是两栏布局，容器不宽 —— 列宽用百分比才不会撑出滚动条 */ ?>
+                            <th style="width:40%">标题</th>
+                            <th style="width:18%">作者</th>
+                            <th style="width:15%">版块</th>
+                            <th style="width:12%">评论</th>
+                            <th style="width:15%">发表时间</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -139,23 +140,30 @@ $todoCards = [
                             <?php $threadId = (int)($thread['id'] ?? 0); ?>
                             <tr>
                                 <td>
-                                    <a href="<?= e(url('/t/' . $threadId)) ?>" target="_blank" rel="noopener">
-                                        <?= e((string)($thread['title'] ?? '')) ?>
-                                    </a>
-                                    <?php if ((int)($thread['status'] ?? 1) !== 1): ?>
-                                        <span class="badge outline" style="margin-left:6px">待审核</span>
-                                    <?php endif; ?>
-                                    <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
-                                        <span class="badge outline" style="margin-left:4px">置顶</span>
-                                    <?php endif; ?>
-                                    <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?>
-                                        <span class="badge outline" style="margin-left:4px">精华</span>
-                                    <?php endif; ?>
+                                    <?php /* 主值吃掉剩余宽度并单行截断，徽章排在右侧不参与换行 */ ?>
+                                    <div class="cell-row">
+                                        <a class="cell-title" href="<?= e(url('/t/' . $threadId)) ?>"
+                                           target="_blank" rel="noopener"
+                                           title="<?= e((string)($thread['title'] ?? '')) ?>">
+                                            <?= e((string)($thread['title'] ?? '')) ?>
+                                        </a>
+                                        <?php if ((int)($thread['status'] ?? 1) !== 1): ?>
+                                            <span class="badge outline">待审核</span>
+                                        <?php endif; ?>
+                                        <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
+                                            <span class="badge outline">置顶</span>
+                                        <?php endif; ?>
+                                        <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?>
+                                            <span class="badge outline">精华</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td class="text-light">
-                                    <?= e((string)($thread['author']['username'] ?? '用户已删除')) ?>
+                                    <span class="cell-title"><?= e((string)($thread['author']['username'] ?? '用户已删除')) ?></span>
                                 </td>
-                                <td class="text-light"><?= e((string)($thread['forum_name'] ?? '—')) ?></td>
+                                <td class="text-light">
+                                    <span class="cell-title"><?= e((string)($thread['forum_name'] ?? '—')) ?></span>
+                                </td>
                                 <td class="text-light"><?= (int)($thread['reply_count'] ?? 0) ?></td>
                                 <td class="text-light"><?= e(human_time((int)($thread['created_at'] ?? 0))) ?></td>
                             </tr>
@@ -182,10 +190,13 @@ $todoCards = [
                 <div class="panel__body hstack" style="flex-wrap:wrap;gap:10px">
                     <?php foreach ($recentUsers as $user): ?>
                         <a href="<?= e(url('/admin/users/' . (int)$user['id'])) ?>"
-                           class="hstack" style="gap:8px;padding:5px 10px;border:1px solid var(--qq-line);border-radius:999px">
+                           class="hstack" style="gap:8px;padding:5px 10px;border:1px solid var(--qq-line);border-radius:999px;max-width:100%">
                             <?= avatar_img($user, 22) ?>
-                            <span style="font-size:13.5px"><?= e((string)($user['username'] ?? '')) ?></span>
-                            <span style="font-size:12px;color:<?= e((string)($user['group_color'] ?? '#999999')) ?>">
+                            <span class="cell-title" style="max-width:180px;font-size:13.5px"
+                                  title="<?= e((string)($user['username'] ?? '')) ?>">
+                                <?= e((string)($user['username'] ?? '')) ?>
+                            </span>
+                            <span style="flex:none;font-size:12px;color:<?= e((string)($user['group_color'] ?? '#999999')) ?>">
                                 <?= e((string)($user['group_name'] ?? '')) ?>
                             </span>
                         </a>

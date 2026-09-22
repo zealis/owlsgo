@@ -46,15 +46,27 @@ final class Session
         ini_set('session.use_only_cookies', '1');
         ini_set('session.use_strict_mode', '1');
         ini_set('session.cookie_httponly', '1');
-        ini_set('session.gc_maxlifetime', (string)((int)config('app.cookie_ttl', 15552000)));
+        ini_set('session.gc_maxlifetime', (string)((int)config('app.cookie_ttl', 2592000)));
         ini_set('session.sid_length', '48');
         ini_set('session.sid_bits_per_character', '5');
+
+        /*
+         * 关掉 PHP 的 session cache_limiter（默认 nocache）：它会给**每个**响应
+         * 强加 `Cache-Control: no-store` + `Expires: 1981` + `Pragma: no-cache`，
+         * 后果是浏览器对整站禁用缓存与 bfcache —— 每次导航都全量重拉，
+         * 静态资源、头像也一并被殃及。缓存策略改由应用按响应类型自己发
+         * （HTML → Response::html 的 private no-cache；媒体 → MediaController 的 public）。
+         */
+        ini_set('session.cache_limiter', '0');
 
         $name = (string)config('app.session_name', 'owlsgo_sid');
         session_name($name);
 
+        // 浏览器 Cookie 名：HTTPS 下带 `__Host-` 前缀（见 Security::hostCookieName）
+        $cookieName = self::cookieName();
+
         // 从请求 Cookie 中恢复会话 ID；格式不合法则换新，避免会话固定
-        $incoming = Request::cookie($name);
+        $incoming = Request::cookie($cookieName);
         if (is_string($incoming) && self::isValidId($incoming)) {
             session_id($incoming);
         }
@@ -70,10 +82,37 @@ final class Session
             $_SESSION = is_array($_SESSION ?? null) ? $_SESSION : [];
         }
 
+        /*
+         * 会话绑定 UA 指纹（防「Cookie 文件被窃 → 异地重放」）：
+         *  - 首次见到该会话：记下指纹（升级前的老会话也没有这个字段，直接补记、不踢人）；
+         *  - 指纹变了（Cookie 被复制到其它浏览器/设备使用）：清空全部会话数据，
+         *    登录态一并失效 —— 重放者拿到的是空会话。
+         *    不用 session_regenerate_id：它与 session_unset 的组合在这套 Windows
+         *    构建上会让进程直接崩掉（实测 500），清数据已足够消除重放价值。
+         */
+        $uaHash = Request::userAgentHash();
+        if (!isset($_SESSION['ua'])) {
+            $_SESSION['ua'] = $uaHash;
+        }
+
+        /*
+         * 升级迁移：还在带「裸名」会话 Cookie 的浏览器，把它清掉
+         * （新 Cookie 已用 `__Host-` 名下发，旧的那份留着只会白白随请求发送）。
+         */
+        if (Request::cookie($cookieName) === null && Request::cookie($name) !== null) {
+            Response::forgetCookie($name);
+        }
+
         self::ageBags();
 
         // 下发/刷新会话 Cookie
         self::persistCookie();
+    }
+
+    /** 会话 Cookie 的浏览器名（HTTPS 下带 `__Host-` 前缀） */
+    private static function cookieName(): string
+    {
+        return Security::hostCookieName((string)config('app.session_name', 'owlsgo_sid'));
     }
 
     /** 会话 ID 是否合法（PHP 默认字符集） */
@@ -85,14 +124,13 @@ final class Session
     /** 把响应 Cookie 中的会话 ID 写回客户端 */
     private static function persistCookie(): void
     {
-        $name = (string)config('app.session_name', 'owlsgo_sid');
-        $id   = session_id();
+        $id = session_id();
 
         if (!is_string($id) || $id === '') {
             return;
         }
 
-        Response::cookie($name, $id, time() + (int)config('app.cookie_ttl', 15552000), [
+        Response::cookie(self::cookieName(), $id, time() + (int)config('app.cookie_ttl', 2592000), [
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
@@ -308,8 +346,9 @@ final class Session
 
         self::$started = false;
 
-        $name = (string)config('app.session_name', 'owlsgo_sid');
-        Response::forgetCookie($name);
+        // 新名（__Host- 前缀）+ 升级前的裸名一起清，浏览器里不留死 Cookie
+        Response::forgetCookie(self::cookieName());
+        Response::forgetCookie((string)config('app.session_name', 'owlsgo_sid'));
     }
 
     /**

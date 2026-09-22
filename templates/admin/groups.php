@@ -31,13 +31,13 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <table class="admin-list admin-list--groups">
                 <thead>
                 <tr>
-                    <th>用户组</th>
+                    <th style="width:220px">用户组</th>
                     <th style="width:120px">标识</th>
                     <th style="width:90px">成员</th>
-                    <th style="width:220px">权限开启情况</th>
+                    <th style="width:200px">权限开启情况</th>
                     <th style="width:110px">附件空间</th>
                     <th style="width:70px">排序</th>
                     <th style="width:90px">类型</th>
@@ -56,17 +56,23 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                     ?>
                     <tr>
                         <td>
-                            <strong style="color:<?= e($groupColor) ?>"><?= e($groupName) ?></strong>
-                            <?php if ($isSystem): ?>
-                                <span class="badge outline" style="margin-left:6px">内置</span>
-                            <?php endif; ?>
+                            <div class="cell-row">
+                                <strong class="cell-title" style="color:<?= e($groupColor) ?>"
+                                        title="<?= e($groupName) ?>"><?= e($groupName) ?></strong>
+                                <?php if ($isSystem): ?>
+                                    <span class="badge outline">内置</span>
+                                <?php endif; ?>
+                            </div>
                             <?php if ((string)($row['description'] ?? '') !== ''): ?>
-                                <span class="text-light" style="display:block;font-size:12.5px">
+                                <span class="cell-title text-light" style="display:block;font-size:12.5px"
+                                      title="<?= e((string)$row['description']) ?>">
                                     <?= e((string)$row['description']) ?>
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="mono text-light"><?= e((string)($row['slug'] ?? '')) ?></td>
+                        <td class="mono text-light">
+                            <span class="cell-title"><?= e((string)($row['slug'] ?? '')) ?></span>
+                        </td>
                         <td>
                             <a href="<?= e(url('/admin/users', ['group' => $groupId])) ?>">
                                 <?= number_format((int)($row['members'] ?? 0)) ?>

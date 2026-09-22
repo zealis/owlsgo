@@ -90,6 +90,8 @@ final class Response
         self::setStatus($code);
         self::header('Content-Type', 'application/json; charset=UTF-8');
         self::header('X-Content-Type-Options', 'nosniff');
+        // 接口响应普遍带操作语义（保存 / 删除 / 状态翻转），一律不缓存
+        self::header('Cache-Control', 'no-store');
 
         self::sendHeaders();
         echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -102,6 +104,23 @@ final class Response
     {
         self::setStatus($code);
         self::header('Content-Type', 'text/html; charset=UTF-8');
+        /*
+         * HTML 用 private + no-cache 而不是 no-store：
+         *  - private：禁止共享代理缓存（登录后的页面不出 CDN/代理）；
+         *  - no-cache：每次使用前向服务器验证 —— 本站没有 Last-Modified/ETag，
+         *    实际效果是导航时重新加载，但**允许 bfcache**，
+         *    「返回上一页 / 前进」直接从内存恢复，不再整页重拉；
+         *  - no-store 则两者全禁，是之前整站发卡的元凶之一。
+         *
+         * 例外：预取请求（Chromium 的 <link rel=prefetch> 自带 Sec-Purpose: prefetch，
+         * 由 app.js 在链接悬停 65ms 时发起）改发 10 秒私有缓存 ——
+         * 用户随后点进去直接吃缓存副本，页面秒开。窗口只有 10 秒：
+         * 登录态变化、新公告等最多延迟 10 秒可见，与预取的收益对等。
+         */
+        $isPrefetch = stripos((string)($_SERVER['HTTP_SEC_PURPOSE'] ?? ''), 'prefetch') !== false;
+        self::header('Cache-Control', $isPrefetch
+            ? 'private, max-age=10, must-revalidate'
+            : 'private, no-cache, must-revalidate');
 
         self::sendHeaders();
         echo $content;

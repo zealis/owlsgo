@@ -100,7 +100,7 @@ final class InstallController extends Controller
          *
          * 注意：必须在 Session::regenerate() 之后再调 Auth::login()，
          * 因为 login() 内部会再次 regenerate，顺序颠倒会把这里刚换的会话 ID 覆盖掉。
-         * 记住我保持关闭：管理员刚在本机装完，没必要立刻种一个 180 天的持久 Cookie。
+         * 记住我保持关闭：管理员刚在本机装完，没必要立刻种一个 30 天的持久 Cookie。
          */
         $adminId = (int)($result['admin_id'] ?? 0);
         if ($adminId > 0) {

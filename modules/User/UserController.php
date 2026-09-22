@@ -564,4 +564,54 @@ final class UserController extends Controller
 
         $this->redirectWith(Router::url('/settings'), '预置头像已应用。');
     }
+
+    /**
+     * 应用一个 DiceBear 头像：抓下来**落盘**再存到 users.avatar
+     *
+     * 为什么不直接存第三方 URL：外网随时可能不通或被墙，头像会集体裂图；
+     * 落盘之后它就是一张普通的本地头像，和上传头像走同一条输出链路。
+     *
+     * 存储位置固定为 storage/avatars/generated/{32 位哈希}.svg ——
+     * MediaController 只对这个目录里的 SVG 放行内联显示（上传的 SVG 仍强制下载）。
+     */
+    public function applyDicebearAvatar(array $params): never
+    {
+        $user = $this->requireLogin();
+        $back = Router::url('/settings');
+
+        $seed = strtolower(trim((string)Request::string('seed', '', 64)));
+
+        if ($seed === '' || preg_match('/^[a-z0-9_-]{1,64}$/', $seed) !== 1) {
+            $this->redirectWith($back, '头像参数无效。', 'error');
+        }
+
+        $svg = \Core\Avatar::dicebearSvg($seed);
+
+        if ($svg === null) {
+            $this->redirectWith($back, '头像生成失败，请稍后重试或换一张。', 'error');
+        }
+
+        $dir = APP_ROOT . '/storage/avatars/generated';
+
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            $this->redirectWith($back, '头像目录不可写，请联系管理员检查 storage 权限。', 'error');
+        }
+
+        $relative = 'avatars/generated/' . bin2hex(random_bytes(16)) . '.svg';
+
+        if (@file_put_contents(APP_ROOT . '/storage/' . $relative, $svg, LOCK_EX) === false) {
+            $this->redirectWith($back, '头像保存失败，请稍后重试。', 'error');
+        }
+
+        $old = trim((string)($user['avatar'] ?? ''));
+
+        UserModel::updateById((int)$user['id'], ['avatar' => $relative]);
+
+        // 旧的自定义/生成头像不再被引用，删掉，避免 storage 无限增长
+        if ($old !== '' && !str_starts_with($old, 'preset:')) {
+            Upload::remove($old);
+        }
+
+        $this->redirectWith($back, '头像已更新。');
+    }
 }

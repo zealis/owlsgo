@@ -52,8 +52,67 @@ final class MediaController extends Controller
         Response::header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
         Response::header('X-Content-Type-Options', 'nosniff');
         Response::header('Cache-Control', 'public, max-age=604800, immutable');
+        header_remove('Expires');
+        header_remove('Pragma');
 
         Response::raw($svg);
+    }
+
+    /**
+     * DiceBear 头像代理：/avatar/dice/{seed}.svg
+     *
+     * 为什么不直接把 api.dicebear.com 的地址交给浏览器：
+     *  1. 国内访问不一定通，裂图概率高；
+     *  2. 不让每个访客的 IP 都暴露给第三方；
+     *  3. 抓回来的内容先清洗再输出（见 Avatar::sanitizeSvg），并锁死 CSP。
+     *
+     * 抓取失败时回退到本地生成的头像（同种子），页面上始终是张完整的图。
+     *
+     * @param array<string, string> $params
+     */
+    public function dicebear(array $params): never
+    {
+        $seed = (string)($params['seed'] ?? '');
+
+        if ($seed === '' || preg_match('/^[A-Za-z0-9_-]{1,64}$/', $seed) !== 1) {
+            $seed = 'guest';
+        }
+
+        $size = max(16, min(512, Request::int('s', 96)));
+        $svg  = Avatar::dicebearSvg($seed);
+
+        if ($svg === null) {
+            $svg = Avatar::svg($seed, $size);
+        }
+
+        Response::header('Content-Type', 'image/svg+xml; charset=UTF-8');
+        Response::header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        Response::header('X-Content-Type-Options', 'nosniff');
+        Response::header('Cache-Control', 'public, max-age=604800, immutable');
+        header_remove('Expires');
+        header_remove('Pragma');
+
+        Response::raw($svg);
+    }
+
+    /**
+     * 一批随机头像候选（「换一批」按钮用）
+     *
+     * @param array<string, string> $params
+     */
+    public function dicebearCandidates(array $params): never
+    {
+        $count = max(1, min(30, Request::int('n', 10)));
+        $items = [];
+
+        foreach (Avatar::presets($count) as $preset) {
+            $items[] = [
+                'seed' => $preset['seed'],
+                'url'  => $preset['url'],
+            ];
+        }
+
+        $this->json(['ok' => true, 'items' => $items]);
     }
 
     /**
@@ -73,7 +132,8 @@ final class MediaController extends Controller
             App::abort(403, '该资源不对外公开。');
         }
 
-        $absolute = Upload::absolutePath($path);
+        $absolute   = Upload::absolutePath($path);
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
 
         if ($absolute === null || !is_file($absolute)) {
             App::abort(404, '资源不存在。');
@@ -82,8 +142,17 @@ final class MediaController extends Controller
         $mime = $this->mimeOf($absolute);
         $ext  = strtolower(pathinfo($absolute, PATHINFO_EXTENSION));
 
-        // SVG 可能内嵌 <script>，即使作为 <img> 引用也可能有风险，一律强制下载
-        $inline = str_starts_with($mime, 'image/') && !in_array($ext, ['svg', 'svgz'], true);
+        /*
+         * SVG 可能内嵌 <script>，即使作为 <img> 引用也可能有风险，默认一律强制下载。
+         *
+         * 例外：avatars/generated/ 下由本站自己生成（抓取时已清洗、文件名是哈希）的
+         * DiceBear 头像——它们是头像，必须能内联显示，否则 <img> 拿到 octet-stream 会裂图。
+         * 目录与文件名都卡死，上传的 SVG 走不到这里（上传落在 avatars/年/月/）。
+         */
+        $generated = str_starts_with($normalized, 'avatars/generated/')
+            && preg_match('#^avatars/generated/[0-9a-f]{32}\.svg$#', $normalized) === 1;
+
+        $inline = str_starts_with($mime, 'image/') && ($generated || !in_array($ext, ['svg', 'svgz'], true));
 
         if (!$inline) {
             $this->serve($absolute, 'application/octet-stream', true, basename($absolute));
@@ -219,14 +288,25 @@ final class MediaController extends Controller
         Response::header('Content-Type', $mime);
         Response::header('Content-Length', (string)$size);
         Response::header('X-Content-Type-Options', 'nosniff');
-        Response::header('Cache-Control', 'private, max-age=86400');
 
         if ($download) {
+            // 下载文件：内容会被替换/删除，缓存短一点且仅本浏览器
+            Response::header('Cache-Control', 'private, max-age=3600');
             Response::header(
                 'Content-Disposition',
                 'attachment; filename="' . $this->asciiFilename($filename) . '"; '
                 . "filename*=UTF-8''" . rawurlencode($filename)
             );
+        } else {
+            /*
+             * 内联展示的媒体（头像、图片）：文件名是随机/哈希命名，内容不可变
+             * （换头像 = 新文件新 URL），可以放心长缓存。
+             * 这之前 session 的 cache_limiter 会塞进 Expires:1981 / Pragma:no-cache，
+             * 部分中间层会因此拒绝缓存 —— 一并清掉。
+             */
+            Response::header('Cache-Control', 'public, max-age=604800');
+            header_remove('Expires');
+            header_remove('Pragma');
         }
 
         Response::sendHeaders();

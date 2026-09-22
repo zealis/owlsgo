@@ -1,0 +1,48 @@
+# 自动生成在线升级清单（manifest.json）
+#
+# push 到 main 后自动运行：重新计算全量程序文件的 sha256 → 生成 manifest.json
+# → 提交回 main。提交信息带 [skip ci]，避免再次触发本 workflow 造成死循环。
+#
+# 前台的「在线升级」页从 raw.githubusercontent.com/<repo>/main/manifest.json
+# 读取这份清单，与本地文件逐个比对 sha256，从而精确发现新增/更新/删除的文件。
+#
+# 要求：仓库 Settings → Actions → General → Workflow permissions
+#       选择 "Read and write permissions"（否则没有权限提交 manifest）。
+
+name: build upgrade manifest
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'manifest.json'
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Build manifest
+        run: php .tools/build-manifest.php
+
+      - name: Commit manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          if git diff --cached --quiet; then
+            echo "manifest 无变化，跳过提交"
+          else
+            git commit -m "chore: update upgrade manifest [skip ci]"
+            git push
+          fi

@@ -5,8 +5,10 @@
  * 变量：$result（items 已 decorate，并补了 thread_title）、$keyword、
  *       $status（-1 全部 / 0 待审核 / 1 已通过）、$canApprove、$pending、$pagination
  *
- * 注意：帖子的首帖（is_first = 1）不能单独删除，只能连同帖子一起删，
- * 因此这里对首帖禁用删除按钮并给出说明。
+ * 列表**只含回帖**（PostModel::adminPaginate 过滤 is_first = 0）：
+ * 帖子首帖是「帖子」页签里那条内容，混进来只会让同一条正文出现两次。
+ * 首帖的审核与删除都随帖子走，所以这里的删除按钮对首帖永远不该出现；
+ * 服务端仍保留首帖保护（删帖接口会拒绝），模板里的分支只是兜底。
  */
 
 declare(strict_types=1);
@@ -92,7 +94,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
             [
                 'value'   => 'delete',
                 'label'   => '批量删除',
-                'confirm' => '确认删除选中的 {n} 条评论吗？（可在回收站恢复；帖子首帖会被自动跳过）',
+                'confirm' => '确认删除选中的 {n} 条评论吗？（可在回收站恢复）',
                 'danger'  => true,
             ],
         ],
@@ -106,11 +108,12 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <?php /* admin-list：固定列宽 + 长文本自己截断（见 theme.css「后台列表」一节） */ ?>
+            <table class="admin-list admin-list--posts">
                 <thead>
                 <tr>
                     <th class="bulk-check"></th>
-                    <th>内容摘要</th>
+                    <th style="width:300px">内容摘要</th>
                     <th style="width:130px">作者</th>
                     <th style="width:200px">所属帖子</th>
                     <th style="width:70px">楼层</th>
@@ -137,15 +140,20 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                    aria-label="选择评论">
                         </td>
                         <td>
-                            <?php if ((int)($post['parent_id'] ?? 0) > 0): ?>
-                                <span class="badge outline" style="margin-right:4px">楼中楼</span>
-                            <?php endif; ?>
-                            <?= e($excerpt !== '' ? $excerpt : '（无正文）') ?>
-                            <?php if ($hasFiles): ?>
-                                <span class="badge outline" style="margin-left:6px">
-                                    <?= count($post['attachments']) ?> 个附件
-                                </span>
-                            <?php endif; ?>
+                            <?php /* 摘要最多两行（超出省略）；标记类徽章排在右侧不参与换行 */ ?>
+                            <div class="cell-row cell-row--top">
+                                <span class="cell-title"><?= e($excerpt !== '' ? $excerpt : '（无正文）') ?></span>
+                                <?php /* 窄屏会整列隐藏「状态」，所以待审核在主值旁再挂一个徽章（与帖子列表一致） */ ?>
+                                <?php if ($isPending): ?>
+                                    <span class="badge" data-variant="warning">待审核</span>
+                                <?php endif; ?>
+                                <?php if ((int)($post['parent_id'] ?? 0) > 0): ?>
+                                    <span class="badge outline">楼中楼</span>
+                                <?php endif; ?>
+                                <?php if ($hasFiles): ?>
+                                    <span class="badge outline"><?= count($post['attachments']) ?> 个附件</span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <td>
                             <a href="<?= e(url('/u/' . (int)($post['user_id'] ?? 0))) ?>"
@@ -156,8 +164,10 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                         </td>
                         <td>
                             <?php if ($threadId > 0): ?>
-                                <a href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>"
-                                   target="_blank" rel="noopener">
+                                <a class="cell-title"
+                                   href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>"
+                                   target="_blank" rel="noopener"
+                                   title="<?= e((string)($post['thread_title'] ?? '')) ?>">
                                     <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                                 </a>
                             <?php else: ?>

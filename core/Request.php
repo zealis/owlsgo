@@ -210,6 +210,19 @@ final class Request
         return mb_substr(preg_replace('/[\x00-\x1F\x7F]/', '', $ua) ?? $ua, 0, $max);
     }
 
+    /**
+     * User-Agent 指纹（16 位十六进制）
+     *
+     * 用于把「会话 / 记住我」凭据绑定到签发时的浏览器环境：
+     * Cookie 即使被从本机（浏览器存储文件、导出工具）窃走，
+     * 换一个 UA 重放也过不了校验 —— 签名里根本没有这个指纹。
+     * UA 本身可伪造，所以它是纵深防御的一层，不是唯一防线。
+     */
+    public static function userAgentHash(): string
+    {
+        return substr(hash('sha256', self::userAgent()), 0, 16);
+    }
+
     /** 简化的设备标识：mobile / tablet / desktop */
     public static function device(): string
     {

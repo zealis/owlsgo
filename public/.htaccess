@@ -11,6 +11,20 @@
 # 关闭目录浏览（防止 assets/ 等目录被列表）
 Options -Indexes
 
+# 静态资源长缓存（与 nginx.htaccess 的 expires 7d 对应）：
+# asset() 输出的 URL 自带 ?v=<文件mtime>，文件一变 URL 就变，缓存不会挡住更新。
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType image/svg+xml "access plus 7 days"
+    ExpiresByType image/png "access plus 7 days"
+    ExpiresByType image/jpeg "access plus 7 days"
+    ExpiresByType image/webp "access plus 7 days"
+    ExpiresByType image/x-icon "access plus 7 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 

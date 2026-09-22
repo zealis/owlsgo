@@ -31,6 +31,7 @@ try {
     <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
+    <?= $view('partials/head-critical-css') ?>
     <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('assets/css/theme.css')) ?>">
 </head>

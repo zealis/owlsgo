@@ -71,6 +71,7 @@ return [
     ['POST', '/settings/privacy',      'Modules\User\UserController@updatePrivacy'],
     ['POST', '/settings/password',     'Modules\User\UserController@updatePassword'],
     ['POST', '/settings/avatar',       'Modules\User\UserController@uploadAvatar'],
+    ['POST', '/settings/avatar/dice',  'Modules\User\UserController@applyDicebearAvatar'],
     ['POST', '/settings/avatar/preset','Modules\User\UserController@applyPresetAvatar'],
     ['GET',  '/notifications',         'Modules\User\NotificationController@index'],
     ['POST', '/notifications/read',    'Modules\User\NotificationController@markRead'],
@@ -92,6 +93,12 @@ return [
 
     /* ==================== 媒体资源 ==================== */
     ['POST', '/upload',              'Modules\User\UploadController@store'],
+    /*
+     * DiceBear 头像代理必须排在 /avatar/{seed}.svg 前面：
+     * 否则 `/avatar/dice/xxx.svg` 会被当成「seed = dice/xxx」的本地头像。
+     */
+    ['GET', '/avatar/dice/{seed:[A-Za-z0-9_-]+}.svg', 'Modules\User\MediaController@dicebear'],
+    ['GET', '/avatar/candidates.json', 'Modules\User\MediaController@dicebearCandidates'],
     ['GET', '/avatar/{seed}.svg',   'Modules\User\MediaController@avatar'],
     ['GET', '/media/{path:.+}',     'Modules\User\MediaController@media'],
     ['GET', '/attachment/{id:\d+}', 'Modules\User\MediaController@attachment'],
@@ -108,6 +115,8 @@ return [
     ['POST', '/admin/settings',            'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
     ['POST', '/admin/settings/{group:[a-z-]+}', 'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
     ['POST', '/admin/maintenance/opcache', 'Modules\Admin\AdminController@clearOpcache', 'admin.settings'],
+    ['GET',  '/admin/upgrade',         'Modules\Admin\UpgradeController@index', 'admin.settings'],
+    ['POST', '/admin/upgrade/apply',   'Modules\Admin\UpgradeController@apply', 'admin.settings'],
 
     /* ==================== 后台：版块 ==================== */
     ['GET',  '/admin/forums',              'Modules\Admin\ForumController@index',   'admin.forum'],

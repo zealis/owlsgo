@@ -107,10 +107,10 @@ foreach ($rows as $row) {
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <table class="admin-list admin-list--plugins">
                 <thead>
                 <tr>
-                    <th>插件</th>
+                    <th style="width:280px">插件</th>
                     <th style="width:80px">钩子</th>
                     <th style="width:80px">配置项</th>
                     <th style="width:110px">状态</th>
@@ -130,8 +130,10 @@ foreach ($rows as $row) {
                     ?>
                     <tr>
                         <td>
-                            <div class="hstack" style="gap:8px;align-items:flex-start">
-                                <strong><?= e((string)($plugin['name'] ?? $pluginId)) ?></strong>
+                            <div class="cell-row">
+                                <strong class="cell-title" title="<?= e((string)($plugin['name'] ?? $pluginId)) ?>">
+                                    <?= e((string)($plugin['name'] ?? $pluginId)) ?>
+                                </strong>
                                 <span class="badge outline mono" style="font-size:11.5px">
                                     v<?= e((string)($plugin['version'] ?? '0')) ?>
                                 </span>
@@ -144,12 +146,14 @@ foreach ($rows as $row) {
                             </div>
 
                             <?php if ((string)($plugin['description'] ?? '') !== ''): ?>
-                                <span class="text-light" style="display:block;font-size:12.5px;margin-top:3px">
+                                <span class="cell-title text-light" style="display:block;font-size:12.5px;margin-top:3px"
+                                      title="<?= e((string)$plugin['description']) ?>">
                                     <?= e((string)$plugin['description']) ?>
                                 </span>
                             <?php endif; ?>
 
-                            <span class="text-light mono" style="display:block;font-size:11.5px;margin-top:3px">
+                            <span class="cell-title text-light mono" style="display:block;font-size:11.5px;margin-top:3px"
+                                  title="<?= e($pluginId) ?><?= (string)($plugin['author'] ?? '') !== '' ? ' · 作者：' . e((string)$plugin['author']) : '' ?>">
                                 <?= e($pluginId) ?>
                                 <?php if ((string)($plugin['author'] ?? '') !== ''): ?>
                                     · 作者：

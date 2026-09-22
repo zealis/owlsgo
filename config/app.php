@@ -12,7 +12,16 @@ declare(strict_types=1);
 return [
     /* 站点标识 */
     'name'    => 'owlsgo',
-    'version' => '1.0.0',
+    'version' => '1.1.0',
+
+    /*
+     * 在线升级的 GitHub 仓库（owner/repo，如 'acme/owlsgo'）。
+     * 留空时后台「在线升级」页会提示未配置；填写后从该仓库的
+     * GitHub Releases 检测最新版本（release 需附带 .zip 附件）。
+     */
+    'upgrade_repo' => 'zealis/owlsgo',
+    /* 升级清单所在的分支（manifest.json 所在分支，由 Actions 自动维护） */
+    'upgrade_branch' => 'main',
 
     /* 调试开关：生产环境必须为 false（会关闭错误显示、打开日志记录） */
     'debug'   => false,
@@ -37,7 +46,7 @@ return [
     /* 会话与 Cookie */
     'session_name'    => 'owlsgo_sid',
     'cookie_prefix'   => 'owlsgo_',
-    'cookie_ttl'      => 15552000,   // 180 天，用于「记住我」
+    'cookie_ttl'      => 2592000,    // 30 天，用于「记住我」（2592000 = 30 * 86400）
     'cookie_secure'   => 'auto',     // auto | true | false
 
     /* 分页 */

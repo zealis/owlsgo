@@ -121,11 +121,16 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         </div>
     <?php else: ?>
         <div class="table-scroll">
-            <table>
+            <?php /*
+             * admin-list：固定列宽布局，长文本列由 .cell-title 单行截断（.cell-row 用于「主值 + 徽章」）。
+             * 不这么做的话，一条长标题就会把「标题」列撑宽、把其它列挤扁，
+             * 移动端更是整张表横向拉长，滚不到头也看不清。
+             */ ?>
+            <table class="admin-list admin-list--threads">
                 <thead>
                 <tr>
                     <th class="bulk-check"></th>
-                    <th>标题</th>
+                    <th style="width:280px">标题</th>
                     <th style="width:130px">作者</th>
                     <th style="width:120px">版块</th>
                     <th style="width:65px">评论</th>
@@ -150,23 +155,27 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                             <input type="checkbox" data-bulk-item value="<?= $threadId ?>"
                                    aria-label="选择帖子：<?= e((string)($thread['title'] ?? '')) ?>">
                         </td>
-                        <td class="admin-thread-title">
-                            <a href="<?= e(url('/t/' . $threadId)) ?>" target="_blank" rel="noopener"
-                               title="<?= e((string)($thread['title'] ?? '')) ?>">
-                                <?= e((string)($thread['title'] ?? '')) ?>
-                            </a>
-                            <?php if ($isPending): ?>
-                                <span class="badge" data-variant="warning" style="margin-left:6px">待审核</span>
-                            <?php endif; ?>
-                            <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
-                                <span class="badge outline" style="margin-left:4px">置顶</span>
-                            <?php endif; ?>
-                            <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?>
-                                <span class="badge outline" style="margin-left:4px">精华</span>
-                            <?php endif; ?>
-                            <?php if ((int)($thread['is_locked'] ?? 0) === 1): ?>
-                                <span class="badge outline" style="margin-left:4px">已锁定</span>
-                            <?php endif; ?>
+                        <td>
+                            <?php /* 标题单行截断（悬停有原生 tooltip 看全文），徽章紧跟其后不换行 */ ?>
+                            <div class="cell-row">
+                                <a class="cell-title" href="<?= e(url('/t/' . $threadId)) ?>"
+                                   target="_blank" rel="noopener"
+                                   title="<?= e((string)($thread['title'] ?? '')) ?>">
+                                    <?= e((string)($thread['title'] ?? '')) ?>
+                                </a>
+                                <?php if ($isPending): ?>
+                                    <span class="badge" data-variant="warning">待审核</span>
+                                <?php endif; ?>
+                                <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
+                                    <span class="badge outline">置顶</span>
+                                <?php endif; ?>
+                                <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?>
+                                    <span class="badge outline">精华</span>
+                                <?php endif; ?>
+                                <?php if ((int)($thread['is_locked'] ?? 0) === 1): ?>
+                                    <span class="badge outline">已锁定</span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <td>
                             <a href="<?= e(url('/u/' . (int)($thread['user_id'] ?? 0))) ?>"

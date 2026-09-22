@@ -44,7 +44,7 @@ $captchaEnabled  = (bool)($captchaEnabled ?? false);
 
     <label>
         <input type="checkbox" name="remember" value="1">
-        <span>记住我（180 天内免登录）</span>
+        <span>记住我（30 天内免登录）</span>
     </label>
     <button type="submit" class="button w-100 mt-4">
         <?= $view('partials/icon', ['name' => 'key', 'size' => 16]) ?>

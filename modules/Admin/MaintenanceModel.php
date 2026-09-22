@@ -249,7 +249,7 @@ final class MaintenanceModel
             return ['ok' => true, 'message' => '会话目录不存在，无需清理。'];
         }
 
-        $threshold = time() - (int)config('app.cookie_ttl', 15552000);
+        $threshold = time() - (int)config('app.cookie_ttl', 2592000);
         $removed   = 0;
 
         foreach ((array)glob($dir . '/sess_*') as $file) {
