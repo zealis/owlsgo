@@ -214,6 +214,17 @@ final class AuthController extends Controller
             $this->backWithErrors($errors, Router::url('/register'));
         }
 
+        /*
+         * 保留用户名（后台「注册与登录 → 保留用户名」可配置，逗号分隔）：
+         * 只拦前台自注册——安装向导的管理员命名与后台改名不受此限。
+         */
+        $reserved = array_filter(array_map('trim', explode(',', (string)Settings::get('reserved_names', ''))));
+        foreach ($reserved as $name) {
+            if (strcasecmp($username, $name) === 0) {
+                $this->backWithErrors(['username' => '该用户名被系统保留，请更换一个。'], Router::url('/register'));
+            }
+        }
+
         // 插件可在此拦截注册（例如邀请码校验）
         Hook::action('before_user_register', ['username' => $username, 'email' => $email]);
 

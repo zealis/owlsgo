@@ -20,7 +20,7 @@ $subtitle = (string)($authSubtitle ?? '');
     <?php /* 品牌蓝固定：后台「外观」取色器已下线，配色由 theme.css 固定令牌控制 */ ?>
     <meta name="theme-color" content="#00A0E9">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
+    <link rel="icon" href="<?= e(\Core\Brand::url()) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <?= $view('partials/head-critical-css') ?>
@@ -31,15 +31,7 @@ $subtitle = (string)($authSubtitle ?? '');
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-brand">
-            <span class="brand__mark" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <ellipse cx="12" cy="13" rx="7.5" ry="8"/>
-                    <circle cx="9.4" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <circle cx="14.6" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <path d="M12 15.4l1.7 2.2h-3.4z" fill="currentColor" stroke="none"/>
-                </svg>
-            </span>
+            <span class="brand__mark" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
             <h1><?= e((string)($siteName ?? 'owlsgo')) ?></h1>
             <?php if ($subtitle !== ''): ?>
                 <p><?= e($subtitle) ?></p>

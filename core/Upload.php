@@ -168,7 +168,7 @@ final class Upload
      *
      * @throws RuntimeException 校验失败时抛出，消息可直接展示给用户
      */
-    public static function store(array $file, bool $isAvatar = false): array
+    public static function store(array $file, bool $isAvatar = false, ?int $maxBytes = null): array
     {
         /*
          * 站点是否允许上传 —— 取**后台设置**（「附件 → 允许上传附件」）。
@@ -197,7 +197,8 @@ final class Upload
             }
         }
 
-        $maxSize = self::maxSize($isAvatar);
+        // $maxBytes 允许调用方（如个人主页封面）使用独立上限，默认仍按头像/附件的设置
+        $maxSize = $maxBytes ?? self::maxSize($isAvatar);
 
         $size = (int)(@filesize($tmpPath) ?: 0);
         if ($size <= 0) {

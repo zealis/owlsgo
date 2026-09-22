@@ -271,20 +271,27 @@ code, kbd, pre {
 }
 
 .brand__mark {
+  /*
+   * 站点 Logo 位：默认 Logo 是设计稿「彩虹圆环」（自带配色，无底色），
+   * 后台上传的自定义 SVG 同样自带配色 —— 所以这里不再画蓝色渐变底与蓝光晕，
+   * Logo 直接占满 32px 容器。（此前的线性猫头鹰需要蓝底衬托，已改为兜底方案。）
+   */
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--qq-blue) 0%, #42c2ff 100%);
   display: grid;
   place-items: center;
-  color: #fff;
   flex: none;
-  box-shadow: 0 2px 6px rgb(0 160 233 / 0.32);
 }
 
-.brand__mark svg {
-  width: 19px;
-  height: 19px;
+.brand__mark svg,
+.brand__mark img,
+.brand__mark .brand__logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  object-fit: contain;
 }
 
 /*
@@ -2656,7 +2663,34 @@ body.editor-fullscreen {
   border-bottom: 1px solid var(--qq-line);
 }
 
+
+/*
+ * 个人主页封面图：有自定义封面时铺满 hero 顶部，
+ * 半透明暗色渐变保证白色文字/头像的可读性；无封面时维持原蓝色渐变。
+ */
+.profile-hero__cover {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.profile-hero__cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(15 23 42 / 0.28), rgb(15 23 42 / 0.42));
+}
+
+.profile-hero--has-cover > :not(.profile-hero__cover) {
+  position: relative;
+  z-index: 1;
+}
+
 .profile-hero {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, #00a0e9 0%, #38bdf8 55%, #7dd3fc 100%);
   border-radius: var(--radius-large);
   padding: 22px;
@@ -2783,6 +2817,28 @@ body.editor-fullscreen {
 
 .profile-stats .admin-card__value a:hover {
   color: var(--qq-blue);
+}
+
+/*
+ * 个性装扮页：封面预览条（无封面时为默认蓝色渐变）
+ */
+.setting-block__preview {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/*
+ * OATUI <ot-upload>：默认卡片带大片留白，收拢一下高度，
+ * 让它和下方的按钮行贴得更自然（装扮页封面、后台 Logo 都用它）。
+ */
+ot-upload.card {
+  padding: var(--space-4) var(--space-5);
+  min-height: 0;
+}
+
+ot-upload [data-files] {
+  font-size: 12.5px;
 }
 
 /*
@@ -2937,9 +2993,10 @@ body.editor-fullscreen {
   border-radius: 14px;
 }
 
-.auth-brand .brand__mark svg {
-  width: 26px;
-  height: 26px;
+.auth-brand .brand__mark svg,
+.auth-brand .brand__mark img {
+  width: 100%;
+  height: 100%;
 }
 
 .auth-brand h1 {

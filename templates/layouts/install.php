@@ -18,7 +18,7 @@ $title = (string)($pageTitle ?? '安装');
     <title><?= e($title) ?></title>
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
+    <link rel="icon" href="<?= e(\Core\Brand::url()) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
@@ -28,15 +28,7 @@ $title = (string)($pageTitle ?? '安装');
 <div class="auth-page">
     <div class="auth-card auth-card--wide auth-card--install">
         <div class="auth-brand">
-            <span class="brand__mark" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <ellipse cx="12" cy="13" rx="7.5" ry="8"/>
-                    <circle cx="9.4" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <circle cx="14.6" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <path d="M12 15.4l1.7 2.2h-3.4z" fill="currentColor" stroke="none"/>
-                </svg>
-            </span>
+            <span class="brand__mark" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
         </div>
 
         <?= $view('partials/flash') ?>

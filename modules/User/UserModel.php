@@ -84,6 +84,53 @@ final class UserModel extends Model
      * @param array<string, mixed> $data
      * @return array{ok:bool, message:string, user_id:int}
      */
+    private const COVER_COLUMN = 'cover';
+
+    /**
+     * 保证「封面图」字段存在（老站点惰性补列，模式同 PostModel::ensureUpdatedByColumn）
+     *
+     * ⚠️ 补列后同一次请求里 `Model::columns()` 仍是旧列表，cover 的写入
+     * 一律走 `Database::update` 裸 SQL，不经过模型白名单（见 setCover）。
+     */
+    public static function ensureCoverColumn(): void
+    {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        if (Database::hasColumn(self::$table, self::COVER_COLUMN)) {
+            return;
+        }
+
+        try {
+            Database::execute(
+                'ALTER TABLE ' . Database::identifier(self::$table)
+                . ' ADD COLUMN ' . Database::identifier(self::COVER_COLUMN)
+                . " TEXT NOT NULL DEFAULT ''"
+            );
+        } catch (\Throwable) {
+            // 并发请求同时补列，失败方忽略（列已由另一方建好）
+        }
+    }
+
+    /**
+     * 写入/清除个人主页封面图（裸 SQL，见 ensureCoverColumn 说明）
+     */
+    public static function setCover(int $userId, string $path): void
+    {
+        self::ensureCoverColumn();
+
+        Database::update(
+            self::$table,
+            [self::COVER_COLUMN => $path],
+            Database::identifier('id') . ' = ?',
+            [$userId]
+        );
+    }
+
     public static function register(string $username, string $email, string $password, int $groupId = 3): array
     {
         if (static::usernameTaken($username)) {

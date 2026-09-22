@@ -1,6 +1,6 @@
 <?php
 /**
- * 账号设置：个人资料 / 修改密码 / 头像
+ * 账号设置：个人资料 / 修改密码 / 个人主页封面图
  *
  * 变量：$profile、$uploadEnabled、$avatarMaxMb
  *
@@ -26,73 +26,6 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
         <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>账号设置</h3>
     </div>
     <div class="panel__body">
-
-        <div class="setting-block">
-            <h4 class="setting-block__title"><?= $view('partials/icon', ['name' => 'image', 'size' => 16]) ?>头像</h4>
-                    <div class="hstack" style="align-items:flex-start">
-                        <div id="avatar-preview">
-                            <img src="<?= e(avatar_url($profile, 96)) ?>" width="96" height="96"
-                                 alt="当前头像"
-                                 style="border-radius:999px;border:1px solid var(--qq-line)">
-                        </div>
-
-                        <div style="min-width:0;flex:1 1 auto">
-                            <?php if ($uploadEnabled): ?>
-                                <!--
-                                    头像三件套：
-                                    1. 「上传头像」→ 选文件后弹裁切对话框（缩放 + 居中裁切），
-                                       「上传并应用」把裁切结果直接 POST 到 /settings/avatar，上传即生效；
-                                    2. 「预置头像」→ 打开随机生成的一批头像（选中即保存）。
-                                    原生 file input 隐藏（不显示文件名），由按钮代理。
-                                -->
-                                <form method="post" action="<?= e(url('/settings/avatar')) ?>" enctype="multipart/form-data">
-                                    <?= csrf_field() ?>
-                                    <div data-field>
-                                        <input type="file" id="avatar-file" name="avatar" accept="image/png,image/jpeg,image/webp"
-                                               data-avatar-crop hidden>
-                                        <div class="hstack" style="gap:10px">
-                                            <button type="button" class="button small" id="avatar-pick">
-                                                <?= $view('partials/icon', ['name' => 'upload', 'size' => 15]) ?>
-                                                <span>上传头像</span>
-                                            </button>
-                                            <span class="text-light" style="font-size:12.5px">or</span>
-                                            <button type="button" class="button ghost small" id="avatar-preset-open">
-                                                <?= $view('partials/icon', ['name' => 'image', 'size' => 15]) ?>
-                                                <span>预置头像</span>
-                                            </button>
-                                        </div>
-                                        <span data-hint>
-                                            支持 JPG / PNG / WebP，单个文件不超过 <?= $avatarMaxMb ?> MB。
-                                            选择后在弹窗中缩放与裁切，「上传并应用」后立即生效。
-                                        </span>
-                                    </div>
-                                </form>
-                            <?php else: ?>
-                                <?php /*
-                                        上传被站点关闭时，只收起「上传头像」。
-                                        「预置头像」由服务端抓取并落盘，走的是自己的路由，
-                                        不经过上传通道，所以不受上传开关影响（见 Core\Avatar）。
-                                */ ?>
-                                <div data-field>
-                                    <button type="button" class="button ghost small" id="avatar-preset-open">
-                                        <?= $view('partials/icon', ['name' => 'image', 'size' => 15]) ?>
-                                        <span>预置头像</span>
-                                    </button>
-                                    <span data-hint>
-                                        站点当前已关闭文件上传，无法上传头像；
-                                        仍可选择预置头像（SVG 实时生成，不占用存储）。
-                                    </span>
-                                </div>
-                            <?php endif; ?>
-
-                            <p class="text-light" style="font-size:12.5px;margin-top:12px">
-                                未上传头像时，系统会依据你的用户名生成一张固定的 SVG 头像。
-                            </p>
-                        </div>
-                    </div>
-
-    
-        </div>
 
         <div class="setting-block">
             <h4 class="setting-block__title"><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>账号信息</h4>
@@ -265,54 +198,3 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
         </div>
     </div>
 </section>
-
-
-<?php
-/*
- * 头像相关的两个对话框：
- *  - #avatar-crop：上传裁切（缩放 + 居中裁切，app.js 的 canvas 实现负责绘制与导出）；
- *  - #avatar-preset-dialog：预置头像库（DiceBear 随机一批，见 Core\Avatar::presets()），
- *    预览走本站代理 /avatar/dice/{seed}.svg，选中的那张由 /settings/avatar/dice 抓下来落盘。
- */
-$presets = \Core\Avatar::presets();
-?>
-<dialog id="avatar-crop" class="avatar-dialog">
-    <div class="avatar-dialog__head">调整头像</div>
-    <div class="avatar-dialog__stage">
-        <canvas id="avatar-crop-canvas" width="280" height="280"></canvas>
-    </div>
-    <div class="avatar-dialog__zoom">
-        <span>缩放</span>
-        <input type="range" id="avatar-crop-zoom" min="1" max="3" step="0.01" value="1">
-    </div>
-    <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" data-crop-cancel>取消</button>
-        <button type="button" class="button" data-crop-ok>上传并应用</button>
-    </div>
-</dialog>
-
-<dialog id="avatar-preset-dialog" class="avatar-dialog">
-    <div class="avatar-dialog__head">选择预置头像</div>
-    <div class="avatar-preset-grid" id="avatar-preset-grid"
-         data-endpoint="<?= e(url('/avatar/candidates.json')) ?>">
-        <?php foreach ($presets as $preset): ?>
-            <button type="button" class="avatar-preset"
-                    data-preset-seed="<?= e($preset['seed']) ?>"
-                    title="使用该头像">
-                <img src="<?= e($preset['url']) ?>" width="72" height="72" alt="" loading="lazy">
-            </button>
-        <?php endforeach; ?>
-    </div>
-    <p class="text-light" id="avatar-preset-hint" style="font-size:12.5px;margin:6px 20px 0">
-        每次打开都是随机的一批；选中的那张会保存到你的账号。
-    </p>
-    <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" id="avatar-preset-more">换一批</button>
-        <button type="button" class="button ghost" data-preset-cancel>取消</button>
-    </div>
-</dialog>
-
-<form method="post" action="<?= e(url('/settings/avatar/dice')) ?>" id="avatar-preset-form" hidden>
-    <?= csrf_field() ?>
-    <input type="hidden" name="seed" value="">
-</form>

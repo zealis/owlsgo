@@ -18,10 +18,12 @@ namespace Modules\User;
 use Core\App;
 use Core\Auth;
 use Core\Avatar;
+use Core\Brand;
 use Core\Controller;
 use Core\Database;
 use Core\Permission;
 use Core\Request;
+use Core\Router;
 use Core\Response;
 use Core\Upload;
 use Modules\Post\PostModel;
@@ -82,7 +84,12 @@ final class MediaController extends Controller
         $svg  = Avatar::dicebearSvg($seed);
 
         if ($svg === null) {
-            $svg = Avatar::svg($seed, $size);
+            /*
+             * 回退备用头像：DiceBear 不可达（断网/被墙/超时）时，
+             * 用本地生成器固定产出「猫头鹰」风格——全站所有回退头像
+             * 风格统一，且绝不让 <img> 拿到 404 裂图。
+             */
+            $svg = Avatar::svg($seed, $size, 'owl');
         }
 
         Response::header('Content-Type', 'image/svg+xml; charset=UTF-8');
@@ -93,6 +100,44 @@ final class MediaController extends Controller
         header_remove('Pragma');
 
         Response::raw($svg);
+    }
+
+    /**
+     * 站点 Logo 原件：/site-logo
+     *
+     * 与页面品牌位（.brand__mark）和 favicon 同源：后台上传的自定义 Logo
+     * （SVG / PNG / JPG / WebP）优先，其次内置设计稿。位图直接透传字节，
+     * SVG 清洗后输出 —— 页面里的 <img> 与浏览器标签页图标都用这个地址。
+     * head / 页面里的 URL 带 ?v=文件时间戳，所以这里可以长缓存。
+     *
+     * @param array<string, string> $params
+     */
+    public function siteLogo(array $params): never
+    {
+        Brand::sendToBrowser();
+    }
+
+    /**
+     * 站点 favicon：/favicon.svg
+     *
+     * 与 /site-logo 同一份内容（历史地址，保持兼容；旧书签 / 外链仍可用）。
+     *
+     * @param array<string, string> $params
+     */
+    public function favicon(array $params): never
+    {
+        Brand::sendToBrowser();
+    }
+
+    /**
+     * /favicon.ico：浏览器与爬虫的默认探测路径，302 到动态 Logo，
+     * 避免 404 噪音（现代浏览器跟随重定向后按响应类型渲染）。
+     *
+     * @param array<string, string> $params
+     */
+    public function faviconIco(array $params): never
+    {
+        Response::redirect(Router::url('/site-logo'), 302);
     }
 
     /**

@@ -12,7 +12,7 @@ declare(strict_types=1);
 return [
     /* 站点标识 */
     'name'    => 'owlsgo',
-    'version' => '1.1.0',
+    'version' => '1.2.0',
 
     /*
      * 在线升级的 GitHub 仓库（owner/repo，如 'acme/owlsgo'）。

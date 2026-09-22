@@ -73,6 +73,8 @@ return [
     ['POST', '/settings/avatar',       'Modules\User\UserController@uploadAvatar'],
     ['POST', '/settings/avatar/dice',  'Modules\User\UserController@applyDicebearAvatar'],
     ['POST', '/settings/avatar/preset','Modules\User\UserController@applyPresetAvatar'],
+    ['POST', '/settings/cover',        'Modules\User\UserController@uploadCover'],
+    ['POST', '/settings/cover/remove', 'Modules\User\UserController@removeCover'],
     ['GET',  '/notifications',         'Modules\User\NotificationController@index'],
     ['POST', '/notifications/read',    'Modules\User\NotificationController@markRead'],
 
@@ -100,6 +102,9 @@ return [
     ['GET', '/avatar/dice/{seed:[A-Za-z0-9_-]+}.svg', 'Modules\User\MediaController@dicebear'],
     ['GET', '/avatar/candidates.json', 'Modules\User\MediaController@dicebearCandidates'],
     ['GET', '/avatar/{seed}.svg',   'Modules\User\MediaController@avatar'],
+    ['GET', '/site-logo',            'Modules\User\MediaController@siteLogo'],
+    ['GET', '/favicon.svg',          'Modules\User\MediaController@favicon'],
+    ['GET', '/favicon.ico',          'Modules\User\MediaController@faviconIco'],
     ['GET', '/media/{path:.+}',     'Modules\User\MediaController@media'],
     ['GET', '/attachment/{id:\d+}', 'Modules\User\MediaController@attachment'],
 
@@ -113,6 +118,8 @@ return [
     ['GET',  '/admin/settings',            'Modules\Admin\AdminController@settings',     'admin.settings'],
     ['GET',  '/admin/settings/{group:[a-z-]+}', 'Modules\Admin\AdminController@settings', 'admin.settings'],
     ['POST', '/admin/settings',            'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
+    ['POST', '/admin/settings/site-logo',          'Modules\Admin\AdminController@uploadSiteLogo', 'admin.settings'],
+    ['POST', '/admin/settings/site-logo/restore',  'Modules\Admin\AdminController@restoreSiteLogo', 'admin.settings'],
     ['POST', '/admin/settings/{group:[a-z-]+}', 'Modules\Admin\AdminController@saveSettings', 'admin.settings'],
     ['POST', '/admin/maintenance/opcache', 'Modules\Admin\AdminController@clearOpcache', 'admin.settings'],
     ['GET',  '/admin/upgrade',         'Modules\Admin\UpgradeController@index', 'admin.settings'],

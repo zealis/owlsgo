@@ -46,17 +46,13 @@ final class Auth
         self::$resolved = true;
 
         /*
-         * 会话绑定 UA 指纹（防「Cookie 文件被窃 → 异地/异浏览器重放」）：
-         * 指纹不符 → 清登录态、更新指纹。会话 Cookie 留在浏览器里也无妨，
-         * 它对应的登录态已经没了；「记住我」Cookie 的 HMAC 同样绑定 UA，
-         * 重放依旧过不了校验（见 Security::makeAuthCookie）。
+         * 会话层不做 UA 校验：会话 Cookie 本身短时效 + HttpOnly + 服务端存储，
+         * 被复制的风险远低于长期「记住我」凭据；而且这里一旦误杀（浏览器升级、
+         * UA 轮换、维护模式下的重新登录），用户感知就是「明明登录了却被踢」。
+         * 防重放由「记住我」Cookie 的 UA 指纹绑定承担（见 Security::makeAuthCookie）。
          */
-        $uaHash = Request::userAgentHash();
-        if (isset($_SESSION['ua']) && $_SESSION['ua'] !== $uaHash) {
-            Session::delete(self::SESSION_KEY);
-            $_SESSION['ua'] = $uaHash;
-        } elseif (!isset($_SESSION['ua'])) {
-            $_SESSION['ua'] = $uaHash;
+        if (!isset($_SESSION['ua'])) {
+            $_SESSION['ua'] = Request::userAgentHash();
         }
 
         $userId = (int)Session::get(self::SESSION_KEY, 0);

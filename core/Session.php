@@ -18,6 +18,9 @@ final class Session
 {
     private static bool $started = false;
 
+    /** 本次请求是否更换/新建了会话 ID（决定是否需要下发 Set-Cookie） */
+    private static bool $idChanged = false;
+
     /** 本次请求内已闪存取出、等待清理的键 */
     private const BAG_FLASH = '_flash';
     private const BAG_OLD   = '_old';
@@ -29,6 +32,24 @@ final class Session
     public static function start(): void
     {
         if (self::$started) {
+            return;
+        }
+
+        /*
+         * 无状态只读资源不启动会话 —— 这是「点快了卡一下」的关键修复。
+         *
+         * PHP 的文件会话会对同一会话 ID 加排他锁：一次页面加载浏览器会顺带
+         * 请求一批头像（/avatar/*）、favicon（/favicon.svg）等，这些请求若也
+         * 打开会话，就会和用户随后的页面导航抢同一把锁 —— 导航请求只能排队，
+         * 表现就是「点得快时突然卡一下」。
+         *
+         * 这些资源都是公开只读的（头像、公开媒体、站点图标、静态资源），
+         * 不需要登录态，也不写任何会话数据；跳过会话后它们并行跑，不再阻塞导航。
+         * 注意：/attachment/（要权限校验）与 /captcha/（要会话）不在名单里。
+         */
+        if (self::isStatelessPath()) {
+            self::$started = true;
+            $_SESSION = [];
             return;
         }
 
@@ -67,8 +88,11 @@ final class Session
 
         // 从请求 Cookie 中恢复会话 ID；格式不合法则换新，避免会话固定
         $incoming = Request::cookie($cookieName);
+        $hadValidIncoming = false;
+
         if (is_string($incoming) && self::isValidId($incoming)) {
             session_id($incoming);
+            $hadValidIncoming = true;
         }
 
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -103,10 +127,59 @@ final class Session
             Response::forgetCookie($name);
         }
 
-        self::ageBags();
+        /*
+         * Cookie 只在「会话 ID 是本次新建/更换」时下发：
+         * 之前每个请求都重发同一枚 Set-Cookie —— 带着它的响应进不了浏览器
+         * 缓存（包括链接预取的专用缓存），预取全部白做，还白白增加流量。
+         * 代价是会话 Cookie 不再随访问滑动续期：固定 30 天后需重新登录
+         * （与「记住我 30 天」的语义一致）。
+         */
+        self::$idChanged = !$hadValidIncoming || session_id() !== $incoming;
+        if (self::$idChanged) {
+            self::persistCookie();
+        }
 
-        // 下发/刷新会话 Cookie
-        self::persistCookie();
+        /*
+         * 预取请求（链接悬停预加载，Sec-Purpose: prefetch）只读会话：
+         * 立即写关、释放会话文件锁 —— 否则它会占住锁，同会话的真实导航
+         * 请求只能排队，表现就是「点快了突然卡一下」。
+         * session_write_close 后 $_SESSION 数组仍可读（内存副本），只是
+         * 之后的变化不再持久化 —— 预取页不需要持久化任何东西。
+         */
+        if (stripos((string)($_SERVER['HTTP_SEC_PURPOSE'] ?? ''), 'prefetch') !== false
+            && session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        self::ageBags();
+    }
+
+    /**
+     * 是否为「无状态只读资源」请求（不启动会话，见 start() 顶部说明）
+     */
+    private static function isStatelessPath(): bool
+    {
+        $uri  = (string)($_SERVER['REQUEST_URI'] ?? '');
+        $path = (string)(parse_url($uri, PHP_URL_PATH) ?: '');
+
+        if ($path === '') {
+            return false;
+        }
+
+        foreach ([
+            '/assets/',        // 静态资源（一般由 Web 服务器直出，未命中时也不该占会话）
+            '/favicon.svg',
+            '/favicon.ico',
+            '/avatar/',        // 头像：DiceBear 代理 / 本地生成 / 预置候选，全部公开只读
+            '/media/',         // 公开媒体文件（附件有独立的权限路由，不经这里）
+            '/plugin-assets/', // 插件静态资源
+        ] as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** 会话 Cookie 的浏览器名（HTTPS 下带 `__Host-` 前缀） */
@@ -325,6 +398,7 @@ final class Session
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             @session_regenerate_id(true);
+            self::$idChanged = true;
         } else {
             // 内存退化模式下也换一个不可预测的 ID
             $_SESSION['_regen_at'] = time();

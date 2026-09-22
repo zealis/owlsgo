@@ -70,3 +70,46 @@ declare(strict_types=1);
 
     <?= $view('partials/admin-save-foot') ?>
 </section>
+
+<section class="panel" style="margin-top:var(--space-4)">
+    <div class="panel__head">
+        <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>站点 Logo</h3>
+    </div>
+    <div class="panel__body">
+        <div class="hstack" style="align-items:center;gap:14px;margin-bottom:14px">
+            <span class="brand__mark" style="width:44px;height:44px" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
+            <span class="text-light" style="font-size:12.5px">
+                显示在顶栏、侧栏、登录 / 注册页、错误页与浏览器标签页（favicon）。
+            </span>
+        </div>
+
+        <?php /*
+                选择文件后自动处理（见 app.js 的 initSiteLogoUpload）：
+                SVG 原图直传；PNG / JPG / WebP 自动打开裁切框（可裁成 512×512 透明 PNG，
+                也可在框里选「原图上传」跳过裁剪）—— 不需要再点上传按钮。
+        */ ?>
+        <form method="post" action="<?= e(url('/admin/settings/site-logo')) ?>"
+              enctype="multipart/form-data" id="site-logo-form">
+            <?= csrf_field() ?>
+            <ot-upload>
+                <input type="file" name="logo_file" id="site-logo-file"
+                       accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp" hidden>
+                <div data-files>
+                    <small data-hint>
+                        把文件拖到这里，或点击选择：SVG（≤2MB）或 PNG / JPG / WebP（≤10MB）
+                    </small>
+                </div>
+            </ot-upload>
+
+            <?php if (\Core\Brand::hasCustom()): ?>
+                <div class="hstack" style="gap:10px;margin-top:12px">
+                    <button type="submit" class="button ghost small" formnovalidate
+                            formaction="<?= e(url('/admin/settings/site-logo/restore')) ?>">
+                        <?= $view('partials/icon', ['name' => 'refresh', 'size' => 15]) ?>
+                        <span>恢复默认</span>
+                    </button>
+                </div>
+            <?php endif; ?>
+        </form>
+    </div>
+</section>

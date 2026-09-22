@@ -35,7 +35,7 @@ $isCurrent = static function (string $url) use ($path): bool {
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <meta name="theme-color" content="#00A0E9">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
+    <link rel="icon" href="<?= e(\Core\Brand::url()) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <?= $view('partials/head-critical-css') ?>
@@ -93,15 +93,7 @@ $isCurrent = static function (string $url) use ($path): bool {
 <aside data-sidebar>
     <header class="sidebar__brand">
         <a class="brand" href="<?= e(url('/admin')) ?>">
-            <span class="brand__mark" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <ellipse cx="12" cy="13" rx="7.5" ry="8"/>
-                    <circle cx="9.4" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <circle cx="14.6" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <path d="M12 15.4l1.7 2.2h-3.4z" fill="currentColor" stroke="none"/>
-                </svg>
-            </span>
+            <span class="brand__mark" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
             <?php /*
              * 品牌名显示**站点名称**（与前台顶栏同一个 $siteName 共享变量），
              * 原来这里写死「管理后台」——后台是站点的一部分，用同一套品牌名才不会

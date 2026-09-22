@@ -9,6 +9,8 @@ namespace Modules\Admin;
 
 use Core\App;
 use Core\Auth;
+use Core\Avatar;
+use Core\Brand;
 use Core\Cache;
 use Core\Database;
 use Core\PluginManager;
@@ -81,6 +83,42 @@ final class AdminController extends AdminBaseController
             'recentLogs'    => $canLogs ? LogModel::recent(10) : [],
             'system'        => $canSystem ? $this->systemInfo($attachments) : [],
         ]);
+    }
+
+    /**
+     * 上传自定义站点 Logo（顶栏/侧栏/登录页/错误页的品牌图标）
+     *
+     * 支持 SVG（≤2MB，经 sanitizeSvg 清洗）与 PNG / JPG / WebP（≤10MB，
+     * 前端可选裁成 512×512 透明 PNG），落到 storage/config/site-logo.{ext}
+     * （运行时产物，不入库；换格式时旧文件自动清理）。
+     */
+    public function uploadSiteLogo(array $params): never
+    {
+        $back = Router::url('/admin/settings/basic');
+
+        $file = $_FILES['logo_file'] ?? null;
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->redirectWith($back, '请先选择要上传的图片文件。', 'error');
+        }
+
+        try {
+            Brand::storeCustom($file);
+        } catch (\RuntimeException $e) {
+            $this->redirectWith($back, $e->getMessage(), 'error');
+        }
+
+        $this->audit('settings.site_logo', 'system', '上传自定义站点 Logo');
+        $this->redirectWith($back, '站点 Logo 已更新，全站生效。');
+    }
+
+    /**
+     * 恢复默认 Logo（删除上传的覆盖文件）
+     */
+    public function restoreSiteLogo(array $params): never
+    {
+        Brand::removeCustom();
+        $this->audit('settings.site_logo', 'system', '恢复内置站点 Logo');
+        $this->json(['ok' => true, 'message' => '已恢复默认 Logo。']);
     }
 
     /**

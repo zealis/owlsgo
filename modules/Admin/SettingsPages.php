@@ -35,6 +35,7 @@ final class SettingsPages
         'site_keywords'      => 200,
         'site_icp'           => 60,
         'site_closed_reason' => 200,
+        'reserved_names'     => 500,
     ];
 
     /**
@@ -102,7 +103,7 @@ final class SettingsPages
             'form'    => true,
             'keys'    => [
                 'register_enabled', 'register_verify', 'login_captcha', 'register_captcha',
-                'guest_view', 'register_group',
+                'guest_view', 'register_group', 'reserved_names',
             ],
         ],
 

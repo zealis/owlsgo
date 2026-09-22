@@ -366,14 +366,52 @@
     var scale = 1;
     var SIZE = canvas ? canvas.width : 280;
 
+    /*
+     * 裁切目标：同一个对话框同时服务「头像」与「站点 Logo」。
+     *  - 头像：280×280，非透明底（历史行为不变）；
+     *  - Logo：512×512，透明底（PNG 保留 alpha，适合做品牌图标）。
+     * 每次打开前切换 cropTarget，draw() / 确认导出都读它。
+     */
+    var cropTarget = {
+      size: 280,
+      bg: '#f2f5f9',
+      input: fileInput,
+      form: form,
+      filename: 'avatar.png'
+    };
+
+    function useTarget(t) {
+      cropTarget = t;
+      if (canvas) {
+        canvas.width = t.size;
+        canvas.height = t.size;
+      }
+      SIZE = t.size;
+      ctx = canvas ? canvas.getContext('2d') : null;
+      scale = 1;
+      if (zoom) {
+        zoom.value = '1';
+      }
+
+      // 「原图上传」只对站点 Logo 开放：头像必须方形裁切，不提供跳过
+      var skipBtn = dialog ? dialog.querySelector('[data-crop-skip]') : null;
+      if (skipBtn) {
+        skipBtn.hidden = !t.skip;
+      }
+    }
+
     function draw() {
       if (!img || !ctx) {
         return;
       }
 
+      SIZE = cropTarget.size;
       ctx.clearRect(0, 0, SIZE, SIZE);
-      ctx.fillStyle = '#f2f5f9';
-      ctx.fillRect(0, 0, SIZE, SIZE);
+
+      if (cropTarget.bg) {
+        ctx.fillStyle = cropTarget.bg;
+        ctx.fillRect(0, 0, SIZE, SIZE);
+      }
 
       // cover 基准：铺满画布所需的最小缩放；滑条在此基础上 1~3 倍放大，居中裁切。
       // 滑条值直接从这里读——之前滑条只调 draw() 却没人更新 scale，导致缩放无效。
@@ -418,6 +456,14 @@
 
     fileInput.addEventListener('change', function () {
       if (fileInput.files && fileInput.files[0]) {
+        useTarget({
+          size: 280,
+          bg: '#f2f5f9',
+          input: fileInput,
+          form: form,
+          filename: 'avatar.png',
+          skip: false
+        });
         openCrop(fileInput.files[0]);
       }
     });
@@ -428,6 +474,7 @@
 
     var cropCancel = dialog ? dialog.querySelector('[data-crop-cancel]') : null;
     var cropOk = dialog ? dialog.querySelector('[data-crop-ok]') : null;
+    var cropSkip = dialog ? dialog.querySelector('[data-crop-skip]') : null;
 
     if (cropCancel) {
       cropCancel.addEventListener('click', function () {
@@ -436,24 +483,106 @@
       });
     }
 
+    if (cropSkip) {
+      // 站点 Logo：不裁剪，原图直接提交
+      cropSkip.addEventListener('click', function () {
+        if (dialog) {
+          dialog.close();
+        }
+        if (cropTarget.form) {
+          cropTarget.form.submit();
+        }
+      });
+    }
+
     if (cropOk) {
       cropOk.addEventListener('click', function () {
         draw();
         canvas.toBlob(function (blob) {
           if (!blob) {
-            notify('头像生成失败，请重试。', 'danger');
+            notify('图片生成失败，请重试。', 'danger');
             return;
           }
 
-          // 把裁切结果塞回 file input，再走原有的 POST /settings/avatar
+          // 把裁切结果塞回目标 file input，再提交它所在的表单
+          // （头像 → POST /settings/avatar；站点 Logo → POST /admin/settings/site-logo）
           var dt = new DataTransfer();
-          dt.items.add(new File([blob], 'avatar.png', { type: 'image/png' }));
-          fileInput.files = dt.files;
+          dt.items.add(new File([blob], cropTarget.filename, { type: 'image/png' }));
+          if (cropTarget.input) {
+            cropTarget.input.files = dt.files;
+          }
 
-          if (form) {
-            form.submit();
+          if (cropTarget.form) {
+            cropTarget.form.submit();
+          } else if (dialog) {
+            dialog.close();
           }
         }, 'image/png');
+      });
+    }
+
+    /*
+     * ---- 站点 Logo：选图即处理 ----
+     *
+     * 后台基本信息页的 Logo 表单里，选择文件后：
+     *  - SVG（矢量）：直接提交，不走位图裁切；
+     *  - PNG / JPG / WebP：自动打开裁切框，可裁成 512×512 透明 PNG，
+     *    框里的「原图上传」则跳过裁剪直接提交原图。
+     * 两种情况都不需要再点上传按钮。
+     */
+    var logoInput = document.getElementById('site-logo-file');
+    var logoForm = document.getElementById('site-logo-form');
+
+    function submitLogoForm() {
+      if (logoForm) {
+        logoForm.submit();
+      }
+    }
+
+    if (logoInput) {
+      logoInput.addEventListener('change', function () {
+        var picked = logoInput.files && logoInput.files[0];
+        if (!picked) {
+          return;
+        }
+
+        if (/\.svg$/i.test(picked.name) || picked.type === 'image/svg+xml') {
+          submitLogoForm();   // SVG 原图直传
+          return;
+        }
+
+        if (!dialog || typeof dialog.showModal !== 'function') {
+          submitLogoForm();   // 裁切不可用时退回原图直传
+          return;
+        }
+
+        useTarget({
+          size: 512,
+          bg: null,               // 透明底：导出的 PNG 保留 alpha
+          input: logoInput,
+          form: logoForm,
+          filename: 'logo.png',
+          skip: true              // 显示「原图上传」
+        });
+        openCrop(picked);
+      });
+    }
+
+    /*
+     * ---- 个人主页封面：选图即上传 ----
+     *
+     * 横幅图不需要裁切，选择文件后直接提交表单（模板上标了 data-auto-submit）。
+     */
+    var coverInput = document.getElementById('cover-file');
+    if (coverInput) {
+      coverInput.addEventListener('change', function () {
+        if (!coverInput.files || !coverInput.files[0]) {
+          return;
+        }
+        var coverForm = coverInput.closest('form');
+        if (coverForm) {
+          coverForm.submit();
+        }
       });
     }
 
@@ -3832,6 +3961,8 @@
     var prefetched = {};
     var timer = null;
     var current = null;
+    var lastAt = 0;          // 上一次预取的时间戳：全局最小间隔，快速划过链接时不连发
+    var MIN_INTERVAL = 1200; // 12 秒内最多几次也就够了；预取请求会占 PHP 会话，发太密反而拖慢真实点击
 
     var eligible = function (a) {
       if (!a || a.target === '_blank' || a.hasAttribute('download')) return false;
@@ -3853,7 +3984,9 @@
         var key = u.pathname + u.search;
         if (key === location.pathname + location.search) return;   // 当前页不预取
         if (prefetched[key]) return;
+        if (Date.now() - lastAt < MIN_INTERVAL) return;            // 节流
         prefetched[key] = true;
+        lastAt = Date.now();
         var link = document.createElement('link');
         link.rel = 'prefetch';
         link.href = u.href;

@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password_hash`  VARCHAR(255) NOT NULL,
     `group_id`       INT UNSIGNED NOT NULL DEFAULT 1,
     `avatar`         VARCHAR(255) NOT NULL DEFAULT '',
+    `cover`          VARCHAR(255) NOT NULL DEFAULT '',
     `signature`      VARCHAR(255) NOT NULL DEFAULT '',
     `bio`            TEXT         NULL,
     `location`       VARCHAR(191) NOT NULL DEFAULT '',

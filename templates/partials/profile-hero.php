@@ -12,7 +12,13 @@ $heroGroup = (string)($hero['group_name'] ?? '游客');
 $heroBio   = trim((string)($hero['bio'] ?? ''));
 ?>
 
-<section class="profile-hero">
+<?php $heroCover = trim((string)($hero['cover'] ?? '')); ?>
+
+<section class="profile-hero<?= $heroCover !== '' ? ' profile-hero--has-cover' : '' ?>">
+    <?php if ($heroCover !== ''): ?>
+        <div class="profile-hero__cover" style="background-image:url('<?= e('/media/' . $heroCover) ?>')"></div>
+    <?php endif; ?>
+
     <img class="profile-hero__avatar" src="<?= e(avatar_url($hero, 86)) ?>"
          width="86" height="86" alt="<?= e((string)($hero['username'] ?? '')) ?> 的头像">
 

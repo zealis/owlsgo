@@ -60,15 +60,7 @@ $navExtras = (array)hook('nav_links', $navExtras, ['user' => $navUser]);
 <header class="site-header">
     <div class="wrap site-header__bar">
         <a class="brand" href="<?= e(url('/')) ?>">
-            <span class="brand__mark" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                    <ellipse cx="12" cy="13" rx="7.5" ry="8"/>
-                    <circle cx="9.4" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <circle cx="14.6" cy="11.4" r="2.4" fill="currentColor" stroke="none"/>
-                    <path d="M12 15.4l1.7 2.2h-3.4z" fill="currentColor" stroke="none"/>
-                </svg>
-            </span>
+            <span class="brand__mark" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
             <span><?= e($siteName ?? 'owlsgo') ?></span>
         </a>
 

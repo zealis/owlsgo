@@ -17,8 +17,13 @@ $label   = (string)($label ?? '');
 $hint    = (string)($hint ?? '');
 $checked = (bool)($checked ?? false);
 ?>
-<label class="hstack" style="gap:8px;align-items:<?= $hint === '' ? 'center' : 'flex-start' ?>;margin-bottom:12px">
-    <input type="checkbox" class="switch" name="<?= e($name) ?>" value="1" <?= $checked ? 'checked' : '' ?>>
+<div class="hstack" style="gap:8px;align-items:<?= $hint === '' ? 'center' : 'flex-start' ?>;margin-bottom:12px">
+    <?php /*
+            开关**只认开关本体**：不再用整行 <label> 包裹（那样点同一行很远的文字也会切换，
+            和前台的日夜模式开关行为不一致）。名称改用 aria-label 提供，可访问性不受影响。
+    */ ?>
+    <input type="checkbox" class="switch" name="<?= e($name) ?>" value="1"
+           aria-label="<?= e($label) ?>" <?= $checked ? 'checked' : '' ?>>
     <?php if ($hint === ''): ?>
         <strong style="font-size:14px"><?= e($label) ?></strong>
     <?php else: ?>
@@ -27,4 +32,4 @@ $checked = (bool)($checked ?? false);
             <span class="text-light" style="display:block;font-size:12.5px"><?= e($hint) ?></span>
         </span>
     <?php endif; ?>
-</label>
+</div>

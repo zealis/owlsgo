@@ -40,7 +40,7 @@ $notice      = trim((string)($siteNotice ?? ''));
     <meta name="theme-color" content="#00A0E9">
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
-    <link rel="icon" type="image/svg+xml" href="<?= e(asset('assets/favicon.svg')) ?>">
+    <link rel="icon" href="<?= e(\Core\Brand::url()) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <?= $view('partials/head-critical-css') ?>

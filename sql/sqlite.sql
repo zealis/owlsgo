@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS "users" (
     "password_hash"  TEXT    NOT NULL,
     "group_id"       INTEGER NOT NULL DEFAULT 1,
     "avatar"         TEXT    NOT NULL DEFAULT '',
+    "cover"          TEXT    NOT NULL DEFAULT '',
     "signature"      TEXT    NOT NULL DEFAULT '',
     "bio"            TEXT    NOT NULL DEFAULT '',
     "location"       TEXT    NOT NULL DEFAULT '',

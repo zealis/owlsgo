@@ -251,9 +251,66 @@ final class UserController extends Controller
         $user = $this->requireLogin();
 
         return $this->view('user/appearance', [
-            'pageTitle' => '个性装扮 - ' . (string)setting('site_name'),
-            'profile'   => UserModel::decorate($user),
+            'pageTitle'    => '个性装扮 - ' . (string)setting('site_name'),
+            'profile'      => UserModel::decorate($user),
+            'uploadEnabled' => Settings::bool('upload_enabled', true),
+            'avatarMaxMb'   => Upload::maxSizeMb(true),
         ], 'layouts/main');
+    }
+
+    /**
+     * 上传个人主页封面图（profile-hero 顶图，替换默认蓝色渐变）
+     */
+    public function uploadCover(array $params): never
+    {
+        $user = $this->requireLogin();
+
+        if (!Settings::bool('upload_enabled', true)) {
+            $this->redirectWith(Router::url('/settings/appearance'), '站点当前已关闭文件上传，无法上传封面图。', 'error');
+        }
+        if (!isset($_FILES['cover']) || !is_array($_FILES['cover'])) {
+            $this->redirectWith(Router::url('/settings/appearance'), '请选择要上传的图片。', 'error');
+        }
+
+        // 封面图独立体积上限：5MB（比头像通道默认的 2MB 更宽松，横幅图压缩后也常常超过 2MB）
+        $maxBytes = 5 * 1024 * 1024;
+        if ((int)($_FILES['cover']['size'] ?? 0) > $maxBytes) {
+            $this->redirectWith(Router::url('/settings/appearance'), '封面图体积超出限制（最大 5MB）。', 'error');
+        }
+
+        $this->throttle('upload', 'upload:' . (int)$user['id']);
+
+        try {
+            $stored = Upload::store($_FILES['cover'], true, $maxBytes);
+        } catch (\RuntimeException $e) {
+            $this->redirectWith(Router::url('/settings/appearance'), $e->getMessage(), 'error');
+        }
+
+        $old = trim((string)($user['cover'] ?? ''));
+        UserModel::setCover((int)$user['id'], (string)$stored['path']);
+
+        if ($old !== '' && $old !== $stored['path']) {
+            Upload::remove($old);
+        }
+
+        $this->redirectWith(Router::url('/settings/appearance'), '封面图已更新。');
+    }
+
+    /**
+     * 移除封面图（恢复默认蓝色渐变）
+     */
+    public function removeCover(array $params): never
+    {
+        $user = $this->requireLogin();
+
+        $old = trim((string)($user['cover'] ?? ''));
+        UserModel::setCover((int)$user['id'], '');
+
+        if ($old !== '') {
+            Upload::remove($old);
+        }
+
+        $this->redirectWith(Router::url('/settings/appearance'), '封面图已移除，恢复默认样式。');
     }
 
     /**
@@ -460,11 +517,11 @@ final class UserController extends Controller
          * 两处都判一次，任一入口被单独调用时都不会漏。
          */
         if (!Settings::bool('upload_enabled', true)) {
-            $this->redirectWith(Router::url('/settings'), '站点当前已关闭文件上传，无法上传头像。', 'error');
+            $this->redirectWith(Router::url('/settings/appearance'), '站点当前已关闭文件上传，无法上传头像。', 'error');
         }
 
         if (!isset($_FILES['avatar']) || !is_array($_FILES['avatar'])) {
-            $this->redirectWith(Router::url('/settings'), '请选择要上传的图片。', 'error');
+            $this->redirectWith(Router::url('/settings/appearance'), '请选择要上传的图片。', 'error');
         }
 
         $this->throttle('upload', 'upload:' . (int)$user['id']);
@@ -472,7 +529,7 @@ final class UserController extends Controller
         try {
             $stored = Upload::store($_FILES['avatar'], true);
         } catch (\RuntimeException $e) {
-            $this->redirectWith(Router::url('/settings'), $e->getMessage(), 'error');
+            $this->redirectWith(Router::url('/settings/appearance'), $e->getMessage(), 'error');
         }
 
         $old = trim((string)($user['avatar'] ?? ''));
@@ -501,7 +558,7 @@ final class UserController extends Controller
             $this->json(['ok' => true, 'message' => $message, 'url' => $preview]);
         }
 
-        $this->redirectWith(Router::url('/settings'), $message);
+        $this->redirectWith(Router::url('/settings/appearance'), $message);
     }
 
     /* ------------------------------------------------------------------ */
@@ -550,7 +607,7 @@ final class UserController extends Controller
         // 只放行安全字符与合法风格，防止把任意路径/参数写进 avatar 字段
         if ($seed === '' || preg_match('/^[a-z0-9_-]{1,64}$/', $seed) !== 1
             || !in_array($style, \Core\Avatar::STYLES, true)) {
-            $this->redirectWith(Router::url('/settings'), '预置头像参数无效。', 'error');
+            $this->redirectWith(Router::url('/settings/appearance'), '预置头像参数无效。', 'error');
         }
 
         $old = trim((string)($user['avatar'] ?? ''));
@@ -562,7 +619,7 @@ final class UserController extends Controller
             Upload::remove($old);
         }
 
-        $this->redirectWith(Router::url('/settings'), '预置头像已应用。');
+        $this->redirectWith(Router::url('/settings/appearance'), '预置头像已应用。');
     }
 
     /**
@@ -577,7 +634,7 @@ final class UserController extends Controller
     public function applyDicebearAvatar(array $params): never
     {
         $user = $this->requireLogin();
-        $back = Router::url('/settings');
+        $back = Router::url('/settings/appearance');
 
         $seed = strtolower(trim((string)Request::string('seed', '', 64)));
 

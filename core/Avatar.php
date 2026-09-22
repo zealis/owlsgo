@@ -29,7 +29,15 @@ final class Avatar
      * 预览走本站代理 `/avatar/dice/{seed}.svg`，不经用户浏览器直连第三方：
      * 一来国内访问 DiceBear 不一定通，二来不把用户的 IP 暴露给外部服务。
      */
-    public const DICEBEAR_STYLE = 'big-ears-neutral';
+    public const DICEBEAR_STYLE = 'avataaars';
+
+    /**
+     * DiceBear 风格附加参数（拼在 ?seed=… 之后）
+     *
+     * avataaars 风格：配饰与胡须概率拉满 —— 每个头像都会带眼镜/耳饰一类配饰与胡须，
+     * 形象更有辨识度（这是站点选定的风格，改这里会整体换脸）。
+     */
+    public const DICEBEAR_PARAMS = 'accessoriesProbability=100&facialHairProbability=100';
 
     /** DiceBear 背景色（接口要求的逗号分隔十六进制，不带 #） */
     public const DICEBEAR_BACKGROUNDS = 'fdba74,fcd34d,fca5a5,fb923c,f9a8d4';
@@ -57,7 +65,9 @@ final class Avatar
             $seed       = self::randomSeed();
             $presets[] = [
                 'seed' => $seed,
-                'url'  => Router::url('/avatar/dice/' . rawurlencode($seed) . '.svg'),
+                'url'  => Router::url('/avatar/dice/' . rawurlencode($seed) . '.svg', [
+                    'v' => self::styleVersion(),
+                ]),
             ];
         }
 
@@ -70,11 +80,23 @@ final class Avatar
         return 'db' . bin2hex(random_bytes(8));
     }
 
+    /**
+     * 当前头像风格的指纹（风格名 + 参数 + 背景色的短哈希）
+     *
+     * 用途：DiceBear 代理响应是 `immutable` 长缓存，换风格后如果不改 URL，
+     * 浏览器会继续用旧图半年 —— 把它拼进 URL 的 ?v= 即可让旧图立即失效。
+     */
+    public static function styleVersion(): string
+    {
+        return substr(md5(self::DICEBEAR_STYLE . '|' . self::DICEBEAR_PARAMS . '|' . self::DICEBEAR_BACKGROUNDS), 0, 8);
+    }
+
     /** DiceBear 头像 URL（服务端抓取用，不直接给浏览器） */
     public static function dicebearUrl(string $seed): string
     {
         return 'https://api.dicebear.com/10.x/' . self::DICEBEAR_STYLE . '/svg'
             . '?seed=' . rawurlencode($seed)
+            . '&' . self::DICEBEAR_PARAMS
             . '&backgroundColor=' . self::DICEBEAR_BACKGROUNDS;
     }
 
@@ -93,6 +115,15 @@ final class Avatar
             return null;
         }
 
+        /*
+         * 失败负缓存：DiceBear 不可达（断网/被墙）时，若每个头像请求都
+         * 白等一次超时再回退，页面会慢得没法看。失败后记 10 分钟标记，
+         * 期间直接走本地回退，不再重复尝试。
+         */
+        if (Cache::get('dicebear:fail:' . $seed) !== null) {
+            return null;
+        }
+
         $file = self::dicebearCacheFile($seed);
 
         if ($file !== null && is_file($file)) {
@@ -105,6 +136,7 @@ final class Avatar
         $svg = self::fetchDicebear($seed);
 
         if ($svg === null) {
+            Cache::set('dicebear:fail:' . $seed, 1, 600);   // 10 分钟内不再重试
             return null;
         }
 
@@ -280,7 +312,12 @@ final class Avatar
             return null;
         }
 
-        return $dir . '/' . $seed . '.svg';
+        /*
+         * 缓存文件名里带上**风格指纹**：换风格（或改风格参数/背景色）后，
+         * 同名旧缓存自然失效，不需要去删历史文件 —— 之前换风格时正是靠人工清目录，
+         * 一旦删不干净（权限/占用）就会新旧头像混着显示。
+         */
+        return $dir . '/' . $seed . '-' . self::styleVersion() . '.svg';
     }
 
     /** 配色板（经典蓝白 + 少量点缀色） */
@@ -328,7 +365,18 @@ final class Avatar
             return Router::url('/media/' . ltrim($uploaded, '/'));
         }
 
-        return Router::url('/avatar/' . self::seed($user) . '.svg', ['s' => $size]);
+        /*
+         * 默认头像（用户没设置头像/没上传时）也走 DiceBear 代理：
+         * seed = 用户名哈希，同一个用户永远得到同一张脸；
+         * DiceBear 不可达时，代理路由会自动回退到本地生成的备用头像
+         * （固定猫头鹰风格，见 MediaController::dicebear 的回退分支），
+         * 页面上永远不会出现裂图。
+         */
+        return Router::url('/avatar/dice/' . rawurlencode(self::seed($user)) . '.svg', [
+            's' => $size,
+            // 风格指纹：DiceBear 响应是 immutable 长缓存，换风格时靠这个参数让浏览器取新图
+            'v' => self::styleVersion(),
+        ]);
     }
 
     /**

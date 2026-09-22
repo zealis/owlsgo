@@ -86,6 +86,7 @@ final class Settings
 
             /* 站点开关 */
             'site_closed'        => '0',
+            'reserved_names'     => 'admin,root,administrator,system,support,official,staff,moderator,api,www,login,register,account,help,about,null,undefined,guest,test',
             'site_closed_reason' => '站点正在维护，请稍后再访问。',
 
             /* 调试模式：开启后记录 debug 级日志、出错页显示详细报错 */
