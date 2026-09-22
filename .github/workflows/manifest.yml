@@ -33,7 +33,7 @@ jobs:
           php-version: '8.2'
 
       - name: Build manifest
-        run: php .tools/build-manifest.php
+        run: php scripts/build-manifest.php
 
       - name: Commit manifest
         run: |
