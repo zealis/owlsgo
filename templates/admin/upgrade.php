@@ -21,7 +21,7 @@
                 <dd>未配置 —— 请在 <code>config/app.php</code> 的 <code>upgrade_repo</code> 填写 GitHub 仓库（owner/repo）。</dd>
             <?php elseif ($error !== ''): ?>
                 <dt>检测状态</dt>
-                <dd class="text-danger"><?= e($error) ?></dd>
+                <dd class="ow-text-danger"><?= e($error) ?></dd>
             <?php elseif ($manifest !== null): ?>
                 <dt>升级源</dt>
                 <dd class="mono"><code><?= e($repo . ' @ ' . $branch) ?></code></dd>

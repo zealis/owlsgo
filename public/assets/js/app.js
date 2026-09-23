@@ -921,7 +921,7 @@
 
     var discard = document.createElement('button');
     discard.type = 'button';
-    discard.className = 'button outline small';
+    discard.className = 'ow-button ow-outline ow-small';
     discard.textContent = '丢弃草稿';
       discard.addEventListener('click', function () {
         clearDraft(form);
@@ -935,7 +935,7 @@
 
       var restore = document.createElement('button');
       restore.type = 'button';
-      restore.className = 'button small';
+      restore.className = 'ow-button ow-small';
       restore.textContent = '恢复草稿';
       restore.addEventListener('click', function () {
         var data = readDraft(form);
