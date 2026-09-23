@@ -30,57 +30,64 @@ final class FavoriteModel extends Model
             return ['favorited' => false, 'count' => 0];
         }
 
-        $exists = (bool)Database::value(
-            'SELECT 1 FROM ' . Database::identifier('favorites')
-            . ' WHERE ' . Database::identifier('user_id') . ' = ? AND ' . Database::identifier('thread_id') . ' = ?',
-            [$userId, $threadId]
-        );
-
-        if ($exists) {
-            Database::delete(
-                'favorites',
-                Database::identifier('user_id') . ' = ? AND ' . Database::identifier('thread_id') . ' = ?',
+        /*
+         * 收藏要同时改三张表：favorites（记录）、threads.favorite_count、
+         * users.favorite_count —— 任何一处单独成功都会让计数与记录对不上，
+         * 所以整段用事务包起来（要么三张表都写，要么都不写）。
+         */
+        return Database::transaction(static function () use ($userId, $threadId): array {
+            $exists = (bool)Database::value(
+                'SELECT 1 FROM ' . Database::identifier('favorites')
+                . ' WHERE ' . Database::identifier('user_id') . ' = ? AND ' . Database::identifier('thread_id') . ' = ?',
                 [$userId, $threadId]
             );
-            $delta = -1;
-            $favorited = false;
-        } else {
-            Database::insertIgnore('favorites', [
-                'user_id'    => $userId,
-                'thread_id'  => $threadId,
-                'created_at' => time(),
-            ], ['user_id', 'thread_id']);
-            $delta = 1;
-            $favorited = true;
-        }
 
-        // 同步帖子冗余计数
-        $column = Database::identifier('favorite_count');
-        Database::execute(
-            'UPDATE ' . Database::identifier('threads')
-            . ' SET ' . $column . ' = ' . $column . ' + ?'
-            . ' WHERE ' . Database::identifier('id') . ' = ?',
-            [$delta, $threadId]
-        );
+            if ($exists) {
+                Database::delete(
+                    'favorites',
+                    Database::identifier('user_id') . ' = ? AND ' . Database::identifier('thread_id') . ' = ?',
+                    [$userId, $threadId]
+                );
+                $delta = -1;
+                $favorited = false;
+            } else {
+                Database::insertIgnore('favorites', [
+                    'user_id'    => $userId,
+                    'thread_id'  => $threadId,
+                    'created_at' => time(),
+                ], ['user_id', 'thread_id']);
+                $delta = 1;
+                $favorited = true;
+            }
 
-        // 同步用户收藏数
-        $userColumn = Database::identifier('favorite_count');
-        Database::execute(
-            'UPDATE ' . Database::identifier('users')
-            . ' SET ' . $userColumn . ' = ' . $userColumn . ' + ?'
-            . ' WHERE ' . Database::identifier('id') . ' = ?',
-            [$delta, $userId]
-        );
+            // 同步帖子冗余计数
+            $column = Database::identifier('favorite_count');
+            Database::execute(
+                'UPDATE ' . Database::identifier('threads')
+                . ' SET ' . $column . ' = ' . $column . ' + ?'
+                . ' WHERE ' . Database::identifier('id') . ' = ?',
+                [$delta, $threadId]
+            );
 
-        Model::flushRowCache();
+            // 同步用户收藏数
+            $userColumn = Database::identifier('favorite_count');
+            Database::execute(
+                'UPDATE ' . Database::identifier('users')
+                . ' SET ' . $userColumn . ' = ' . $userColumn . ' + ?'
+                . ' WHERE ' . Database::identifier('id') . ' = ?',
+                [$delta, $userId]
+            );
 
-        $count = (int)Database::value(
-            'SELECT ' . Database::identifier('favorite_count') . ' FROM ' . Database::identifier('threads')
-            . ' WHERE ' . Database::identifier('id') . ' = ?',
-            [$threadId]
-        );
+            Model::flushRowCache();
 
-        return ['favorited' => $favorited, 'count' => max(0, $count)];
+            $count = (int)Database::value(
+                'SELECT ' . Database::identifier('favorite_count') . ' FROM ' . Database::identifier('threads')
+                . ' WHERE ' . Database::identifier('id') . ' = ?',
+                [$threadId]
+            );
+
+            return ['favorited' => $favorited, 'count' => max(0, $count)];
+        });
     }
 
     /**

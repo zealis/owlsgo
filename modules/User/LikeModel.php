@@ -35,45 +35,52 @@ final class LikeModel extends Model
             return ['liked' => false, 'count' => 0];
         }
 
-        $exists = (bool)Database::value(
-            'SELECT 1 FROM ' . Database::identifier('likes')
-            . ' WHERE ' . Database::identifier('user_id') . ' = ?'
-            . ' AND ' . Database::identifier('target') . ' = ?'
-            . ' AND ' . Database::identifier('target_id') . ' = ?',
-            [$userId, $target, $targetId]
-        );
-
-        if ($exists) {
-            Database::delete(
-                'likes',
-                Database::identifier('user_id') . ' = ? AND ' . Database::identifier('target') . ' = ?'
+        /*
+         * 「点赞记录（likes）」与「冗余计数（like_count）」必须成对变更：
+         * 只成功一半就会留下永远对不上的数据，因此整段放进同一个事务 ——
+         * 要么都生效，要么都回滚（见 Core\Database::transaction）。
+         */
+        return Database::transaction(static function () use ($userId, $target, $targetId): array {
+            $exists = (bool)Database::value(
+                'SELECT 1 FROM ' . Database::identifier('likes')
+                . ' WHERE ' . Database::identifier('user_id') . ' = ?'
+                . ' AND ' . Database::identifier('target') . ' = ?'
                 . ' AND ' . Database::identifier('target_id') . ' = ?',
                 [$userId, $target, $targetId]
             );
-            $liked = false;
-            $delta = -1;
-        } else {
-            Database::insertIgnore('likes', [
-                'user_id'    => $userId,
-                'target'     => $target,
-                'target_id'  => $targetId,
-                'created_at' => time(),
-            ], ['user_id', 'target', 'target_id']);
-            $liked = true;
-            $delta = 1;
-        }
 
-        // 同步冗余计数（原子自增，避免竞态）
-        $table = $target === 'thread' ? 'threads' : 'posts';
-        self::adjustCounter($table, $targetId, $delta);
+            if ($exists) {
+                Database::delete(
+                    'likes',
+                    Database::identifier('user_id') . ' = ? AND ' . Database::identifier('target') . ' = ?'
+                    . ' AND ' . Database::identifier('target_id') . ' = ?',
+                    [$userId, $target, $targetId]
+                );
+                $liked = false;
+                $delta = -1;
+            } else {
+                Database::insertIgnore('likes', [
+                    'user_id'    => $userId,
+                    'target'     => $target,
+                    'target_id'  => $targetId,
+                    'created_at' => time(),
+                ], ['user_id', 'target', 'target_id']);
+                $liked = true;
+                $delta = 1;
+            }
 
-        $count = (int)Database::value(
-            'SELECT ' . Database::identifier('like_count') . ' FROM ' . Database::identifier($table)
-            . ' WHERE ' . Database::identifier('id') . ' = ?',
-            [$targetId]
-        );
+            // 同步冗余计数（原子自增，避免竞态）
+            $table = $target === 'thread' ? 'threads' : 'posts';
+            self::adjustCounter($table, $targetId, $delta);
 
-        return ['liked' => $liked, 'count' => max(0, $count)];
+            $count = (int)Database::value(
+                'SELECT ' . Database::identifier('like_count') . ' FROM ' . Database::identifier($table)
+                . ' WHERE ' . Database::identifier('id') . ' = ?',
+                [$targetId]
+            );
+
+            return ['liked' => $liked, 'count' => max(0, $count)];
+        });
     }
 
     /** 某用户对若干目标的点赞情况 */

@@ -481,68 +481,75 @@ final class ForumModel extends Model
         $now      = time();
         $changed  = 0;
 
-        $rows = Database::select(
-            'SELECT ' . Database::identifier('id') . ', ' . Database::identifier('moderators')
-            . ' FROM ' . Database::identifier('forums')
-        );
+        /*
+         * 版主设置会写两张表：forums.moderators（可能多行）+ users.group_id（版主组 ↔ 注册组）。
+         * 两处必须一致 —— 版块记住他是版主、用户组却没同步（或反过来）会直接影响权限判定，
+         * 所以整段放进事务。
+         */
+        return Database::transaction(static function () use ($userId, $wanted, $now): int {
+            $rows = Database::select(
+                'SELECT ' . Database::identifier('id') . ', ' . Database::identifier('moderators')
+                . ' FROM ' . Database::identifier('forums')
+            );
 
-        foreach ($rows as $row) {
-            $forumId = (int)$row['id'];
-            $current = group_ids_from_field((string)$row['moderators']);
-            $has     = in_array($userId, $current, true);
-            $want    = in_array($forumId, $wanted, true);
+            foreach ($rows as $row) {
+                $forumId = (int)$row['id'];
+                $current = group_ids_from_field((string)$row['moderators']);
+                $has     = in_array($userId, $current, true);
+                $want    = in_array($forumId, $wanted, true);
 
-            if ($has === $want) {
-                continue;
+                if ($has === $want) {
+                    continue;
+                }
+
+                $next = $want
+                    ? array_values(array_unique(array_merge($current, [$userId])))
+                    : array_values(array_diff($current, [$userId]));
+
+                Database::update(
+                    'forums',
+                    ['moderators' => implode(',', $next), 'updated_at' => $now],
+                    Database::identifier('id') . ' = ?',
+                    [$forumId]
+                );
+                $changed++;
             }
 
-            $next = $want
-                ? array_values(array_unique(array_merge($current, [$userId])))
-                : array_values(array_diff($current, [$userId]));
+            if ($changed > 0) {
+                self::flush();
+            }
 
-            Database::update(
-                'forums',
-                ['moderators' => implode(',', $next), 'updated_at' => $now],
-                Database::identifier('id') . ' = ?',
-                [$forumId]
+            /*
+             * 用户组同步：担任任一版块版主 → 进入「版主」组（前台组名/身份展示一致）；
+             * 不再担任任何版块版主 → 回到「注册用户」组。
+             * 只在「版主组 ↔ 注册用户组」之间自动切换，管理员/超管/自定义组不动。
+             */
+            $user = Database::first(
+                'SELECT ' . Database::identifier('group_id')
+                . ' FROM ' . Database::identifier('users')
+                . ' WHERE ' . Database::identifier('id') . ' = ?'
+                . ' AND ' . Database::identifier('deleted_at') . ' IS NULL',
+                [$userId]
             );
-            $changed++;
-        }
 
-        if ($changed > 0) {
-            self::flush();
-        }
-
-        /*
-         * 用户组同步：担任任一版块版主 → 进入「版主」组（前台组名/身份展示一致）；
-         * 不再担任任何版块版主 → 回到「注册用户」组。
-         * 只在「版主组 ↔ 注册用户组」之间自动切换，管理员/超管/自定义组不动。
-         */
-        $user = Database::first(
-            'SELECT ' . Database::identifier('group_id')
-            . ' FROM ' . Database::identifier('users')
-            . ' WHERE ' . Database::identifier('id') . ' = ?'
-            . ' AND ' . Database::identifier('deleted_at') . ' IS NULL',
-            [$userId]
-        );
-
-        if ($user !== null) {
-            $currentGroup = (int)$user['group_id'];
-            $autoSwitchable = [\Core\Permission::MEMBER_GROUP, \Core\Permission::MODERATOR_GROUP];
-            if (in_array($currentGroup, $autoSwitchable, true)) {
-                $targetGroup = $wanted === [] ? \Core\Permission::MEMBER_GROUP : \Core\Permission::MODERATOR_GROUP;
-                if ($targetGroup !== $currentGroup) {
-                    Database::update(
-                        'users',
-                        ['group_id' => $targetGroup, 'updated_at' => $now],
-                        Database::identifier('id') . ' = ?',
-                        [$userId]
-                    );
-                    Model::flushRowCache();
+            if ($user !== null) {
+                $currentGroup = (int)$user['group_id'];
+                $autoSwitchable = [\Core\Permission::MEMBER_GROUP, \Core\Permission::MODERATOR_GROUP];
+                if (in_array($currentGroup, $autoSwitchable, true)) {
+                    $targetGroup = $wanted === [] ? \Core\Permission::MEMBER_GROUP : \Core\Permission::MODERATOR_GROUP;
+                    if ($targetGroup !== $currentGroup) {
+                        Database::update(
+                            'users',
+                            ['group_id' => $targetGroup, 'updated_at' => $now],
+                            Database::identifier('id') . ' = ?',
+                            [$userId]
+                        );
+                        Model::flushRowCache();
+                    }
                 }
             }
-        }
 
         return $changed;
+        });
     }
 }

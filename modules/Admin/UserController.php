@@ -87,23 +87,48 @@ final class UserController extends AdminBaseController
                 continue;
             }
 
-            if ($withThreads) {
-                foreach (UserModel::threadIdsOf($id) as $threadId) {
-                    if (ThreadModel::destroy($threadId)) {
-                        $threads++;
+            /*
+             * 「删内容 + 删账号」是一个原子单元：中途失败若只删了一半，
+             * 会留下「账号还在、帖子已没了」这类残缺数据（而且计数已经减过）。
+             *
+             * 粒度刻意选在**单个账号**而不是整个批量：批量删 50 个人时，
+             * 第 30 个失败不应该把前 29 个的删除也回滚掉（那是用户已经确认过的操作），
+             * 更不该开一个长时间锁库的大事务。
+             */
+            try {
+                $counts = Database::transaction(static function () use ($id, $withThreads, $withPosts): array {
+                    $t = 0;
+                    $p = 0;
+
+                    if ($withThreads) {
+                        foreach (UserModel::threadIdsOf($id) as $threadId) {
+                            if (ThreadModel::destroy($threadId)) {
+                                $t++;
+                            }
+                        }
                     }
-                }
+
+                    if ($withPosts) {
+                        foreach (UserModel::replyIdsOf($id) as $postId) {
+                            if (PostModel::destroy($postId)) {
+                                $p++;
+                            }
+                        }
+                    }
+
+                    UserModel::deleteById($id);
+
+                    return ['threads' => $t, 'posts' => $p];
+                });
+            } catch (\Throwable $e) {
+                // 单个账号删除失败：记日志、跳过它，不影响其余账号
+                \Core\Logger::exception($e, 'admin:delete-user:' . $id);
+                $skipped++;
+                continue;
             }
 
-            if ($withPosts) {
-                foreach (UserModel::replyIdsOf($id) as $postId) {
-                    if (PostModel::destroy($postId)) {
-                        $posts++;
-                    }
-                }
-            }
-
-            UserModel::deleteById($id);
+            $threads += $counts['threads'];
+            $posts   += $counts['posts'];
 
             $names[] = (string)$user['username'];
             $deleted++;

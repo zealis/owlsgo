@@ -513,8 +513,36 @@ final class Database
         }
     }
 
+    /** 事务嵌套层级（0 = 不在事务中；>0 表示当前处于第几层） */
+    private static int $txDepth = 0;
+
     /**
-     * 在事务中执行回调；发生异常自动回滚
+     * 统一事务入口：把一段「多表写入」变成**要么全部生效、要么全部回滚**
+     *
+     * 用法（业务层只管把相关写操作放进闭包，不要自己 begin/commit）：
+     *
+     *     $result = Database::transaction(function () use ($data) {
+     *         $threadId = ThreadModel::create($data);      // 表 1
+     *         ForumModel::bumpThreadCount($forumId, 1);    // 表 2
+     *         UserModel::bumpThreadCount($userId, 1);      // 表 3
+     *         return $threadId;                            // 返回值原样返回
+     *     });
+     *
+     * 语义：
+     *   - 最外层：真事务。回调抛任何异常（含 Error / 类型错误）→ 回滚后把异常**原样抛出**，
+     *     由调用方决定是提示用户还是记日志；回调正常返回 → 提交，并刷新模型行缓存
+     *     （否则同一次请求内后续读取会拿到事务前的旧行）。
+     *   - **嵌套调用**：用 SAVEPOINT 做真嵌套（不是「假装嵌套」）：
+     *       · 内层抛异常且外层**捕获**它 → 只回滚内层那一段，外层可以继续提交（局部回滚）；
+     *       · 内层抛异常外层**不捕获** → 异常继续上抛，最外层整体回滚（全体回滚）。
+     *     旧实现是「已在事务中就直接执行」，内层出错只能把整个事务拖垮，无法表达局部回滚。
+     *
+     * ⚠️ 两个使用禁忌：
+     *   1. **不要在事务里执行 DDL**（ALTER/CREATE/DROP）：MySQL 会隐式提交，
+     *      回滚语义随即失效（SQLite / PostgreSQL 支持事务内 DDL，行为不一致更麻烦）。
+     *      典型的「加字段」流程（Database::hasColumn 探测 + ALTER）请放在事务外。
+     *   2. **不要在事务里做慢操作**：HTTP 请求、发邮件、大文件读写会把行锁/库锁
+     *      一直握到操作结束。事务里只放数据库写，外部副作用放事务后。
      *
      * @template T
      * @param Closure():T $callback
@@ -524,26 +552,75 @@ final class Database
     {
         $pdo = self::connection();
 
-        // 支持嵌套：已在事务中时直接执行，由最外层统一提交
-        if ($pdo->inTransaction()) {
+        // ---- 最外层：真事务 ----
+        if (self::$txDepth === 0) {
+            $pdo->beginTransaction();
+            self::$txDepth = 1;
+
+            try {
+                $result = $callback();
+                $pdo->commit();
+                Model::flushRowCache();
+
+                /*
+                 * 数据落库成功之后，再执行事务里累积的缓存失效
+                 * （Cache::forget / flush 在事务中只会入队，不立即执行）。
+                 * 这样保证「先改数据、再刷缓存」：缓存永远不会领先于数据库，
+                 * 也不会因为一次回滚而被无谓清空。
+                 */
+                Cache::commitDeferred();
+
+                return $result;
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                Model::flushRowCache();
+
+                // 回滚：库没有变，丢弃事务里排队的缓存失效
+                Cache::discardDeferred();
+
+                throw $e;
+            } finally {
+                self::$txDepth = 0;
+            }
+        }
+
+        // ---- 嵌套层：SAVEPOINT（内层可独立回滚，见方法说明） ----
+        $name = 'owlsgo_sp_' . self::$txDepth;
+        self::$txDepth++;
+
+        try {
+            $pdo->exec('SAVEPOINT ' . $name);
+        } catch (Throwable) {
+            // 极少数驱动/配置不支持 SAVEPOINT：退化为旧行为（内层直接执行）
+            self::$txDepth--;
+
             return $callback();
         }
 
-        $pdo->beginTransaction();
-
         try {
             $result = $callback();
-            $pdo->commit();
-            Model::flushRowCache();
+            $pdo->exec('RELEASE SAVEPOINT ' . $name);
 
             return $result;
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            try {
+                $pdo->exec('ROLLBACK TO SAVEPOINT ' . $name);
+            } catch (Throwable) {
+                // 回滚 savepoint 失败：交给最外层统一回滚
             }
-            Model::flushRowCache();
+
             throw $e;
+        } finally {
+            self::$txDepth--;
         }
+    }
+
+    /** 当前是否处于事务中（嵌套任意层返回 true） */
+    public static function inTransaction(): bool
+    {
+        return self::$txDepth > 0 || self::connection()->inTransaction();
     }
 
     /** 构造查询构造器 */

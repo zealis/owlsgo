@@ -480,8 +480,15 @@ final class PluginManager
      */
     public static function uninstall(string $id): void
     {
-        Database::delete('plugins', Database::identifier('id') . ' = ?', [$id]);
-        Database::delete('cron_tasks', Database::identifier('plugin') . ' = ?', [$id]);
+        /*
+         * 「插件记录」与「它的计划任务」必须一起删：只删一半会留下
+         * 指向不存在插件的孤儿任务（后台计划任务页会显示未知处理器）。
+         * 资源合并与日志是文件/IO 操作，留在事务外（事务里只放数据库写）。
+         */
+        Database::transaction(static function () use ($id): void {
+            Database::delete('plugins', Database::identifier('id') . ' = ?', [$id]);
+            Database::delete('cron_tasks', Database::identifier('plugin') . ' = ?', [$id]);
+        });
 
         self::mergeAssets(true);
 
@@ -626,21 +633,29 @@ final class PluginManager
             $duration = (int)round((microtime(true) - $started) * 1000);
             $interval = max(60, (int)$task['interval']);
 
-            Database::update('cron_tasks', [
-                'last_run_at' => $now,
-                'next_run_at' => $now + $interval,
-                'last_status' => $status,
-                'run_count'   => (int)$task['run_count'] + 1,
-                'updated_at'  => $now,
-            ], Database::identifier('id') . ' = ?', [(int)$task['id']]);
+            /*
+             * 「任务状态」与「本次执行日志」必须成对落库：只更新状态没写日志，
+             * 后台就看不出这次到底跑了什么；只写日志没更新状态，任务会被反复重跑。
+             * 注意 handler 本身在事务外执行（它可能很慢/带外部副作用），
+             * 事务里只有这两条写。
+             */
+            Database::transaction(static function () use ($task, $now, $interval, $status, $key, $message, $duration): void {
+                Database::update('cron_tasks', [
+                    'last_run_at' => $now,
+                    'next_run_at' => $now + $interval,
+                    'last_status' => $status,
+                    'run_count'   => (int)$task['run_count'] + 1,
+                    'updated_at'  => $now,
+                ], Database::identifier('id') . ' = ?', [(int)$task['id']]);
 
-            Database::insert('cron_logs', [
-                'name'       => $key,
-                'status'     => $status,
-                'message'    => mb_substr($message, 0, 400),
-                'duration'   => $duration,
-                'created_at' => $now,
-            ]);
+                Database::insert('cron_logs', [
+                    'name'       => $key,
+                    'status'     => $status,
+                    'message'    => mb_substr($message, 0, 400),
+                    'duration'   => $duration,
+                    'created_at' => $now,
+                ]);
+            });
 
             $results[] = [
                 'name'     => $key,

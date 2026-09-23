@@ -631,51 +631,60 @@ final class Installer
             . "- 前端基于 OATUI，经典蓝白配色，完整适配移动端\n\n"
             . "请第一时间前往后台修改站点名称、关闭注册或调整权限：[进入后台](/admin)";
 
-        $threadId = Database::insert('threads', [
-            'forum_id'           => (int)$forum['id'],
-            'user_id'            => $adminId,
-            'title'              => '欢迎来到 owlsgo（新手指引）',
-            'views'              => 0,
-            'reply_count'        => 0,
-            'like_count'         => 0,
-            'favorite_count'     => 0,
-            'is_pinned'          => 1,
-            'is_essence'         => 1,
-            'is_locked'          => 0,
-            'is_recommended'     => 1,
-            'status'             => 1,
-            'last_reply_at'      => $now,
-            'last_reply_user_id' => $adminId,
-            'created_at'         => $now,
-            'updated_at'         => $now,
-        ]);
+        /*
+         * 欢迎帖要同时写三张表：threads、posts、forums（版块计数与最后发表）。
+         * 安装阶段只写一半的话，装完立刻就是「有帖子但版块计数为 0」的错乱数据，
+         * 所以整段放进同一个事务。
+         */
+        $threadId = Database::transaction(static function () use ($forum, $adminId, $now, $content): int {
+            $threadId = Database::insert('threads', [
+                'forum_id'           => (int)$forum['id'],
+                'user_id'            => $adminId,
+                'title'              => '欢迎来到 owlsgo（新手指引）',
+                'views'              => 0,
+                'reply_count'        => 0,
+                'like_count'         => 0,
+                'favorite_count'     => 0,
+                'is_pinned'          => 1,
+                'is_essence'         => 1,
+                'is_locked'          => 0,
+                'is_recommended'     => 1,
+                'status'             => 1,
+                'last_reply_at'      => $now,
+                'last_reply_user_id' => $adminId,
+                'created_at'         => $now,
+                'updated_at'         => $now,
+            ]);
 
-        Database::insert('posts', [
-            'thread_id'    => $threadId,
-            'forum_id'     => (int)$forum['id'],
-            'user_id'      => $adminId,
-            'parent_id'    => 0,
-            'floor'        => 1,
-            'is_first'     => 1,
-            'content'      => $content,
-            'content_html' => Text::toHtml($content),
-            'like_count'   => 0,
-            'status'       => 1,
-            'ip'           => Request::ip(),
-            'device'       => 'desktop',
-            'user_agent'   => 'Installer',
-            'created_at'   => $now,
-            'updated_at'   => $now,
-        ]);
+            Database::insert('posts', [
+                'thread_id'    => $threadId,
+                'forum_id'     => (int)$forum['id'],
+                'user_id'      => $adminId,
+                'parent_id'    => 0,
+                'floor'        => 1,
+                'is_first'     => 1,
+                'content'      => $content,
+                'content_html' => Text::toHtml($content),
+                'like_count'   => 0,
+                'status'       => 1,
+                'ip'           => Request::ip(),
+                'device'       => 'desktop',
+                'user_agent'   => 'Installer',
+                'created_at'   => $now,
+                'updated_at'   => $now,
+            ]);
 
-        Database::update('forums', [
-            'thread_count'     => 1,
-            'post_count'       => 1,
-            'last_thread_id'   => $threadId,
-            'last_thread_name' => '欢迎来到 owlsgo（新手指引）',
-            'last_reply_at'    => $now,
-            'updated_at'       => $now,
-        ], Database::identifier('id') . ' = ?', [(int)$forum['id']]);
+            Database::update('forums', [
+                'thread_count'     => 1,
+                'post_count'       => 1,
+                'last_thread_id'   => $threadId,
+                'last_thread_name' => '欢迎来到 owlsgo（新手指引）',
+                'last_reply_at'    => $now,
+                'updated_at'       => $now,
+            ], Database::identifier('id') . ' = ?', [(int)$forum['id']]);
+
+        return $threadId;
+        });
     }
 
     /** 写入安装锁 */

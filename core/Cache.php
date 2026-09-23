@@ -117,13 +117,40 @@ final class Cache
         }
 
         $value = $resolver();
-        self::set($key, $value, $ttl);
+
+        /*
+         * 事务中不写缓存：此刻读到的很可能是**尚未提交**的数据，
+         * 一旦事务回滚，缓存里就留下一份库里根本不存在的「脏数据」，
+         * 而且没人会去清它（回滚路径不知道写过哪些键）。
+         * 所以事务内只返回结果、不落缓存 —— 提交后由后续请求正常建立缓存。
+         */
+        if (!Database::inTransaction()) {
+            self::set($key, $value, $ttl);
+        }
 
         return $value;
     }
 
-    /** 删除缓存 */
+    /**
+     * 删除缓存
+     *
+     * **事务中调用会延后到提交后执行**（见类文件顶部的说明）：
+     * 事务回滚时数据库并没有变，缓存仍然是对的，没必要白失效一次；
+     * 只有真正提交了，才需要让缓存跟着更新。
+     */
     public static function forget(string $key): void
+    {
+        if (self::deferToCommit()) {
+            self::$deferredForget[$key] = true;
+
+            return;
+        }
+
+        self::doForget($key);
+    }
+
+    /** 真正执行单键失效（内部使用，不做事务判断） */
+    private static function doForget(string $key): void
     {
         unset(self::$memo[$key]);
         self::$tombstone[$key] = true;
@@ -138,6 +165,18 @@ final class Cache
      * 按前缀批量失效（例如所有以 "forum:" 开头的缓存）
      */
     public static function forgetPrefix(string $prefix): void
+    {
+        if (self::deferToCommit()) {
+            self::$deferredPrefix[$prefix] = true;
+
+            return;
+        }
+
+        self::doForgetPrefix($prefix);
+    }
+
+    /** 真正执行前缀失效（内部使用） */
+    private static function doForgetPrefix(string $prefix): void
     {
         foreach (array_keys(self::$memo) as $key) {
             if (str_starts_with($key, $prefix)) {
@@ -163,8 +202,22 @@ final class Cache
         }
     }
 
-    /** 清空全部文件缓存 */
+    /**
+     * 清空全部文件缓存（事务中调用会延后到提交后执行）
+     */
     public static function flush(): int
+    {
+        if (self::deferToCommit()) {
+            self::$deferredFlush = true;
+
+            return 0;
+        }
+
+        return self::doFlush();
+    }
+
+    /** 真正执行全量清空（内部使用） */
+    private static function doFlush(): int
     {
         self::$memo      = [];
         self::$tombstone = [];
@@ -183,6 +236,73 @@ final class Cache
         }
 
         return $removed;
+    }
+
+    // ------------------------------------------------------------------
+    // 事务感知：数据改完（提交成功）之后再失效缓存
+    // ------------------------------------------------------------------
+
+    /** 事务内累积的待失效键 / 前缀 / 是否需要全清 */
+    private static array $deferredForget = [];
+    private static array $deferredPrefix = [];
+    private static bool $deferredFlush   = false;
+
+    /** 正在执行延后任务（避免递归再入队） */
+    private static bool $committing = false;
+
+    /**
+     * 是否应当把这次失效延后到事务提交之后
+     *
+     * 判断依据：当前在事务里，且不是在「执行延后任务」的过程中。
+     */
+    private static function deferToCommit(): bool
+    {
+        return !self::$committing && Database::inTransaction();
+    }
+
+    /**
+     * 事务提交成功：执行事务里累积的缓存失效
+     *
+     * 由 Core\Database::transaction() 在最外层 commit 之后调用。
+     */
+    public static function commitDeferred(): void
+    {
+        if (self::$deferredFlush) {
+            self::$deferredFlush = false;
+            self::$deferredForget = [];
+            self::$deferredPrefix = [];
+            self::$committing = true;
+            self::doFlush();
+            self::$committing = false;
+
+            return;
+        }
+
+        if (self::$deferredForget === [] && self::$deferredPrefix === []) {
+            return;
+        }
+
+        $keys     = array_keys(self::$deferredForget);
+        $prefixes = array_keys(self::$deferredPrefix);
+        self::$deferredForget = [];
+        self::$deferredPrefix = [];
+
+        self::$committing = true;
+        foreach ($keys as $key) {
+            self::doForget($key);
+        }
+        foreach ($prefixes as $prefix) {
+            self::doForgetPrefix($prefix);
+        }
+        self::$committing = false;
+    }
+
+    /** 事务回滚：丢弃累积的失效（库没变，缓存也不用动） */
+    public static function discardDeferred(): void
+    {
+        self::$deferredForget = [];
+        self::$deferredPrefix = [];
+        self::$deferredFlush  = false;
     }
 
     /** 文件缓存是否启用 */

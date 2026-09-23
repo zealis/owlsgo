@@ -357,44 +357,52 @@ final class ThreadController extends Controller
 
         $content = (string)Hook::filter('content_render', $content, ['user' => $user, 'forum' => $forum]);
 
-        ThreadModel::updateById((int)$thread['id'], [
-            'title'          => $title,
-            'is_essence'     => $thread['is_essence'],
-            'updated_at'     => time(),
-        ]);
+        /*
+         * 编辑帖子要同时改多张表：threads（标题/时间）、posts（首帖正文 + 最后编辑人）、
+         * attachments（附件绑定）、forums（最后帖子名）。任何一步失败都不能留下
+         * 「标题改了、正文没改」这类半成品，因此整段放进同一个事务。
+         * Hook 与 HTTP 响应留在事务外（事务里只做数据库写）。
+         */
+        Database::transaction(static function () use ($thread, $title, $content, $user, $forum): void {
+            ThreadModel::updateById((int)$thread['id'], [
+                'title'          => $title,
+                'is_essence'     => $thread['is_essence'],
+                'updated_at'     => time(),
+            ]);
 
-        $firstPost = PostModel::firstPost((int)$thread['id']);
-        if ($firstPost !== null) {
-            PostModel::updateContent((int)$firstPost['id'], $content);
+            $firstPost = PostModel::firstPost((int)$thread['id']);
+            if ($firstPost !== null) {
+                PostModel::updateContent((int)$firstPost['id'], $content);
 
-            /*
-             * 记录最后编辑人：标题行的「已编辑」悬浮提示要写「最后由 X 编辑于 …」。
-             * 该字段是后加的（老站点靠 PostModel::ensureUpdatedByColumn() 惰性补列），
-             * 所以走 PostModel::setUpdatedBy() 的裸 SQL 写入，不经过模型字段白名单。
-             */
-            PostModel::setUpdatedBy((int)$firstPost['id'], (int)$user['id']);
+                /*
+                 * 记录最后编辑人：标题行的「已编辑」悬浮提示要写「最后由 X 编辑于 …」。
+                 * 该字段是后加的（老站点靠 PostModel::ensureUpdatedByColumn() 惰性补列），
+                 * 所以走 PostModel::setUpdatedBy() 的裸 SQL 写入，不经过模型字段白名单。
+                 */
+                PostModel::setUpdatedBy((int)$firstPost['id'], (int)$user['id']);
 
-            /*
-             * 附件绑定：编辑页提交的完整附件列表（回显的已有附件 + 新上传的）。
-             * bindToPost 只允许绑定「自己上传」的附件，防越权；列表里不包含的
-             * 已有附件保持原绑定不变（不会误删数据）。
-             */
-            AttachmentModel::bindToPost(
-                Request::intArray('attachments'),
-                (int)$user['id'],
-                (int)$thread['id'],
-                (int)$firstPost['id']
+                /*
+                 * 附件绑定：编辑页提交的完整附件列表（回显的已有附件 + 新上传的）。
+                 * bindToPost 只允许绑定「自己上传」的附件，防越权；列表里不包含的
+                 * 已有附件保持原绑定不变（不会误删数据）。
+                 */
+                AttachmentModel::bindToPost(
+                    Request::intArray('attachments'),
+                    (int)$user['id'],
+                    (int)$thread['id'],
+                    (int)$firstPost['id']
+                );
+            }
+
+            // 同步版块「最后帖子名」
+            ForumModel::updateForum((int)$forum['id'], []);
+            Database::update(
+                'forums',
+                ['last_thread_name' => $title, 'updated_at' => time()],
+                Database::identifier('id') . ' = ? AND ' . Database::identifier('last_thread_id') . ' = ?',
+                [(int)$forum['id'], (int)$thread['id']]
             );
-        }
-
-        // 同步版块「最后帖子名」
-        ForumModel::updateForum((int)$forum['id'], []);
-        Database::update(
-            'forums',
-            ['last_thread_name' => $title, 'updated_at' => time()],
-            Database::identifier('id') . ' = ? AND ' . Database::identifier('last_thread_id') . ' = ?',
-            [(int)$forum['id'], (int)$thread['id']]
-        );
+        });
 
         Hook::action('after_thread_update', ['thread_id' => (int)$thread['id'], 'user' => $user]);
 
