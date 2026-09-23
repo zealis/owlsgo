@@ -238,6 +238,13 @@ final class Updater
             $written++;
         }
 
+        // 升级请求本身就跑在 php-fpm/php-cgi 里，直接重置当前 SAPI 的 OPcache：
+        // 不做的话，新写入的 PHP 文件最长 60s（revalidate_freq）内新旧字节码混跑，
+        // 表现为「升级完成后短时间内行为诡异」。旧内核没有 OPcache 时函数不存在，跳过。
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
+
         return [
             'written'   => $written,
             'deleted'   => $deleted,

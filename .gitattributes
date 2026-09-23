@@ -1,0 +1,16 @@
+# 统一行尾：仓库与检出全部 LF。
+# 背景：线上「在线升级」用 GitHub raw（LF）整批覆盖文件；两副本（规范/运行）若行尾
+# 不一致，manifest 的 sha256 永远对不上、check-sync 误报全量差异。2026-09-23 起统一 LF。
+* text=auto eol=lf
+
+# 二进制不做行尾转换
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.sqlite binary
