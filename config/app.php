@@ -14,7 +14,7 @@ return [
     'name'    => 'owlsgo',
     /* ⚠️ 每次修改代码后必须递增（约定 2026-09-23）：manifest.json / 后台仪表盘 / asset() 兜底
        都取这里；manifest 由 Actions 在 push 后自动重算，无需手改。 */
-    'version' => '1.3.1',
+    'version' => '1.3.2',
 
     /*
      * 在线升级的 GitHub 仓库（owner/repo，如 'acme/owlsgo'）。

@@ -587,6 +587,14 @@
 
   function initUploads() {
     each(queryAll('ow-upload'), function (host) {
+      // ⚠️ 防重复装配：MutationObserver 兜底（见 boot）会在任何节点插入后再次调用本函数，
+      // 而 renderUpload 会重写 [data-files] 的子节点 → 又触发 observer → 无限微任务循环，
+      // 页面主线程被占死（浏览器报「页面无响应」）。装配过的一次都不许再跑。
+      if (host.__owInit) {
+        return;
+      }
+      host.__owInit = true;
+
       var input = host.querySelector('input[type="file"]');
 
       if (!input) {
