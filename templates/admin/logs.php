@@ -66,17 +66,17 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'list', 'size' => 16]) ?>操作日志</h3>
         <span class="spacer"></span>
-        <a class="button outline small" href="<?= e(url('/admin/logs/system')) ?>">
+        <a class="ow-button ow-outline ow-small" href="<?= e(url('/admin/logs/system')) ?>">
             <?= $view('partials/icon', ['name' => 'file', 'size' => 15]) ?>
             <span>系统日志</span>
         </a>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             <?= $hasFilter
                 ? '筛选结果 ' . number_format((int)($result['total'] ?? 0)) . ' 条 / 全部 ' . number_format($total) . ' 条'
                 : '共 ' . number_format($total) . ' 条' ?>
         </span>
-        <a class="button small ghost" href="<?= e($exportUrl) ?>">
+        <a class="ow-button ow-small ow-ghost" href="<?= e($exportUrl) ?>">
             <?= $view('partials/icon', ['name' => 'download', 'size' => 15]) ?>
             <span>导出 CSV</span>
         </a>
@@ -105,7 +105,7 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
         </div>
 
         <?php if ($hasFilter): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/logs')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/logs')) ?>">重置</a>
         <?php endif; ?>
     </form>
 
@@ -135,19 +135,19 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
                     $avatar     = is_array($log['avatar'] ?? null) ? $log['avatar'] : null;
                     ?>
                     <tr>
-                        <td class="text-light mono" style="font-size:12.5px">
+                        <td class="ow-text-light mono" style="font-size:12.5px">
                             <?= e((string)($log['time_text'] ?? '—')) ?>
                         </td>
                         <td>
                             <?php if ($avatar !== null): ?>
-                                <div class="hstack" style="gap:7px;align-items:center">
+                                <div class="ow-hstack" style="gap:7px;align-items:center">
                                     <?= avatar_img($avatar, 22) ?>
                                     <a href="<?= e(url('/admin/users/' . (int)($log['user_id'] ?? 0))) ?>">
                                         <?= e((string)($log['username'] ?? '')) ?>
                                     </a>
                                 </div>
                             <?php else: ?>
-                                <span class="text-light">
+                                <span class="ow-text-light">
                                     <?= e((string)($log['username'] ?? '系统')) ?>
                                     <span class="mono" style="font-size:11.5px">
                                         #<?= (int)($log['user_id'] ?? 0) ?>
@@ -156,13 +156,13 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
                             <?php endif; ?>
                         </td>
                         <td>
-                            <span class="badge outline"><?= e($actionText((string)($actionName ?? '')) !== '' ? $actionText((string)($actionName ?? '')) : '—') ?></span>
+                            <span class="ow-badge ow-outline"><?= e($actionText((string)($actionName ?? '')) !== '' ? $actionText((string)($actionName ?? '')) : '—') ?></span>
                         </td>
-                        <td class="mono text-light" style="font-size:12.5px">
+                        <td class="mono ow-text-light" style="font-size:12.5px">
                             <?= e((string)($log['target'] ?? '') !== '' ? (string)$log['target'] : '—') ?>
                         </td>
                         <td><span class="cell-title"><?= e((string)($log['detail'] ?? '')) ?></span></td>
-                        <td class="mono text-light" style="font-size:12.5px">
+                        <td class="mono ow-text-light" style="font-size:12.5px">
                             <?= e((string)($log['ip'] ?? '') !== '' ? (string)$log['ip'] : '—') ?>
                         </td>
                     </tr>
@@ -172,7 +172,7 @@ $actionText = static fn (string $name): string => $actionLabels[$name] ?? $name;
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         导出为 CSV（UTF-8 带 BOM，Excel 可直接打开中文），单次最多导出 5000 条。
         写日志失败不会影响主流程，因此极端情况下可能缺失个别记录。
     </div>

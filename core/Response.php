@@ -196,7 +196,7 @@ final class Response
             'Referrer-Policy'         => 'strict-origin-when-cross-origin',
             'X-XSS-Protection'        => '0',
             'Permissions-Policy'      => 'geolocation=(), microphone=(), camera=()',
-            // 零外部依赖：脚本与样式仅允许本站（OATUI 为本地文件）
+            // 零外部依赖：脚本与样式仅允许本站（ui.css 为本地文件）
             'Content-Security-Policy' => "default-src 'self'; img-src 'self' data: blob:; "
                 . "style-src 'self' 'unsafe-inline'; script-src 'self'; "
                 . "frame-ancestors 'self'; base-uri 'self'; form-action 'self'",

@@ -35,7 +35,7 @@ foreach ($rows as $row) {
 ?>
 
 <?php if ($hasAssets && !$bundleReady): ?>
-    <div role="alert" data-variant="warning" style="margin-bottom:var(--space-4)">
+    <div role="alert" data-ow-variant="warning" style="margin-bottom:var(--space-4)">
         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
         <div>
             有插件声明了静态资源，但合并资源尚未生成，前台可能缺少样式或脚本。
@@ -49,7 +49,7 @@ foreach ($rows as $row) {
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'plug', 'size' => 16]) ?>插件列表</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             共 <?= $total ?> 个 · 已启用 <?= $enabledCount ?> 个
         </span>
     </div>
@@ -67,7 +67,7 @@ foreach ($rows as $row) {
         </form>
 
         <?php if (($keyword ?? '') !== ''): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/plugins')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/plugins')) ?>">重置</a>
         <?php endif; ?>
 
         <span class="spacer"></span>
@@ -83,7 +83,7 @@ foreach ($rows as $row) {
              * 结果只弹出「请先选择插件 zip 包」——看起来像「点了没反应，只会报错」。
              */ ?>
             <input type="file" name="package" accept=".zip" hidden data-plugin-file>
-            <button type="button" class="button small ghost" data-plugin-trigger>
+            <button type="button" class="ow-button ow-small ow-ghost" data-plugin-trigger>
                 <?= $view('partials/icon', ['name' => 'upload', 'size' => 14]) ?>
                 <span>本地上传安装</span>
             </button>
@@ -94,13 +94,13 @@ foreach ($rows as $row) {
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'search', 'size' => 46]) ?>
             <p>没有匹配「<?= e($keyword) ?>」的插件。</p>
-            <p class="text-light" style="font-size:13px"><a href="<?= e(url('/admin/plugins')) ?>">清除搜索条件</a></p>
+            <p class="ow-text-light" style="font-size:13px"><a href="<?= e(url('/admin/plugins')) ?>">清除搜索条件</a></p>
         </div>
     <?php elseif ($rows === []): ?>
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'plug', 'size' => 46]) ?>
             <p>还没有发现任何插件。</p>
-            <p class="text-light" style="font-size:13px">
+            <p class="ow-text-light" style="font-size:13px">
                 把插件目录放进 <code>plugins/</code> 并确保其中包含 <code>plugin.json</code>，
                 刷新本页即可自动识别。
             </p>
@@ -134,25 +134,25 @@ foreach ($rows as $row) {
                                 <strong class="cell-title" title="<?= e((string)($plugin['name'] ?? $pluginId)) ?>">
                                     <?= e((string)($plugin['name'] ?? $pluginId)) ?>
                                 </strong>
-                                <span class="badge outline mono" style="font-size:11.5px">
+                                <span class="ow-badge ow-outline mono" style="font-size:11.5px">
                                     v<?= e((string)($plugin['version'] ?? '0')) ?>
                                 </span>
                                 <?php if (!$entryOk): ?>
-                                    <span class="badge" data-variant="danger">入口文件缺失</span>
+                                    <span class="ow-badge" data-ow-variant="danger">入口文件缺失</span>
                                 <?php endif; ?>
                                 <?php if ($isEnabled && !$isLoaded): ?>
-                                    <span class="badge" data-variant="warning">已启用但未加载</span>
+                                    <span class="ow-badge" data-ow-variant="warning">已启用但未加载</span>
                                 <?php endif; ?>
                             </div>
 
                             <?php if ((string)($plugin['description'] ?? '') !== ''): ?>
-                                <span class="cell-title text-light" style="display:block;font-size:12.5px;margin-top:3px"
+                                <span class="cell-title ow-text-light" style="display:block;font-size:12.5px;margin-top:3px"
                                       title="<?= e((string)$plugin['description']) ?>">
                                     <?= e((string)$plugin['description']) ?>
                                 </span>
                             <?php endif; ?>
 
-                            <span class="cell-title text-light mono" style="display:block;font-size:11.5px;margin-top:3px"
+                            <span class="cell-title ow-text-light mono" style="display:block;font-size:11.5px;margin-top:3px"
                                   title="<?= e($pluginId) ?><?= (string)($plugin['author'] ?? '') !== '' ? ' · 作者：' . e((string)$plugin['author']) : '' ?>">
                                 <?= e($pluginId) ?>
                                 <?php if ((string)($plugin['author'] ?? '') !== ''): ?>
@@ -170,19 +170,19 @@ foreach ($rows as $row) {
                                 <?php endif; ?>
                             </span>
                         </td>
-                        <td class="text-light"><?= (int)($plugin['hook_count'] ?? 0) ?></td>
-                        <td class="text-light"><?= $settingNum ?></td>
+                        <td class="ow-text-light"><?= (int)($plugin['hook_count'] ?? 0) ?></td>
+                        <td class="ow-text-light"><?= $settingNum ?></td>
                         <td>
                             <?php if ($isEnabled): ?>
-                                <span class="badge outline"><span class="status-dot"></span>已启用</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot"></span>已启用</span>
                             <?php else: ?>
-                                <span class="badge outline"><span class="status-dot status-dot--off"></span>已停用</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>已停用</span>
                             <?php endif; ?>
                         </td>
                         <td>
                             <div class="admin-table-actions">
                                 <?php if ($settingNum > 0): ?>
-                                    <a class="button small ghost"
+                                    <a class="ow-button ow-small ow-ghost"
                                        href="<?= e(url('/admin/plugins/' . $pluginUrl . '/config')) ?>">
                                         <?= $view('partials/icon', ['name' => 'settings', 'size' => 14]) ?>
                                         <span>配置</span>
@@ -193,7 +193,7 @@ foreach ($rows as $row) {
                                     <form class="inline-form" method="post"
                                           action="<?= e(url('/admin/plugins/' . $pluginUrl . '/disable')) ?>">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="button small ghost">
+                                        <button type="submit" class="ow-button ow-small ow-ghost">
                                             <?= $view('partials/icon', ['name' => 'pause', 'size' => 14]) ?>
                                             <span>停用</span>
                                         </button>
@@ -202,7 +202,7 @@ foreach ($rows as $row) {
                                     <form class="inline-form" method="post"
                                           action="<?= e(url('/admin/plugins/' . $pluginUrl . '/enable')) ?>">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="button small"
+                                        <button type="submit" class="ow-button ow-small"
                                                 <?= $entryOk ? '' : 'disabled' ?>>
                                             <?= $view('partials/icon', ['name' => 'play', 'size' => 14]) ?>
                                             <span>启用</span>
@@ -214,7 +214,7 @@ foreach ($rows as $row) {
                                       action="<?= e(url('/admin/plugins/' . $pluginUrl . '/uninstall')) ?>"
                                       data-confirm="确定要卸载「<?= e((string)($plugin['name'] ?? $pluginId)) ?>」吗？插件目录与其自建数据表需要你手动清理。">
                                     <?= csrf_field() ?>
-                                    <button type="submit" class="button small ghost" data-variant="danger">
+                                    <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                         <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                         <span>卸载</span>
                                     </button>
@@ -228,7 +228,7 @@ foreach ($rows as $row) {
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         卸载只会移除数据库中的登记记录，不会删除磁盘上的插件目录，也不会回滚插件自建的数据表。
     </div>
 </section>

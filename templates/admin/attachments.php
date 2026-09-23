@@ -20,7 +20,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'paperclip', 'size' => 16]) ?>附件列表</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             共 <?= number_format((int)($stats['total'] ?? 0)) ?> 个 ·
             占用 <?= e((string)($stats['bytes'] ?? '0 B')) ?>
         </span>
@@ -37,7 +37,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
         </div>
 
         <?php if ($keyword !== ''): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/attachments')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/attachments')) ?>">重置</a>
         <?php endif; ?>
     </form>
 
@@ -95,8 +95,8 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                    aria-label="选择附件：<?= e((string)($file['name'] ?? '')) ?>">
                         </td>
                         <td>
-                            <div class="hstack" style="gap:8px">
-                                <span class="text-light" style="flex:none">
+                            <div class="ow-hstack" style="gap:8px">
+                                <span class="ow-text-light" style="flex:none">
                                     <?= $view('partials/icon', ['name' => $isImage ? 'image' : 'file', 'size' => 16]) ?>
                                 </span>
                                 <?php /* 文件名单行截断：附件名普遍偏长，铺开会把整张表撑宽 */ ?>
@@ -105,7 +105,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                        title="<?= e((string)($file['name'] ?? '')) ?>">
                                         <?= e((string)($file['name'] ?? '')) ?>
                                     </a>
-                                    <span class="text-light mono" style="display:block;font-size:11.5px">
+                                    <span class="ow-text-light mono" style="display:block;font-size:11.5px">
                                         #<?= $fileId ?>
                                         <?php if ((string)($file['mime'] ?? '') !== ''): ?>
                                             · <?= e((string)$file['mime']) ?>
@@ -114,7 +114,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                 </span>
                             </div>
                         </td>
-                        <td class="text-light">
+                        <td class="ow-text-light">
                             <?php if ($noticeOwner !== null): ?>
                                 <?php /* 公告引用的附件：公告没有 thread_id/post_id，归属要向 notices 反查 */ ?>
                                 <a class="cell-title" href="<?= e(url('/notifications')) ?>"
@@ -134,26 +134,26 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                 <?php endif; ?>
                             <?php else: ?>
                                 <span>未绑定</span>
-                                <span class="text-light" style="display:block;font-size:11.5px">
+                                <span class="ow-text-light" style="display:block;font-size:11.5px">
                                     用户上传后未发表对应内容
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light mono"><?= e((string)($file['size_text'] ?? '')) ?></td>
+                        <td class="ow-text-light mono"><?= e((string)($file['size_text'] ?? '')) ?></td>
                         <td>
                             <?php if ($uploader !== null): ?>
                                 <a href="<?= e(url('/admin/users/' . (int)$uploader['id'])) ?>">
                                     <?= e((string)($uploader['username'] ?? '')) ?>
                                 </a>
                             <?php else: ?>
-                                <span class="text-light">用户已删除</span>
+                                <span class="ow-text-light">用户已删除</span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light"><?= number_format((int)($file['downloads'] ?? 0)) ?></td>
-                        <td class="text-light"><?= e(human_time((int)($file['created_at'] ?? 0))) ?></td>
+                        <td class="ow-text-light"><?= number_format((int)($file['downloads'] ?? 0)) ?></td>
+                        <td class="ow-text-light"><?= e(human_time((int)($file['created_at'] ?? 0))) ?></td>
                         <td>
                             <div class="admin-table-actions">
-                                <a class="button small ghost" href="<?= e($downloadUrl) ?>"
+                                <a class="ow-button ow-small ow-ghost" href="<?= e($downloadUrl) ?>"
                                    target="_blank" rel="noopener">
                                     <?= $view('partials/icon', ['name' => 'download', 'size' => 14]) ?>
                                     <span>下载</span>
@@ -163,7 +163,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
                                       action="<?= e(url('/admin/attachments/' . $fileId . '/delete')) ?>"
                                       data-confirm="确定要删除附件「<?= e((string)($file['name'] ?? '')) ?>」吗？磁盘文件会同时删除。">
                                     <?= csrf_field() ?>
-                                    <button type="submit" class="button small ghost" data-variant="danger">
+                                    <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                         <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                         <span>删除</span>
                                     </button>
@@ -177,7 +177,7 @@ $stats   = is_array($stats ?? null) ? $stats : [];
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         删除附件会同时清除磁盘文件，且无法在应用内恢复。
     </div>
 

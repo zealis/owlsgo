@@ -47,8 +47,8 @@ $viewReplyIds   = $checkedGroups('group_reply');
         </div>
         <div class="panel__body">
             <div class="form-grid">
-                <div data-field>
-                    <label for="forum-name">版块名称 <span class="text-light">（必填）</span></label>
+                <div data-ow-field>
+                    <label for="forum-name">版块名称 <span class="ow-text-light">（必填）</span></label>
                     <input type="text" id="forum-name" name="name" maxlength="60" required
                            value="<?= e($val('name', (string)old('name', ''))) ?>">
                     <?php if (old_error('name') !== ''): ?>
@@ -56,7 +56,7 @@ $viewReplyIds   = $checkedGroups('group_reply');
                     <?php endif; ?>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="forum-slug">版块标识</label>
                     <input type="text" id="forum-slug" name="slug" maxlength="60"
                            placeholder="例如 general（小写字母、数字、下划线或短横线）"
@@ -64,17 +64,17 @@ $viewReplyIds   = $checkedGroups('group_reply');
                     <?php if (old_error('slug') !== ''): ?>
                         <span class="field-error"><?= e(old_error('slug')) ?></span>
                     <?php endif; ?>
-                    <span data-hint>用于生成更友好的地址，可留空。</span>
+                    <span data-ow-hint>用于生成更友好的地址，可留空。</span>
                 </div>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="forum-description">版块简介</label>
                 <input type="text" id="forum-description" name="description" maxlength="200"
                        placeholder="展示在版块列表与版块头部" value="<?= e($val('description')) ?>">
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="forum-announcement">版块公告</label>
                 <textarea id="forum-announcement" name="announcement" rows="3" maxlength="1000"
                           placeholder="留空则不发送；填写并保存后，会以系统通知的形式发给所有用户"><?= e($val('announcement')) ?></textarea>
@@ -86,21 +86,21 @@ $viewReplyIds   = $checkedGroups('group_reply');
             </div>
 
             <div class="form-grid">
-                <div data-field>
+                <div data-ow-field>
                     <label for="forum-icon">图标标识</label>
                     <input type="text" id="forum-icon" name="icon" maxlength="40"
                            placeholder="预留字段，可留空" value="<?= e($val('icon')) ?>">
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="forum-sort">排序值</label>
                     <input type="number" id="forum-sort" name="sort_order" min="-9999" max="9999"
                            value="<?= e($val('sort_order', '0')) ?>">
-                    <span data-hint>数字越小越靠前。</span>
+                    <span data-ow-hint>数字越小越靠前。</span>
                 </div>
             </div>
 
-            <div data-field style="max-width:340px">
+            <div data-ow-field style="max-width:340px">
                 <label for="forum-parent">上级版块</label>
                 <select id="forum-parent" name="parent_id">
                     <option value="0">— 作为一级版块 —</option>
@@ -112,7 +112,7 @@ $viewReplyIds   = $checkedGroups('group_reply');
                     <?php endforeach; ?>
                 </select>
                 <?php if ($isEdit): ?>
-                    <span data-hint>不能选择自己作为上级版块，保存时会自动忽略。</span>
+                    <span data-ow-hint>不能选择自己作为上级版块，保存时会自动忽略。</span>
                 <?php endif; ?>
             </div>
         </div>
@@ -133,11 +133,11 @@ $viewReplyIds   = $checkedGroups('group_reply');
             ];
             ?>
             <?php foreach ($switches as $key => [$label, $hint, $default]): ?>
-                <label class="hstack" style="gap:8px;align-items:flex-start;margin-bottom:12px">
+                <label class="ow-hstack" style="gap:8px;align-items:flex-start;margin-bottom:12px">
                     <input type="checkbox" name="<?= e($key) ?>" value="1" <?= checked($flag($key, $default)) ?>>
                     <span>
                         <strong style="font-size:14px"><?= e($label) ?></strong>
-                        <span class="text-light" style="display:block;font-size:12.5px"><?= e($hint) ?></span>
+                        <span class="ow-text-light" style="display:block;font-size:12.5px"><?= e($hint) ?></span>
                     </span>
                 </label>
             <?php endforeach; ?>
@@ -150,7 +150,7 @@ $viewReplyIds   = $checkedGroups('group_reply');
             <h3><?= $view('partials/icon', ['name' => 'shield', 'size' => 16]) ?>用户组白名单</h3>
         </div>
         <div class="panel__body">
-            <div class="doc-note hstack" style="gap:10px;align-items:flex-start;margin-bottom:14px">
+            <div class="doc-note ow-hstack" style="gap:10px;align-items:flex-start;margin-bottom:14px">
                 <?= $view('partials/icon', ['name' => 'info', 'size' => 18]) ?>
                 <div>
                     三项均<strong>全部不勾选</strong>表示不限制，任何用户组都可用；
@@ -160,7 +160,7 @@ $viewReplyIds   = $checkedGroups('group_reply');
             </div>
 
             <?php if ($groups === []): ?>
-                <p class="text-light">尚未创建任何用户组。</p>
+                <p class="ow-text-light">尚未创建任何用户组。</p>
             <?php else: ?>
                 <?php
                 $whitelists = [
@@ -170,11 +170,11 @@ $viewReplyIds   = $checkedGroups('group_reply');
                 ];
                 ?>
                 <?php foreach ($whitelists as $list): ?>
-                    <div data-field>
+                    <div data-ow-field>
                         <label><?= e($list['label']) ?></label>
-                        <div class="hstack" style="flex-wrap:wrap;gap:10px 16px">
+                        <div class="ow-hstack" style="flex-wrap:wrap;gap:10px 16px">
                             <?php foreach ($groups as $groupId => $groupName): ?>
-                                <label class="hstack" style="gap:6px;font-size:13.5px">
+                                <label class="ow-hstack" style="gap:6px;font-size:13.5px">
                                     <input type="checkbox"
                                            name="<?= e($list['field']) ?>[]"
                                            value="<?= (int)$groupId ?>"
@@ -190,13 +190,13 @@ $viewReplyIds   = $checkedGroups('group_reply');
     </section>
 
     <!-- 保存（整个表单只有一个提交按钮，覆盖上面三个面板的全部字段） -->
-    <div class="panel__foot hstack" style="margin-top:16px">
-        <button type="submit" class="button">
+    <div class="panel__foot ow-hstack" style="margin-top:16px">
+        <button type="submit" class="ow-button">
             <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
             <span><?= $isEdit ? '保存设置' : '创建版块' ?></span>
         </button>
-        <a class="button ghost" href="<?= e(url('/admin/forums')) ?>">返回版块列表</a>
-        <span class="text-light" style="font-size:12.5px">
+        <a class="ow-button ow-ghost" href="<?= e(url('/admin/forums')) ?>">返回版块列表</a>
+        <span class="ow-text-light" style="font-size:12.5px">
             <?= $isEdit ? '保存后前台立即生效。' : '创建后可在列表中继续编辑。' ?>
         </span>
     </div>

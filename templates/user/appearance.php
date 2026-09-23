@@ -20,7 +20,7 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
 
 <?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'appearance']) ?>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'palette', 'size' => 16]) ?>个性装扮</h3>
     </div>
@@ -29,7 +29,7 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
         <div class="setting-block">
             <h4 class="setting-block__title"><?= $view('partials/icon', ['name' => 'image', 'size' => 16]) ?>头像</h4>
 
-            <div class="hstack" style="align-items:flex-start">
+            <div class="ow-hstack" style="align-items:flex-start">
                 <div id="avatar-preview">
                     <img src="<?= e(avatar_url($profile, 96)) ?>" width="96" height="96"
                          alt="当前头像"
@@ -47,20 +47,20 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
                         -->
                         <form method="post" action="<?= e(url('/settings/avatar')) ?>" enctype="multipart/form-data">
                             <?= csrf_field() ?>
-                            <div data-field>
+                            <div data-ow-field>
                                 <span class="field-hint" style="display:block;margin:0 0 8px">
                                     支持 JPG / PNG / WebP，单个文件不超过 <?= $avatarMaxMb ?> MB，
                                     选择后在弹窗中缩放与裁切。
                                 </span>
                                 <input type="file" id="avatar-file" name="avatar" accept="image/png,image/jpeg,image/webp"
                                        data-avatar-crop hidden>
-                                <div class="hstack" style="gap:10px">
-                                    <button type="button" class="button small" id="avatar-pick">
+                                <div class="ow-hstack" style="gap:10px">
+                                    <button type="button" class="ow-button ow-small" id="avatar-pick">
                                         <?= $view('partials/icon', ['name' => 'upload', 'size' => 15]) ?>
                                         <span>上传头像</span>
                                     </button>
-                                    <span class="text-light" style="font-size:12.5px">or</span>
-                                    <button type="button" class="button ghost small" id="avatar-preset-open">
+                                    <span class="ow-text-light" style="font-size:12.5px">or</span>
+                                    <button type="button" class="ow-button ow-ghost ow-small" id="avatar-preset-open">
                                         <?= $view('partials/icon', ['name' => 'image', 'size' => 15]) ?>
                                         <span>预置头像</span>
                                     </button>
@@ -73,19 +73,19 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
                                 「预置头像」由服务端抓取并落盘，走的是自己的路由，
                                 不经过上传通道，所以不受上传开关影响（见 Core\Avatar）。
                         */ ?>
-                        <div data-field>
-                            <button type="button" class="button ghost small" id="avatar-preset-open">
+                        <div data-ow-field>
+                            <button type="button" class="ow-button ow-ghost ow-small" id="avatar-preset-open">
                                 <?= $view('partials/icon', ['name' => 'image', 'size' => 15]) ?>
                                 <span>预置头像</span>
                             </button>
-                            <span data-hint>
+                            <span data-ow-hint>
                                 站点当前已关闭文件上传，无法上传头像；
                                 仍可选择预置头像（SVG 实时生成，不占用存储）。
                             </span>
                         </div>
                     <?php endif; ?>
 
-                    <p class="text-light" style="font-size:12.5px;margin-top:12px">
+                    <p class="ow-text-light" style="font-size:12.5px;margin-top:12px">
                         未上传头像时，系统会依据你的用户名生成一张固定的 SVG 头像。
                     </p>
                 </div>
@@ -106,18 +106,18 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
                 <form method="post" action="<?= e(url('/settings/cover')) ?>" enctype="multipart/form-data"
                       style="margin-top:12px" data-auto-submit>
                     <?= csrf_field() ?>
-                    <ot-upload>
+                    <ow-upload>
                         <input type="file" name="cover" id="cover-file"
                                accept="image/png,image/jpeg,image/webp" hidden>
                         <div data-files>
-                            <small data-hint>
+                            <small data-ow-hint>
                                 把封面图拖到这里，或点击选择（JPG / PNG / WebP，≤5MB）—— 选好即自动上传
                             </small>
                         </div>
-                    </ot-upload>
+                    </ow-upload>
                     <?php if ($hasCover): ?>
-                        <div class="hstack" style="gap:10px;margin-top:10px">
-                            <button type="submit" class="button ghost small"
+                        <div class="ow-hstack" style="gap:10px;margin-top:10px">
+                            <button type="submit" class="ow-button ow-ghost ow-small"
                                     formaction="<?= e(url('/settings/cover/remove')) ?>">
                                 <?= $view('partials/icon', ['name' => 'refresh', 'size' => 15]) ?>
                                 <span>恢复默认</span>
@@ -126,7 +126,7 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
                     <?php endif; ?>
                 </form>
             <?php else: ?>
-                <div class="text-light" style="font-size:12.5px;margin-top:10px">
+                <div class="ow-text-light" style="font-size:12.5px;margin-top:10px">
                     站点当前已关闭文件上传，暂时无法更换封面图。
                 </div>
             <?php endif; ?>
@@ -154,7 +154,7 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
                 <label class="scheme-add__color">浅底
                     <input type="color" data-scheme-soft value="#e6f7ff">
                 </label>
-                <button type="button" class="button small" data-scheme-create>
+                <button type="button" class="ow-button ow-small" data-scheme-create>
                     <?= $view('partials/icon', ['name' => 'plus', 'size' => 14]) ?>
                     <span>新增色系</span>
                 </button>
@@ -178,7 +178,7 @@ $hasCover = trim((string)($profile['cover'] ?? '')) !== '';
 
         <?php
         /*
-         * 「字体大小」滑块（OATUI input[type=range] 即用户所说的 Volume 滑块）暂未开发：
+         * 「字体大小」滑块（ui.css input[type=range] 即用户所说的 Volume 滑块）暂未开发：
          * 本站样式以 px 定值为主，无法只靠根字号缩放达到一致效果，需要先把字号收敛成
          * 可缩放的令牌再上滑块，避免调了以后各处字号不成比例。
          */
@@ -205,13 +205,13 @@ $presets = \Core\Avatar::presets();
         <input type="range" id="avatar-crop-zoom" min="1" max="3" step="0.01" value="1">
     </div>
     <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" data-crop-cancel>取消</button>
+        <button type="button" class="ow-button ow-ghost" data-crop-cancel>取消</button>
         <?php /*
                 站点 Logo 场景专用：位图不裁剪、原图直传。
                 （头像场景由 app.js 隐藏该按钮 —— 头像必须方形裁切。）
         */ ?>
-        <button type="button" class="button ghost" data-crop-skip hidden>原图上传</button>
-        <button type="button" class="button" data-crop-ok>上传并应用</button>
+        <button type="button" class="ow-button ow-ghost" data-crop-skip hidden>原图上传</button>
+        <button type="button" class="ow-button" data-crop-ok>上传并应用</button>
     </div>
 </dialog>
 
@@ -227,12 +227,12 @@ $presets = \Core\Avatar::presets();
             </button>
         <?php endforeach; ?>
     </div>
-    <p class="text-light" id="avatar-preset-hint" style="font-size:12.5px;margin:6px 20px 0">
+    <p class="ow-text-light" id="avatar-preset-hint" style="font-size:12.5px;margin:6px 20px 0">
         每次打开都是随机的一批；选中的那张会保存到你的账号。
     </p>
     <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" id="avatar-preset-more">换一批</button>
-        <button type="button" class="button ghost" data-preset-cancel>取消</button>
+        <button type="button" class="ow-button ow-ghost" id="avatar-preset-more">换一批</button>
+        <button type="button" class="ow-button ow-ghost" data-preset-cancel>取消</button>
     </div>
 </dialog>
 

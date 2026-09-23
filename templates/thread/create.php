@@ -18,8 +18,8 @@ $contentMax  = (int)config('app.post_max_length', 20000);
 <?php /* 与首页同款右栏：前台（除个人管理页面外）统一用 partials/sidebar */ ?>
 <div class="page-grid">
     <div>
-    <ol class="unstyled hstack crumbs">
-        <li><a class="unstyled" href="<?= e(url('/')) ?>">首页</a></li>
+    <ol class="ow-unstyled ow-hstack crumbs">
+        <li><a class="ow-unstyled" href="<?= e(url('/')) ?>">首页</a></li>
         <li aria-hidden="true">/</li>
         <li>发表新帖子</li>
     </ol>
@@ -35,7 +35,7 @@ $contentMax  = (int)config('app.post_max_length', 20000);
                   data-ajax data-ajax-redirect data-draft="thread-new">
                 <?= csrf_field() ?>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="thread-forum">发布到版块</label>
                     <select id="thread-forum" name="forum_id" required>
                         <?php foreach ($forums as $option): ?>
@@ -47,7 +47,7 @@ $contentMax  = (int)config('app.post_max_length', 20000);
                     </select>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="thread-title">帖子标题</label>
                     <input type="text" id="thread-title" name="title" required
                            maxlength="<?= $titleMax ?>" autocomplete="off"
@@ -58,7 +58,7 @@ $contentMax  = (int)config('app.post_max_length', 20000);
                     <?php endif; ?>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="thread-content">正文内容</label>
                     <?= $view('partials/editor', [
                         'editorId'    => 'thread-content',
@@ -72,14 +72,14 @@ $contentMax  = (int)config('app.post_max_length', 20000);
                     <?php endif; ?>
                 </div>
 
-                <div class="hstack mt-4">
-                    <button type="submit" class="button">
+                <div class="ow-hstack ow-mt-4">
+                    <button type="submit" class="ow-button">
                         <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                         <span>发表帖子</span>
                     </button>
-                    <a class="button ghost" href="<?= e($forumId > 0 ? url('/f/' . $forumId) : url('/')) ?>">取消</a>
+                    <a class="ow-button ow-ghost" href="<?= e($forumId > 0 ? url('/f/' . $forumId) : url('/')) ?>">取消</a>
                     <?php if (setting_bool('thread_need_audit', false)): ?>
-                        <span class="text-light" style="font-size:12.5px">本站开启了发帖审核，帖子需管理员通过后才会公开。</span>
+                        <span class="ow-text-light" style="font-size:12.5px">本站开启了发帖审核，帖子需管理员通过后才会公开。</span>
                     <?php endif; ?>
                 </div>
             </form>

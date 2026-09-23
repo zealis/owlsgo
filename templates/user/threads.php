@@ -15,11 +15,11 @@ $userId  = (int)($profile['id'] ?? 0);
 
 <?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'threads']) ?>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3>发表的帖子</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">共 <?= (int)($result['total'] ?? 0) ?> 条</span>
+        <span class="ow-text-light" style="font-size:13px">共 <?= (int)($result['total'] ?? 0) ?> 条</span>
     </div>
     <?php if ($items === []): ?>
         <div class="empty">

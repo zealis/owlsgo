@@ -36,7 +36,7 @@ $toggles = [
                 'checked' => $isOn('site_closed'),
             ]) ?>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="site_closed_reason">维护提示语</label>
                 <textarea id="site_closed_reason" name="site_closed_reason" rows="2" maxlength="200"><?= e($val('site_closed_reason', '站点正在维护，请稍后再访问。')) ?></textarea>
             </div>
@@ -74,28 +74,28 @@ $toggles = [
             <dd><code>storage/logs/</code></dd>
         </dl>
 
-        <div class="hstack" style="flex-wrap:wrap;gap:8px">
+        <div class="ow-hstack" style="flex-wrap:wrap;gap:8px">
             <form method="post" action="<?= e(url('/admin/maintenance/opcache')) ?>"
                   data-ajax class="inline-form">
                 <?= csrf_field() ?>
-                <button type="submit" class="button outline small"<?= $opcacheAvailable ? '' : ' disabled' ?>>
+                <button type="submit" class="ow-button ow-outline ow-small"<?= $opcacheAvailable ? '' : ' disabled' ?>>
                     <?= $view('partials/icon', ['name' => 'refresh', 'size' => 15]) ?>
                     <span>清理 OPcache</span>
                 </button>
             </form>
 
-            <a class="button outline small" href="<?= e(url('/admin/upgrade')) ?>">
+            <a class="ow-button ow-outline ow-small" href="<?= e(url('/admin/upgrade')) ?>">
                 <?= $view('partials/icon', ['name' => 'download', 'size' => 15]) ?>
                 <span>在线升级</span>
             </a>
 
-            <a class="button outline small" href="<?= e(url('/admin/logs/system')) ?>">
+            <a class="ow-button ow-outline ow-small" href="<?= e(url('/admin/logs/system')) ?>">
                 <?= $view('partials/icon', ['name' => 'file', 'size' => 15]) ?>
                 <span>查看系统日志</span>
             </a>
         </div>
 
-        <p class="text-light" style="margin:12px 0 0;font-size:12.5px">
+        <p class="ow-text-light" style="margin:12px 0 0;font-size:12.5px">
             改完 PHP 源码若页面没变化，多半是 OPcache 缓存了旧代码，点一下清理即可（会同时清空站点缓存）。<br>
             系统日志里是 PHP 报错与异常堆栈；调试模式关闭时不会产生 <code>debug</code> 日志，但错误始终会记录。
         </p>

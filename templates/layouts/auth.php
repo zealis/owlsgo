@@ -24,7 +24,7 @@ $subtitle = (string)($authSubtitle ?? '');
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <?= $view('partials/head-critical-css') ?>
-    <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('assets/ui/ui.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('assets/css/theme.css')) ?>">
 </head>
 <body>
@@ -51,11 +51,11 @@ $subtitle = (string)($authSubtitle ?? '');
 
 <?php
 /*
- * 先加载 OATUI 模块：app.js 的 notify() 依赖 window.ot.toast，
+ * 先加载 ui.css 模块：app.js 的 notify() 依赖 window.ot.toast，
  * 缺少它登录/注册的提示会退化成浏览器原生 alert。
  */
 ?>
-<script type="module" src="<?= e(asset('assets/oat/js/index.js')) ?>"></script>
+<script src="<?= e(asset('assets/ui/ui.js')) ?>" defer></script>
 <script src="<?= e(asset('assets/js/app.js')) ?>" defer></script>
 </body>
 </html>

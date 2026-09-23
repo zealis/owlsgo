@@ -18,8 +18,8 @@ $total = (int)($total ?? count($rows));
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'grid', 'size' => 16]) ?>版块列表</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">共 <?= $total ?> 个版块</span>
-        <a class="button small" href="<?= e(url('/admin/forums/create')) ?>">
+        <span class="ow-text-light" style="font-size:13px">共 <?= $total ?> 个版块</span>
+        <a class="ow-button ow-small" href="<?= e(url('/admin/forums/create')) ?>">
             <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
             <span>新增版块</span>
         </a>
@@ -29,7 +29,7 @@ $total = (int)($total ?? count($rows));
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'grid', 'size' => 46]) ?>
             <p>还没有任何版块。</p>
-            <p class="text-light" style="font-size:13px">先创建几个一级版块，再往下挂子版块。</p>
+            <p class="ow-text-light" style="font-size:13px">先创建几个一级版块，再往下挂子版块。</p>
         </div>
     <?php else: ?>
         <div class="table-scroll">
@@ -68,9 +68,9 @@ $total = (int)($total ?? count($rows));
                     ?>
                     <tr>
                         <td>
-                            <div class="hstack" style="gap:8px;align-items:flex-start">
+                            <div class="ow-hstack" style="gap:8px;align-items:flex-start">
                                 <?php if ($depth > 0): ?>
-                                    <span class="text-light mono" aria-hidden="true">└</span>
+                                    <span class="ow-text-light mono" aria-hidden="true">└</span>
                                 <?php endif; ?>
                                 <span style="min-width:0">
                                     <div class="cell-row">
@@ -80,14 +80,14 @@ $total = (int)($total ?? count($rows));
                                             <?= e((string)($forum['name'] ?? '')) ?>
                                         </a>
                                         <?php if ((int)($forum['allow_thread'] ?? 1) !== 1): ?>
-                                            <span class="badge outline">禁止发帖</span>
+                                            <span class="ow-badge ow-outline">禁止发帖</span>
                                         <?php endif; ?>
                                         <?php if ((int)($forum['allow_reply'] ?? 1) !== 1): ?>
-                                            <span class="badge outline">禁止评论</span>
+                                            <span class="ow-badge ow-outline">禁止评论</span>
                                         <?php endif; ?>
                                     </div>
                                     <?php if ((string)($forum['description'] ?? '') !== ''): ?>
-                                        <span class="cell-title text-light" style="display:block;font-size:12.5px"
+                                        <span class="cell-title ow-text-light" style="display:block;font-size:12.5px"
                                               title="<?= e((string)$forum['description']) ?>">
                                             <?= e((string)$forum['description']) ?>
                                         </span>
@@ -95,33 +95,33 @@ $total = (int)($total ?? count($rows));
                                 </span>
                             </div>
                         </td>
-                        <td class="mono text-light">
+                        <td class="mono ow-text-light">
                             <span class="cell-title"><?= e((string)($forum['slug'] ?? '') !== '' ? (string)$forum['slug'] : '—') ?></span>
                         </td>
                         <td>
                             <?php if ($limits === []): ?>
-                                <span class="text-light" style="font-size:12.5px">公开</span>
+                                <span class="ow-text-light" style="font-size:12.5px">公开</span>
                             <?php else: ?>
                                 <div class="cell-row">
                                 <?php foreach ($limits as $limit): ?>
-                                    <span class="badge outline"><?= e($limit) ?></span>
+                                    <span class="ow-badge ow-outline"><?= e($limit) ?></span>
                                 <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
                         </td>
                         <td><?= format_number((int)($forum['thread_count'] ?? 0)) ?></td>
                         <td><?= format_number((int)($forum['post_count'] ?? 0)) ?></td>
-                        <td class="text-light"><?= (int)($forum['sort_order'] ?? 0) ?></td>
+                        <td class="ow-text-light"><?= (int)($forum['sort_order'] ?? 0) ?></td>
                         <td>
                             <?php if ($isHidden): ?>
-                                <span class="badge outline"><span class="status-dot status-dot--off"></span>隐藏</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>隐藏</span>
                             <?php else: ?>
-                                <span class="badge outline"><span class="status-dot"></span>正常</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot"></span>正常</span>
                             <?php endif; ?>
                         </td>
                         <td>
                             <div class="admin-table-actions">
-                                <a class="button small ghost" href="<?= e(url('/admin/forums/' . $forumId . '/edit')) ?>">
+                                <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/forums/' . $forumId . '/edit')) ?>">
                                     <?= $view('partials/icon', ['name' => 'edit', 'size' => 14]) ?>
                                     <span>编辑</span>
                                 </a>
@@ -130,7 +130,7 @@ $total = (int)($total ?? count($rows));
                                       action="<?= e(url('/admin/forums/' . $forumId . '/delete')) ?>"
                                       data-confirm="确定要删除版块「<?= e((string)($forum['name'] ?? '')) ?>」吗？该操作不可撤销。">
                                     <?= csrf_field() ?>
-                                    <button type="submit" class="button small ghost" data-variant="danger">
+                                    <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                         <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                         <span>删除</span>
                                     </button>
@@ -144,7 +144,7 @@ $total = (int)($total ?? count($rows));
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         版块下仍有帖子或子版块时无法删除；删除操作为软删除，数据可在数据库层面恢复。
     </div>
 </section>

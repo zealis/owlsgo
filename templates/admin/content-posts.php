@@ -31,9 +31,9 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         <h3><?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>评论管理</h3>
         <span class="spacer"></span>
         <?php if ($pending > 0): ?>
-            <span class="badge" data-variant="warning"><?= $pending ?> 条待审核</span>
+            <span class="ow-badge" data-ow-variant="warning"><?= $pending ?> 条待审核</span>
         <?php endif; ?>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             共 <?= number_format((int)($result['total'] ?? 0)) ?> 条评论
         </span>
     </div>
@@ -73,12 +73,12 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         </div>
 
         <?php if ($keyword !== '' || $status !== -1 || $scope !== 'content'): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/posts')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/posts')) ?>">重置</a>
         <?php endif; ?>
 
         <?php if ($pending > 0 && $status !== 0): ?>
             <span class="spacer"></span>
-            <a class="button small" href="<?= e(url('/admin/posts', ['status' => 0])) ?>">
+            <a class="ow-button ow-small" href="<?= e(url('/admin/posts', ['status' => 0])) ?>">
                 <?= $view('partials/icon', ['name' => 'filter', 'size' => 15]) ?>
                 <span>只看待审核</span>
             </a>
@@ -145,13 +145,13 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <span class="cell-title"><?= e($excerpt !== '' ? $excerpt : '（无正文）') ?></span>
                                 <?php /* 窄屏会整列隐藏「状态」，所以待审核在主值旁再挂一个徽章（与帖子列表一致） */ ?>
                                 <?php if ($isPending): ?>
-                                    <span class="badge" data-variant="warning">待审核</span>
+                                    <span class="ow-badge" data-ow-variant="warning">待审核</span>
                                 <?php endif; ?>
                                 <?php if ((int)($post['parent_id'] ?? 0) > 0): ?>
-                                    <span class="badge outline">楼中楼</span>
+                                    <span class="ow-badge ow-outline">楼中楼</span>
                                 <?php endif; ?>
                                 <?php if ($hasFiles): ?>
-                                    <span class="badge outline"><?= count($post['attachments']) ?> 个附件</span>
+                                    <span class="ow-badge ow-outline"><?= count($post['attachments']) ?> 个附件</span>
                                 <?php endif; ?>
                             </div>
                         </td>
@@ -171,20 +171,20 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                     <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                                 </a>
                             <?php else: ?>
-                                <span class="text-light">帖子已删除</span>
+                                <span class="ow-text-light">帖子已删除</span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light mono">
+                        <td class="ow-text-light mono">
                             <?= $isFirst ? '首帖' : '#' . (int)($post['floor'] ?? 0) ?>
                         </td>
                         <td>
                             <?php if ($isPending): ?>
-                                <span class="badge outline"><span class="status-dot status-dot--off"></span>待审核</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>待审核</span>
                             <?php else: ?>
-                                <span class="badge outline"><span class="status-dot"></span>已通过</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot"></span>已通过</span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light"><?= e(human_time((int)($post['created_at'] ?? 0))) ?></td>
+                        <td class="ow-text-light"><?= e(human_time((int)($post['created_at'] ?? 0))) ?></td>
                         <td>
                             <div class="admin-table-actions">
                                 <?php if ($canApprove && $isPending): ?>
@@ -192,7 +192,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                           action="<?= e(url('/admin/posts/' . $postId . '/approve')) ?>"
                                           data-confirm="确认通过这条评论的审核吗？">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="button small">
+                                        <button type="submit" class="ow-button ow-small">
                                             <?= $view('partials/icon', ['name' => 'check', 'size' => 14]) ?>
                                             <span>通过</span>
                                         </button>
@@ -200,7 +200,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <?php endif; ?>
 
                                 <?php if ($threadId > 0): ?>
-                                    <a class="button small ghost"
+                                    <a class="ow-button ow-small ow-ghost"
                                        href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>"
                                        target="_blank" rel="noopener">
                                         <?= $view('partials/icon', ['name' => 'eye', 'size' => 14]) ?>
@@ -209,13 +209,13 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                 <?php endif; ?>
 
                                 <?php if ($isFirst): ?>
-                                    <button type="button" class="button small ghost" disabled
+                                    <button type="button" class="ow-button ow-small ow-ghost" disabled
                                             title="首帖需连同帖子一起删除">
                                         <?= $view('partials/icon', ['name' => 'lock', 'size' => 14]) ?>
                                         <span>删除</span>
                                     </button>
                                 <?php elseif (!(bool)($post['can_delete'] ?? true)): ?>
-                                    <button type="button" class="button small ghost" disabled
+                                    <button type="button" class="ow-button ow-small ow-ghost" disabled
                                             title="管理员发布的内容只有超级管理员可以删除">
                                         <?= $view('partials/icon', ['name' => 'lock', 'size' => 14]) ?>
                                         <span>删除</span>
@@ -225,7 +225,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
                                           action="<?= e(url('/admin/posts/' . $postId . '/delete')) ?>"
                                           data-confirm="确定要删除这条评论吗？">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="button small ghost" data-variant="danger">
+                                        <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                             <span>删除</span>
                                         </button>
@@ -240,7 +240,7 @@ $statusOptions = [-1 => '全部状态', 0 => '待审核', 1 => '已通过'];
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         所有删除均为软删除，评论数、帖子数等统计会同步回滚。
     </div>
 

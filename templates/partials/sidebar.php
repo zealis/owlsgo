@@ -42,7 +42,7 @@ $sideLatest = array_slice($sideLatest, 0, 8);
 
 <aside class="sidebar">
     <?php if ($sideCanPost): ?>
-        <a class="button w-100 mb-4" href="<?= e(url('/new')) ?>">
+        <a class="ow-button ow-w-full ow-mb-4" href="<?= e(url('/new')) ?>">
             <?= $view('partials/icon', ['name' => 'plus', 'size' => 17]) ?>
             <span>发表新帖子</span>
         </a>

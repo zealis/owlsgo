@@ -15,21 +15,21 @@ $captchaEnabled  = (bool)($captchaEnabled ?? false);
 <form method="post" action="<?= e(url('/login')) ?>" autocomplete="on">
     <?= csrf_field() ?>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="login-account">用户名或邮箱</label>
         <input type="text" id="login-account" name="login" required autofocus
                autocomplete="username" maxlength="191"
                value="<?= e((string)old('login', '')) ?>">
     </div>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="login-password">密码</label>
         <input type="password" id="login-password" name="password" required
                autocomplete="current-password">
     </div>
 
     <?php if ($captchaEnabled): ?>
-        <div data-field>
+        <div data-ow-field>
             <label for="login-captcha">验证码</label>
             <div class="captcha-row">
                 <input type="text" id="login-captcha" name="captcha" required
@@ -38,7 +38,7 @@ $captchaEnabled  = (bool)($captchaEnabled ?? false);
                      data-src="<?= e(url('/captcha')) ?>"
                      alt="图形验证码" width="132" height="44" title="点击换一张">
             </div>
-            <span data-hint>看不清？点击图片换一张。不区分大小写。</span>
+            <span data-ow-hint>看不清？点击图片换一张。不区分大小写。</span>
         </div>
     <?php endif; ?>
 
@@ -46,7 +46,7 @@ $captchaEnabled  = (bool)($captchaEnabled ?? false);
         <input type="checkbox" name="remember" value="1">
         <span>记住我（30 天内免登录）</span>
     </label>
-    <button type="submit" class="button w-100 mt-4">
+    <button type="submit" class="ow-button ow-w-full ow-mt-4">
         <?= $view('partials/icon', ['name' => 'key', 'size' => 16]) ?>
         <span>登录</span>
     </button>

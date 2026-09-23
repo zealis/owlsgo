@@ -7,8 +7,8 @@
 
 declare(strict_types=1);
 ?>
-<ol class="unstyled hstack crumbs">
-    <li><a class="unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
+<ol class="ow-unstyled ow-hstack crumbs">
+    <li><a class="ow-unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
     <li aria-hidden="true">/</li>
     <li>通知中心设置</li>
 </ol>
@@ -17,14 +17,14 @@ declare(strict_types=1);
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>通知中心设置</h3>
         <span class="spacer"></span>
-        <a class="button ghost small" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
+        <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
     </div>
 
     <div class="panel__body">
         <form method="post" action="<?= e(url('/notices/settings')) ?>">
             <?= csrf_field() ?>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="notice-center-intro">通知中心副标题</label>
                 <input type="text" id="notice-center-intro" name="notice_center_intro" maxlength="120"
                        value="<?= e($intro) ?>" autocomplete="off"
@@ -32,7 +32,7 @@ declare(strict_types=1);
                 <span class="field-hint">显示在通知中心页标题下方，留空则不显示。</span>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label class="checkbox-line">
                     <input type="checkbox" name="notice_push_enabled" value="1"<?= $push ? ' checked' : '' ?>>
                     <span>公告同步推送到个人通知</span>
@@ -43,8 +43,8 @@ declare(strict_types=1);
                 </span>
             </div>
 
-            <div class="hstack mt-4">
-                <button type="submit" class="button">
+            <div class="ow-hstack ow-mt-4">
+                <button type="submit" class="ow-button">
                     <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                     <span>保存设置</span>
                 </button>

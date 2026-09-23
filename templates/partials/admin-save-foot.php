@@ -12,10 +12,10 @@ declare(strict_types=1);
 
 $hint = (string)($hint ?? '保存后会立即清空缓存，前台即刻生效。');
 ?>
-<div class="panel__foot hstack">
-    <button type="submit" class="button">
+<div class="panel__foot ow-hstack">
+    <button type="submit" class="ow-button">
         <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
         <span>保存设置</span>
     </button>
-    <span class="text-light" style="font-size:12.5px"><?= e($hint) ?></span>
+    <span class="ow-text-light" style="font-size:12.5px"><?= e($hint) ?></span>
 </div>

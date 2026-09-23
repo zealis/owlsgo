@@ -32,7 +32,7 @@ $excerpt = static function (string $text): string {
 <?php /* 与首页同款右栏：前台（除个人管理页面外）统一用 partials/sidebar */ ?>
 <div class="page-grid">
     <div>
-    <section class="panel mb-4">
+    <section class="panel ow-mb-4">
         <div class="panel__head">
             <h2><?= $view('partials/icon', ['name' => 'search', 'size' => 17]) ?>搜索</h2>
         </div>
@@ -49,8 +49,8 @@ $excerpt = static function (string $text): string {
                     </button>
                 </div>
 
-                <?php /* Preference：OATUI 官方约定 = fieldset.hstack + legend + label 包裹 radio */ ?>
-                <fieldset class="hstack search-hero__scope">
+                <?php /* Preference：ui.css 官方约定 = fieldset.hstack + legend + label 包裹 radio */ ?>
+                <fieldset class="ow-hstack search-hero__scope">
                     <legend>搜索范围</legend>
                     <?php foreach ($typeLabels as $value => $label): ?>
                         <label><input type="radio" name="type" value="<?= e($value) ?>"<?= checked($value === $type) ?>><?= e($label) ?></label>
@@ -70,7 +70,7 @@ $excerpt = static function (string $text): string {
     <?php else: ?>
         <?php /* 帖子范围内命中的公告，单独成块展示 */ ?>
         <?php if ($type === 'thread' && $notices !== []): ?>
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'megaphone', 'size' => 15]) ?>相关公告</h3>
                 </div>
@@ -96,7 +96,7 @@ $excerpt = static function (string $text): string {
             <div class="panel__head">
                 <h3>“<?= e($keyword) ?>” 的搜索结果</h3>
                 <span class="spacer"></span>
-                <span class="text-light" style="font-size:13px"><?= e($typeLabels[$type] ?? '帖子') ?> · 共 <?= $total ?> 条</span>
+                <span class="ow-text-light" style="font-size:13px"><?= e($typeLabels[$type] ?? '帖子') ?> · 共 <?= $total ?> 条</span>
             </div>
 
             <?php if ($items === []): ?>

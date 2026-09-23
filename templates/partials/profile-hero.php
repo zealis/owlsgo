@@ -26,7 +26,7 @@ $heroBio   = trim((string)($hero['bio'] ?? ''));
         <?php /* 用户名与用户组标签同一行 */ ?>
         <div class="profile-hero__name-row">
             <h1 class="profile-hero__name"><?= e((string)($hero['username'] ?? '用户已删除')) ?></h1>
-            <span class="badge" style="background:rgb(255 255 255 / 0.22);color:#fff"><?= e($heroGroup) ?></span>
+            <span class="ow-badge" style="background:rgb(255 255 255 / 0.22);color:#fff"><?= e($heroGroup) ?></span>
         </div>
 
         <?php if ($heroBio !== ''): ?>

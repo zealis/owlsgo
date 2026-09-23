@@ -57,25 +57,25 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
  */ ?>
 <div class="page-grid">
     <div>
-    <section class="panel mb-4">
+    <section class="panel ow-mb-4">
         <div class="panel__head">
             <h2><?= $view('partials/icon', ['name' => 'megaphone', 'size' => 17]) ?>通知</h2>
             <span class="spacer"></span>
             <?php if ($canManage || $canAttachManage): ?>
                 <?php if ($canManage && $hiddenCount > 0): ?>
-                    <span class="badge outline" title="未公开的公告只有拥有发布权限的用户能看到"><?= $hiddenCount ?> 条未公开</span>
+                    <span class="ow-badge ow-outline" title="未公开的公告只有拥有发布权限的用户能看到"><?= $hiddenCount ?> 条未公开</span>
                 <?php endif; ?>
                 <?php if ($canManage): ?>
-                    <a class="button ghost small" href="<?= e(url('/notices/create')) ?>">
+                    <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notices/create')) ?>">
                         <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
                         <span>发布公告</span>
                     </a>
                 <?php endif; ?>
                 <?php if ($canAttachManage): ?>
-                    <a class="button ghost small" href="<?= e(url('/notices/resources')) ?>">附件管理</a>
+                    <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notices/resources')) ?>">附件管理</a>
                 <?php endif; ?>
                 <?php if ($canManage): ?>
-                    <a class="button ghost small" href="<?= e(url('/notices/settings')) ?>">通知中心设置</a>
+                    <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notices/settings')) ?>">通知中心设置</a>
                 <?php endif; ?>
             <?php endif; ?>
         </div>
@@ -110,7 +110,7 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
                         <h3 class="notice-card__title"><?= e((string)($notice['title'] ?? '')) ?></h3>
                         <span class="spacer"></span>
                         <?php if (!$isPublic): ?>
-                            <span class="badge outline">未公开</span>
+                            <span class="ow-badge ow-outline">未公开</span>
                         <?php endif; ?>
                         <?php if ($canManage): ?>
                             <a class="notice-card__edit" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
@@ -161,18 +161,18 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
         <div class="panel__head">
             <h2><?= $view('partials/icon', ['name' => 'bell', 'size' => 17]) ?>我的通知</h2>
             <span class="spacer"></span>
-            <span class="text-light" style="font-size:13px">共 <?= format_number((int)($result['total'] ?? 0)) ?> 条</span>
+            <span class="ow-text-light" style="font-size:13px">共 <?= format_number((int)($result['total'] ?? 0)) ?> 条</span>
             <?php if ($unread > 0): ?>
-                <span class="badge"><?= $unread ?> 条未读</span>
+                <span class="ow-badge"><?= $unread ?> 条未读</span>
                 <form method="post" action="<?= e(url('/notifications/read')) ?>">
                     <?= csrf_field() ?>
-                    <button type="submit" class="button small ghost">
+                    <button type="submit" class="ow-button ow-small ow-ghost">
                         <?= $view('partials/icon', ['name' => 'check', 'size' => 15]) ?>
                         <span>全部标为已读</span>
                     </button>
                 </form>
             <?php else: ?>
-                <span class="badge outline">已全部读完</span>
+                <span class="ow-badge ow-outline">已全部读完</span>
             <?php endif; ?>
         </div>
 
@@ -180,7 +180,7 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
             <div class="empty">
                 <?= $view('partials/icon', ['name' => 'bell', 'size' => 46]) ?>
                 <p>暂时没有任何通知。</p>
-                <p class="text-light" style="font-size:13px">
+                <p class="ow-text-light" style="font-size:13px">
                     当有人评论你的帖子、引用你的评论，或在帖子里 @ 你时，这里会出现提醒。
                 </p>
             </div>
@@ -206,7 +206,7 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
 
                         <div class="notice-item__body">
                             <div class="notice-item__text">
-                                <span class="badge outline" style="margin-right:6px"><?= e($kindName) ?></span>
+                                <span class="ow-badge ow-outline" style="margin-right:6px"><?= e($kindName) ?></span>
 
                                 <?php if ($senderId > 0): ?>
                                     <a href="<?= e(url('/u/' . $senderId)) ?>"><?= e($senderName) ?></a>
@@ -215,11 +215,11 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
                                 <?php endif; ?>
 
                                 <?php if (trim((string)($notice['content'] ?? '')) !== ''): ?>
-                                    <span class="text-light">·</span> <?= e((string)$notice['content']) ?>
+                                    <span class="ow-text-light">·</span> <?= e((string)$notice['content']) ?>
                                 <?php endif; ?>
                             </div>
 
-                            <div class="hstack" style="margin-top:6px;gap:12px">
+                            <div class="ow-hstack" style="margin-top:6px;gap:12px">
                                 <time datetime="<?= e(date('c', $createdAt)) ?>"><?= e(human_time($createdAt)) ?></time>
 
                                 <?php if ($link !== ''): ?>
@@ -230,7 +230,7 @@ $hiddenCount       = $canManage ? \Modules\Notice\NoticeModel::hiddenCount() : 0
                                     <form method="post" action="<?= e(url('/notifications/read')) ?>">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="id" value="<?= $noticeId ?>">
-                                        <button type="submit" class="button small ghost"
+                                        <button type="submit" class="ow-button ow-small ow-ghost"
                                                 style="height:auto;padding:1px 8px;font-size:12.5px">
                                             标为已读
                                         </button>

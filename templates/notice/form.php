@@ -18,8 +18,8 @@ $val    = static fn (string $key, string $default = ''): string
 $enabledDefault = $isEdit ? ((int)($notice['enabled'] ?? 1) === 1) : true;
 $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
 ?>
-<ol class="unstyled hstack crumbs">
-    <li><a class="unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
+<ol class="ow-unstyled ow-hstack crumbs">
+    <li><a class="ow-unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
     <li aria-hidden="true">/</li>
     <li><?= e($heading) ?></li>
 </ol>
@@ -34,14 +34,14 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
             <?= csrf_field() ?>
 
             <div class="form-grid">
-                <div data-field>
+                <div data-ow-field>
                     <label for="notice-name">公告名称</label>
                     <input type="text" id="notice-name" name="name" maxlength="100"
                            value="<?= e($val('name', '站点公告')) ?>" autocomplete="off">
                     <span class="field-hint">仅用于在列表里标识这条公告，不影响正文。</span>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="notice-sort">显示顺序</label>
                     <input type="number" id="notice-sort" name="sort" min="0" max="9999"
                            value="<?= e($val('sort', (string)\Modules\Notice\NoticeModel::DEFAULT_SORT)) ?>">
@@ -49,7 +49,7 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
                 </div>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="notice-title">公告标题</label>
                 <input type="text" id="notice-title" name="title" required maxlength="200"
                        value="<?= e($val('title')) ?>" autocomplete="off"
@@ -59,7 +59,7 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
                 <?php endif; ?>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="notice-body">公告内容</label>
                 <?= $view('partials/editor', [
                     'editorName'        => 'body',
@@ -75,7 +75,7 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
                 <?php endif; ?>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label class="checkbox-line">
                     <input type="checkbox" name="enabled" value="1"<?= $enabledChecked ? ' checked' : '' ?>>
                     <span>公开显示</span>
@@ -83,12 +83,12 @@ $enabledChecked = (string)old('enabled', $enabledDefault ? '1' : '') === '1';
                 <span class="field-hint">关闭后普通用户在通知中心看不到这条公告，仅拥有「发布公告」权限的用户可见。</span>
             </div>
 
-            <div class="hstack mt-4">
-                <button type="submit" class="button">
+            <div class="ow-hstack ow-mt-4">
+                <button type="submit" class="ow-button">
                     <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                     <span>保存公告</span>
                 </button>
-                <a class="button ghost" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
+                <a class="ow-button ow-ghost" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
             </div>
         </form>
     </div>

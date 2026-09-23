@@ -148,24 +148,24 @@ $todoCards = [
                                             <?= e((string)($thread['title'] ?? '')) ?>
                                         </a>
                                         <?php if ((int)($thread['status'] ?? 1) !== 1): ?>
-                                            <span class="badge outline">待审核</span>
+                                            <span class="ow-badge ow-outline">待审核</span>
                                         <?php endif; ?>
                                         <?php if ((int)($thread['is_pinned'] ?? 0) === 1): ?>
-                                            <span class="badge outline">置顶</span>
+                                            <span class="ow-badge ow-outline">置顶</span>
                                         <?php endif; ?>
                                         <?php if ((int)($thread['is_essence'] ?? 0) === 1): ?>
-                                            <span class="badge outline">精华</span>
+                                            <span class="ow-badge ow-outline">精华</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="text-light">
+                                <td class="ow-text-light">
                                     <span class="cell-title"><?= e((string)($thread['author']['username'] ?? '用户已删除')) ?></span>
                                 </td>
-                                <td class="text-light">
+                                <td class="ow-text-light">
                                     <span class="cell-title"><?= e((string)($thread['forum_name'] ?? '—')) ?></span>
                                 </td>
-                                <td class="text-light"><?= (int)($thread['reply_count'] ?? 0) ?></td>
-                                <td class="text-light"><?= e(human_time((int)($thread['created_at'] ?? 0))) ?></td>
+                                <td class="ow-text-light"><?= (int)($thread['reply_count'] ?? 0) ?></td>
+                                <td class="ow-text-light"><?= e(human_time((int)($thread['created_at'] ?? 0))) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -187,10 +187,10 @@ $todoCards = [
                     <p>还没有注册用户。</p>
                 </div>
             <?php else: ?>
-                <div class="panel__body hstack" style="flex-wrap:wrap;gap:10px">
+                <div class="panel__body ow-hstack" style="flex-wrap:wrap;gap:10px">
                     <?php foreach ($recentUsers as $user): ?>
                         <a href="<?= e(url('/admin/users/' . (int)$user['id'])) ?>"
-                           class="hstack" style="gap:8px;padding:5px 10px;border:1px solid var(--qq-line);border-radius:999px;max-width:100%">
+                           class="ow-hstack" style="gap:8px;padding:5px 10px;border:1px solid var(--qq-line);border-radius:999px;max-width:100%">
                             <?= avatar_img($user, 22) ?>
                             <span class="cell-title" style="max-width:180px;font-size:13.5px"
                                   title="<?= e((string)($user['username'] ?? '')) ?>">
@@ -223,7 +223,7 @@ $todoCards = [
                     <dt>附件占用</dt>
                     <dd class="mono">
                         <?= e((string)($system['upload_size'] ?? '—')) ?>
-                        <span class="text-light">（<?= e((string)($system['upload_files'] ?? '0')) ?> 个文件）</span>
+                        <span class="ow-text-light">（<?= e((string)($system['upload_files'] ?? '0')) ?> 个文件）</span>
                     </dd>
                     <dt>站点版本</dt><dd class="mono"><?= e((string)($system['app_version'] ?? '—')) ?></dd>
                     <dt>安装时间</dt><dd class="mono"><?= e((string)($system['installed_at'] ?? '未记录')) ?></dd>
@@ -231,9 +231,9 @@ $todoCards = [
                     <dt>调试模式</dt>
                     <dd>
                         <?php if (!empty($system['debug'])): ?>
-                            <span class="badge">已开启</span>
+                            <span class="ow-badge">已开启</span>
                         <?php else: ?>
-                            <span class="badge outline">已关闭</span>
+                            <span class="ow-badge ow-outline">已关闭</span>
                         <?php endif; ?>
                     </dd>
                     <dt>本次查询</dt><dd class="mono"><?= e((string)($system['sql_queries'] ?? '0')) ?> 次</dd>
@@ -247,7 +247,7 @@ $todoCards = [
                 </div>
 
                 <?php if (!empty($system['debug'])): ?>
-                    <div role="alert" data-variant="warning" style="margin-top:12px">
+                    <div role="alert" data-ow-variant="warning" style="margin-top:12px">
                         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
                         <div>当前处于调试模式，错误信息会暴露给访客，上线前请务必关闭。</div>
                     </div>
@@ -265,7 +265,7 @@ $todoCards = [
             </div>
 
             <?php if ($recentLogs === []): ?>
-                <div class="panel__body text-light" style="font-size:13.5px">暂无操作记录。</div>
+                <div class="panel__body ow-text-light" style="font-size:13.5px">暂无操作记录。</div>
             <?php else: ?>
                 <div class="panel__body--flush">
                     <?php foreach ($recentLogs as $log): ?>
@@ -275,15 +275,15 @@ $todoCards = [
                             </div>
                             <div class="notice-item__body">
                                 <div class="notice-item__text">
-                                    <span class="badge outline" style="margin-right:6px">
+                                    <span class="ow-badge ow-outline" style="margin-right:6px">
                                         <?= e((string)($log['action'] ?? '')) ?>
                                     </span>
                                     <?= e((string)($log['detail'] ?? '')) ?>
                                 </div>
-                                <div class="hstack" style="margin-top:4px;gap:10px">
+                                <div class="ow-hstack" style="margin-top:4px;gap:10px">
                                     <time><?= e(human_time((int)($log['created_at'] ?? 0))) ?></time>
                                     <?php if ((string)($log['target'] ?? '') !== ''): ?>
-                                        <span class="text-light mono"><?= e((string)$log['target']) ?></span>
+                                        <span class="ow-text-light mono"><?= e((string)$log['target']) ?></span>
                                     <?php endif; ?>
                                 </div>
                             </div>

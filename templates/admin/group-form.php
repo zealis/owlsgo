@@ -37,7 +37,7 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
     <?= csrf_field() ?>
 
     <?php if ($isSuper): ?>
-        <div role="alert" data-variant="warning" style="margin-bottom:var(--space-4)">
+        <div role="alert" data-ow-variant="warning" style="margin-bottom:var(--space-4)">
             <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
             <div>
                 这是超级管理员用户组，拥有全部权限且<strong>不可被削减</strong>。
@@ -53,25 +53,25 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
         </div>
         <div class="panel__body">
             <div class="form-grid">
-                <div data-field>
-                    <label for="group-name">用户组名称 <span class="text-light">（必填）</span></label>
+                <div data-ow-field>
+                    <label for="group-name">用户组名称 <span class="ow-text-light">（必填）</span></label>
                     <input type="text" id="group-name" name="name" maxlength="60" required
                            value="<?= e((string)old('name', $val('name'))) ?>">
                     <?php if (old_error('name') !== ''): ?>
                         <span class="field-error"><?= e(old_error('name')) ?></span>
                     <?php else: ?>
-                        <span data-hint>显示在后台列表与前台用户名旁。</span>
+                        <span data-ow-hint>显示在后台列表与前台用户名旁。</span>
                     <?php endif; ?>
                 </div>
 
                 <?php if ($isEdit): ?>
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="group-slug">用户组标识</label>
                         <input type="text" id="group-slug" value="<?= e($val('slug')) ?>" readonly disabled>
-                        <span data-hint>标识创建后不可修改。</span>
+                        <span data-ow-hint>标识创建后不可修改。</span>
                     </div>
                 <?php else: ?>
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="group-slug">用户组标识</label>
                         <input type="text" id="group-slug" name="slug" maxlength="32"
                                placeholder="例如 vip（小写字母、数字、下划线或短横线）"
@@ -79,42 +79,42 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
                         <?php if (old_error('slug') !== ''): ?>
                             <span class="field-error"><?= e(old_error('slug')) ?></span>
                         <?php endif; ?>
-                        <span data-hint>留空会自动生成，需保证唯一。</span>
+                        <span data-ow-hint>留空会自动生成，需保证唯一。</span>
                     </div>
                 <?php endif; ?>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="group-description">简要说明</label>
                 <input type="text" id="group-description" name="description" maxlength="120"
                        placeholder="展示在后台列表中，帮助识别该组的用途"
                        value="<?= e($val('description')) ?>">
-                <span data-hint>选填，最多 120 字。</span>
+                <span data-ow-hint>选填，最多 120 字。</span>
             </div>
 
             <div class="form-grid">
-                <div data-field>
+                <div data-ow-field>
                     <label for="group-quota">附件空间上限</label>
                     <input type="number" id="group-quota" name="attach_quota_mb" min="0"
                            max="<?= (int)\Modules\User\UsergroupModel::QUOTA_MAX ?>" step="1"
                            value="<?= (int)($quotaMb ?? 0) ?>">
-                    <span data-hint>单位 MB，<strong>0 = 不限制</strong>；超限后拒绝上传，删除附件即释放。</span>
+                    <span data-ow-hint>单位 MB，<strong>0 = 不限制</strong>；超限后拒绝上传，删除附件即释放。</span>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="group-sort">排序值</label>
                     <input type="number" id="group-sort" name="sort_order" min="-9999" max="9999"
                            value="<?= e($val('sort_order', '0')) ?>">
-                    <span data-hint>数字越小越靠前，内置组默认 0~5。</span>
+                    <span data-ow-hint>数字越小越靠前，内置组默认 0~5。</span>
                 </div>
             </div>
 
             <div class="form-grid">
-                <div data-field>
+                <div data-ow-field>
                     <label for="group-color">组标识颜色</label>
                     <input type="color" id="group-color" name="color"
                            value="<?= e($val('color', '#00A0E9')) ?>">
-                    <span data-hint>用于前台用户名着色。</span>
+                    <span data-ow-hint>用于前台用户名着色。</span>
                 </div>
             </div>
         </div>
@@ -125,11 +125,11 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
         <div class="panel__head">
             <h3><?= $view('partials/icon', ['name' => 'key', 'size' => 16]) ?>权限设置</h3>
             <span class="spacer"></span>
-            <span class="text-light" style="font-size:12.5px">共 <?= count($catalog) ?> 项</span>
+            <span class="ow-text-light" style="font-size:12.5px">共 <?= count($catalog) ?> 项</span>
         </div>
         <div class="panel__body">
             <?php if ($isSuper): ?>
-                <div class="doc-note hstack" style="gap:10px;align-items:flex-start;margin-bottom:14px">
+                <div class="doc-note ow-hstack" style="gap:10px;align-items:flex-start;margin-bottom:14px">
                     <?= $view('partials/icon', ['name' => 'info', 'size' => 18]) ?>
                     <div>超级管理员组的开关已全部锁定为开启。</div>
                 </div>
@@ -163,12 +163,12 @@ $val = static fn (string $key, string $default = ''): string => (string)($group[
             <?php endforeach; ?>
         </div>
 
-        <div class="panel__foot hstack">
-            <button type="submit" class="button">
+        <div class="panel__foot ow-hstack">
+            <button type="submit" class="ow-button">
                 <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                 <span><?= $isEdit ? '保存修改' : '创建用户组' ?></span>
             </button>
-            <a class="button ghost" href="<?= e(url('/admin/groups')) ?>">
+            <a class="ow-button ow-ghost" href="<?= e(url('/admin/groups')) ?>">
                 <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
                 <span>返回列表</span>
             </a>

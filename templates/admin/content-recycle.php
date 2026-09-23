@@ -25,7 +25,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'trash', 'size' => 16]) ?>回收站</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             帖子 <?= number_format((int)$counts['thread']) ?> 个 ·
             回帖 <?= number_format((int)$counts['post']) ?> 条 ·
             用户 <?= number_format((int)$counts['user']) ?> 个 ·
@@ -54,12 +54,12 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
         </div>
 
         <?php if ($keyword !== '' || $scope !== 'all'): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/recycle')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/recycle')) ?>">重置</a>
         <?php endif; ?>
 
 
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:12.5px">
+        <span class="ow-text-light" style="font-size:12.5px">
             恢复会把当初扣掉的计数一起加回；彻底删除不可撤销
         </span>
     </form>
@@ -126,7 +126,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                                    aria-label="选择该<?= e($isUser ? '用户' : ($isThread ? '帖子' : '回帖')) ?>">
                         </td>
                         <td>
-                            <span class="badge outline"><?= e((string)($item['type_label'] ?? '')) ?></span>
+                            <span class="ow-badge ow-outline"><?= e((string)($item['type_label'] ?? '')) ?></span>
                         </td>
                         <?php
                         /*
@@ -149,15 +149,15 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                         <td>
                             <div class="cell-row">
                                 <span class="cell-title" title="<?= e($label) ?>"><?= e($cellMain) ?></span>
-                                <span class="text-light mono" style="font-size:12px">#<?= $itemId ?></span>
+                                <span class="ow-text-light mono" style="font-size:12px">#<?= $itemId ?></span>
                             </div>
                             <?php if ($cellSub !== ''): ?>
-                                <div class="cell-title text-light" style="font-size:12.5px;margin-top:3px"><?= e($cellSub) ?></div>
+                                <div class="cell-title ow-text-light" style="font-size:12.5px;margin-top:3px"><?= e($cellSub) ?></div>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light"><?= e((string)($item['author_name'] ?? '')) ?></td>
-                        <td class="text-light"><?= e((string)($item['forum_name'] ?? '')) ?></td>
-                        <td class="text-light"><?= e(human_time((int)($item['deleted_at'] ?? 0))) ?></td>
+                        <td class="ow-text-light"><?= e((string)($item['author_name'] ?? '')) ?></td>
+                        <td class="ow-text-light"><?= e((string)($item['forum_name'] ?? '')) ?></td>
+                        <td class="ow-text-light"><?= e(human_time((int)($item['deleted_at'] ?? 0))) ?></td>
                         <td>
                             <div class="admin-table-actions">
                                 <?php /*
@@ -173,7 +173,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                                         <input type="hidden" name="action" value="restore">
                                         <input type="hidden" name="items[]" value="<?= e($type . ':' . $itemId) ?>">
                                         <?php /* 与右侧「彻底删除」同为 ghost：同排按钮质感一致，只靠文字颜色区分 */ ?>
-                                        <button type="submit" class="button small ghost">
+                                        <button type="submit" class="ow-button ow-small ow-ghost">
                                             <?= $view('partials/icon', ['name' => 'refresh', 'size' => 14]) ?>
                                             <span>恢复</span>
                                         </button>
@@ -184,7 +184,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="action" value="purge">
                                         <input type="hidden" name="items[]" value="<?= e($type . ':' . $itemId) ?>">
-                                        <button type="submit" class="button small ghost" data-variant="danger">
+                                        <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                             <span>彻底删除</span>
                                         </button>
@@ -197,7 +197,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                                         <input type="hidden" name="action" value="restore">
                                         <input type="hidden" name="items[]" value="<?= e($type . ':' . $itemId) ?>">
                                         <?php /* 与右侧「彻底删除」同为 ghost：同排按钮质感一致，只靠文字颜色区分 */ ?>
-                                        <button type="submit" class="button small ghost">
+                                        <button type="submit" class="ow-button ow-small ow-ghost">
                                             <?= $view('partials/icon', ['name' => 'refresh', 'size' => 14]) ?>
                                             <span>恢复</span>
                                         </button>
@@ -208,7 +208,7 @@ $counts  = is_array($counts ?? null) ? $counts : ['thread' => 0, 'post' => 0, 't
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="action" value="purge">
                                         <input type="hidden" name="items[]" value="<?= e($type . ':' . $itemId) ?>">
-                                        <button type="submit" class="button small ghost" data-variant="danger">
+                                        <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                             <span>彻底删除</span>
                                         </button>

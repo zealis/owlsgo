@@ -5,7 +5,7 @@
  * 变量：$tree（版块树）、$newComments（按最后评论时间倒序的帖子）、
  *       $newThreads（按发布时间倒序的帖子）、$recommended、$hot、$canPost、$activeTab
  *
- * 页签是**链接**，不是 OATUI 的 <ot-tabs>：点页签 = 带 ?tab=N 的整页跳转，
+ * 页签是**链接**，不是 组件化的页签：点页签 = 带 ?tab=N 的整页跳转，
  * 激活哪个面板由服务端决定（非激活的 [role="tabpanel"] 直接带 hidden）。
  * 这样「翻到第 2 页」和「当前页签」永远不会各说各话，也不需要任何本站 JS。
  *
@@ -35,7 +35,7 @@ $forumIcon = static function (array $forum): string {
         <?php /*
          * 整个左栏是一个「框」（.panel）：页签条做框头，四个页签的内容都在框内。
          *
-         * ⚠️ 页签是**链接**（<a> + aria-current），不是 OATUI 的 <button role="tab">：
+         * ⚠️ 页签是**链接**（<a> + aria-current），不是 ui.css 的 <button role="tab">：
          * 点页签 = 带 ?tab=N 的整页跳转，选中态**完全由服务端**按 ?tab= 渲染，
          * 于是「在『新帖子』里点第 2 页重载后页签跳回『新评论』」这类错位从根上不存在
          * （原来是客户端组件按 DOM 顺序激活，页码和页签是两个互不知情的状态）。
@@ -157,7 +157,7 @@ $forumIcon = static function (array $forum): string {
                                     <?php $lastThreadId = (int)($item['last_thread_id'] ?? 0); ?>
                                     <p class="forum-row__desc" style="margin-top:4px">
                                         最后发表：<?php if ($lastThreadId > 0): ?><a href="<?= e(url('/t/' . $lastThreadId)) ?>" title="跳转到该帖子"><?= e($lastName) ?></a><?php else: ?><?= e($lastName) ?><?php endif; ?>
-                                        <span class="text-lighter">· <?= e(human_time($lastAt)) ?></span>
+                                        <span class="ow-text-lighter">· <?= e(human_time($lastAt)) ?></span>
                                     </p>
                                 <?php endif; ?>
                             </div>

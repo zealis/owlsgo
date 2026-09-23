@@ -30,9 +30,9 @@
                 <dd class="mono">
                     <?= e($manifest['version'] !== '' ? 'v' . ltrim($manifest['version'], 'vV') : $manifest['sha']) ?>
                     <?php if ($hasNew): ?>
-                        <span class="badge" style="background:var(--qq-soft);color:var(--qq-blue-deep);margin-inline-start:6px">有新版本</span>
+                        <span class="ow-badge" style="background:var(--qq-soft);color:var(--qq-blue-deep);margin-inline-start:6px">有新版本</span>
                     <?php else: ?>
-                        <span class="text-light" style="margin-inline-start:6px">已是最新</span>
+                        <span class="ow-text-light" style="margin-inline-start:6px">已是最新</span>
                     <?php endif; ?>
                 </dd>
 
@@ -47,7 +47,7 @@
                 <dt>文件变更</dt>
                 <dd>
                     <?php if ($changes === []): ?>
-                        <span class="text-light">与本地完全一致</span>
+                        <span class="ow-text-light">与本地完全一致</span>
                     <?php else: ?>
                         <?php
                         $counts = ['新增' => 0, '更新' => 0, '删除' => 0];
@@ -80,18 +80,18 @@
                     <?php endforeach; ?>
                 </div>
 
-                <div class="text-light" style="font-size:12.5px;margin:0 0 12px">
+                <div class="ow-text-light" style="font-size:12.5px;margin:0 0 12px">
                     被覆盖/删除的文件会先备份到 <code>storage/backup/</code>；<code>storage/</code> 用户数据与
                     <code>plugins/</code> 本地插件不受影响。升级完成后自动清理站点缓存与 OPcache。<br>
                     执行前请确认已完成数据库备份。
                 </div>
-                <button type="submit" class="button">
+                <button type="submit" class="ow-button">
                     <?= $view('partials/icon', ['name' => 'download', 'size' => 15]) ?>
                     <span>应用选中的变更</span>
                 </button>
             </form>
         <?php elseif ($repo !== '' && $manifest !== null && $changes === [] && $error === ''): ?>
-            <p class="text-light" style="font-size:12.5px;margin:0">程序文件与升级源完全一致，无需升级。</p>
+            <p class="ow-text-light" style="font-size:12.5px;margin:0">程序文件与升级源完全一致，无需升级。</p>
         <?php endif; ?>
     </div>
 </section>

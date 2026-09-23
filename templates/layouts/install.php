@@ -21,7 +21,7 @@ $title = (string)($pageTitle ?? '安装');
     <link rel="icon" href="<?= e(\Core\Brand::url()) ?>">
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
-    <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('assets/ui/ui.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('assets/css/theme.css')) ?>">
 </head>
 <body>
@@ -38,11 +38,11 @@ $title = (string)($pageTitle ?? '安装');
 
 <?php
 /*
- * 必须先加载 OATUI 的模块脚本：app.js 的 notify() 依赖 window.ot.toast，
+ * 必须先加载 ui.css 的模块脚本：app.js 的 notify() 依赖 window.ot.toast，
  * 缺了它就会退化成浏览器原生的 alert 弹窗（安装页的「测试连接 / 安装」结果就是这样）。
  */
 ?>
-<script type="module" src="<?= e(asset('assets/oat/js/index.js')) ?>"></script>
+<script src="<?= e(asset('assets/ui/ui.js')) ?>" defer></script>
 <script src="<?= e(asset('assets/js/app.js')) ?>" defer></script>
 </body>
 </html>

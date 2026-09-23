@@ -25,8 +25,8 @@ declare(strict_types=1);
     </div>
     <div class="panel__body">
         <div class="form-grid">
-            <div data-field>
-                <label for="site_name">站点名称 <span class="text-light">（必填）</span></label>
+            <div data-ow-field>
+                <label for="site_name">站点名称 <span class="ow-text-light">（必填）</span></label>
                 <input type="text" id="site_name" name="site_name" maxlength="60" required
                        value="<?= e($val('site_name', 'owlsgo')) ?>">
                 <?php if (old_error('site_name') !== ''): ?>
@@ -34,7 +34,7 @@ declare(strict_types=1);
                 <?php endif; ?>
             </div>
 
-            <div data-field>
+            <div data-ow-field>
                 <label for="site_url">站点地址</label>
                 <input type="text" id="site_url" name="site_url" maxlength="191"
                        placeholder="https://example.com（留空则自动使用当前域名）"
@@ -45,19 +45,19 @@ declare(strict_types=1);
             </div>
         </div>
 
-        <div data-field>
+        <div data-ow-field>
             <label for="site_description">站点描述</label>
             <input type="text" id="site_description" name="site_description" maxlength="200"
                    value="<?= e($val('site_description')) ?>">
         </div>
 
-        <div data-field>
+        <div data-ow-field>
             <label for="site_keywords">站点关键词</label>
             <input type="text" id="site_keywords" name="site_keywords" maxlength="200"
                    placeholder="用英文逗号分隔" value="<?= e($val('site_keywords')) ?>">
         </div>
 
-        <div data-field>
+        <div data-ow-field>
             <label for="site_icp">备案号</label>
             <input type="text" id="site_icp" name="site_icp" maxlength="60"
                    placeholder="如：京ICP备00000000号-1"
@@ -76,9 +76,9 @@ declare(strict_types=1);
         <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>站点 Logo</h3>
     </div>
     <div class="panel__body">
-        <div class="hstack" style="align-items:center;gap:14px;margin-bottom:14px">
+        <div class="ow-hstack" style="align-items:center;gap:14px;margin-bottom:14px">
             <span class="brand__mark" style="width:44px;height:44px" aria-hidden="true"><?= \Core\Brand::inlineSvg() ?></span>
-            <span class="text-light" style="font-size:12.5px">
+            <span class="ow-text-light" style="font-size:12.5px">
                 显示在顶栏、侧栏、登录 / 注册页、错误页与浏览器标签页（favicon）。
             </span>
         </div>
@@ -91,19 +91,19 @@ declare(strict_types=1);
         <form method="post" action="<?= e(url('/admin/settings/site-logo')) ?>"
               enctype="multipart/form-data" id="site-logo-form">
             <?= csrf_field() ?>
-            <ot-upload>
+            <ow-upload>
                 <input type="file" name="logo_file" id="site-logo-file"
                        accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp" hidden>
                 <div data-files>
-                    <small data-hint>
+                    <small data-ow-hint>
                         把文件拖到这里，或点击选择：SVG（≤2MB）或 PNG / JPG / WebP（≤10MB）
                     </small>
                 </div>
-            </ot-upload>
+            </ow-upload>
 
             <?php if (\Core\Brand::hasCustom()): ?>
-                <div class="hstack" style="gap:10px;margin-top:12px">
-                    <button type="submit" class="button ghost small" formnovalidate
+                <div class="ow-hstack" style="gap:10px;margin-top:12px">
+                    <button type="submit" class="ow-button ow-ghost ow-small" formnovalidate
                             formaction="<?= e(url('/admin/settings/site-logo/restore')) ?>">
                         <?= $view('partials/icon', ['name' => 'refresh', 'size' => 15]) ?>
                         <span>恢复默认</span>

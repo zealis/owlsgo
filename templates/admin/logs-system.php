@@ -27,7 +27,7 @@ $base = url('/admin/logs/system');
      * 直接把原因和开启方式写在页面上，省得来回问。
      */
     ?>
-    <div role="alert" data-variant="warning" style="margin-bottom:var(--space-4)">
+    <div role="alert" data-ow-variant="warning" style="margin-bottom:var(--space-4)">
         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
         <div>
             <strong>当前「调试模式」为关闭</strong>（<code>config/app.php</code> 的
@@ -40,12 +40,12 @@ $base = url('/admin/logs/system');
     </div>
 <?php endif; ?>
 
-<section class="panel mb-4">
+<section class="panel ow-mb-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>系统日志</h3>
         <span class="spacer"></span>
 
-        <a class="button ghost small" href="<?= e(url('/admin/logs')) ?>">
+        <a class="ow-button ow-ghost ow-small" href="<?= e(url('/admin/logs')) ?>">
             <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
             <span>返回操作日志</span>
         </a>
@@ -55,7 +55,7 @@ $base = url('/admin/logs/system');
                   data-confirm="确定清空 <?= e($current) ?> 吗？此操作不可撤销。">
                 <?= csrf_field() ?>
                 <input type="hidden" name="file" value="<?= e($current) ?>">
-                <button type="submit" class="button outline small">
+                <button type="submit" class="ow-button ow-outline ow-small">
                     <?= $view('partials/icon', ['name' => 'trash', 'size' => 15]) ?>
                     <span>清空当前文件</span>
                 </button>
@@ -65,7 +65,7 @@ $base = url('/admin/logs/system');
 
     <div class="panel__body">
         <?php if ($files === []): ?>
-            <p class="text-light" style="margin:0">
+            <p class="ow-text-light" style="margin:0">
                 还没有任何日志文件。日志只在程序真正出错或记录异常时才会生成，
                 位置是 <code>storage/logs/</code>。
             </p>
@@ -83,7 +83,7 @@ $base = url('/admin/logs/system');
 
             <?php if ($current !== ''): ?>
                 <?php if ($truncated): ?>
-                    <p class="text-light" style="margin:0 0 8px;font-size:12.5px">
+                    <p class="ow-text-light" style="margin:0 0 8px;font-size:12.5px">
                         文件较大，仅显示<strong>最后 <?= e((string)$maxLines) ?> 行</strong>。
                     </p>
                 <?php endif; ?>

@@ -90,11 +90,11 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                     所有任务都是可重复执行且幂等的，重复运行不会产生副作用。
                 </p>
 
-                <div class="hstack" style="flex-wrap:wrap;gap:8px">
+                <div class="ow-hstack" style="flex-wrap:wrap;gap:8px">
                     <form class="inline-form" method="post" action="<?= e(url('/admin/cron/run')) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="target" value="all">
-                        <button type="submit" class="button">
+                        <button type="submit" class="ow-button">
                             <?= $view('partials/icon', ['name' => 'refresh', 'size' => 16]) ?>
                             <span>执行全部任务</span>
                         </button>
@@ -103,7 +103,7 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                     <form class="inline-form" method="post" action="<?= e(url('/admin/cron/run')) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="target" value="plugins">
-                        <button type="submit" class="button ghost">
+                        <button type="submit" class="ow-button ow-ghost">
                             <?= $view('partials/icon', ['name' => 'plug', 'size' => 15]) ?>
                             <span>仅插件任务</span>
                         </button>
@@ -112,7 +112,7 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                     <form class="inline-form" method="post" action="<?= e(url('/admin/cron/run')) ?>">
                         <?= csrf_field() ?>
                         <input type="hidden" name="target" value="maintenance">
-                        <button type="submit" class="button ghost">
+                        <button type="submit" class="ow-button ow-ghost">
                             <?= $view('partials/icon', ['name' => 'database', 'size' => 15]) ?>
                             <span>仅维护任务</span>
                         </button>
@@ -126,11 +126,11 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
             <div class="panel__head">
                 <h3><?= $view('partials/icon', ['name' => 'database', 'size' => 16]) ?>内置维护任务</h3>
                 <span class="spacer"></span>
-                <span class="text-light" style="font-size:12.5px">共 <?= count($jobs) ?> 项</span>
+                <span class="ow-text-light" style="font-size:12.5px">共 <?= count($jobs) ?> 项</span>
             </div>
 
             <?php if ($jobs === []): ?>
-                <div class="panel__body text-light" style="font-size:13.5px">没有可用的维护任务。</div>
+                <div class="panel__body ow-text-light" style="font-size:13.5px">没有可用的维护任务。</div>
             <?php else: ?>
                 <div class="panel__body--flush">
                     <?php foreach ($jobs as $job => $description): ?>
@@ -142,7 +142,7 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                                 <div class="notice-item__text">
                                     <code class="mono"><?= e((string)$job) ?></code>
                                 </div>
-                                <div class="text-light" style="font-size:12.5px;margin-top:3px">
+                                <div class="ow-text-light" style="font-size:12.5px;margin-top:3px">
                                     <?= e((string)$description) ?>
                                 </div>
                             </div>
@@ -157,14 +157,14 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
             <div class="panel__head">
                 <h3><?= $view('partials/icon', ['name' => 'plug', 'size' => 16]) ?>插件任务</h3>
                 <span class="spacer"></span>
-                <span class="text-light" style="font-size:12.5px">共 <?= $taskCount ?> 个</span>
+                <span class="ow-text-light" style="font-size:12.5px">共 <?= $taskCount ?> 个</span>
             </div>
 
             <?php if ($tasks === []): ?>
                 <div class="empty">
                     <?= $view('partials/icon', ['name' => 'clock', 'size' => 44]) ?>
                     <p>还没有插件注册计划任务。</p>
-                    <p class="text-light" style="font-size:13px">
+                    <p class="ow-text-light" style="font-size:13px">
                         插件通过 <code>Core\Plugin::cron()</code> 声明任务后，会自动同步到这里。
                     </p>
                 </div>
@@ -202,50 +202,50 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                                         <?= e((string)($task['name'] ?? '')) ?>
                                     </strong>
                                     <?php if ((string)($task['description'] ?? '') !== ''): ?>
-                                        <div class="cell-title text-light" style="font-weight:400;font-size:12.5px;margin-top:3px"
+                                        <div class="cell-title ow-text-light" style="font-weight:400;font-size:12.5px;margin-top:3px"
                                              title="<?= e((string)$task['description']) ?>">
                                             <?= e((string)$task['description']) ?>
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-light mono">
+                                <td class="ow-text-light mono">
                                     <span class="cell-title"><?= e($plugin !== '' ? $plugin : '系统') ?></span>
                                 </td>
-                                <td class="text-light"><?= e($intervalText((int)($task['interval'] ?? 0))) ?></td>
-                                <td class="text-light"><?= number_format((int)($task['run_count'] ?? 0)) ?></td>
-                                <td class="text-light">
+                                <td class="ow-text-light"><?= e($intervalText((int)($task['interval'] ?? 0))) ?></td>
+                                <td class="ow-text-light"><?= number_format((int)($task['run_count'] ?? 0)) ?></td>
+                                <td class="ow-text-light">
                                     <?php if (!$enabled): ?>
                                         —
                                     <?php elseif ($nextRun <= time()): ?>
-                                        <span class="badge" data-variant="warning">已到期</span>
+                                        <span class="ow-badge" data-ow-variant="warning">已到期</span>
                                     <?php else: ?>
                                         <?= e(human_time($nextRun)) ?>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($lastStat === ''): ?>
-                                        <span class="text-light">—</span>
+                                        <span class="ow-text-light">—</span>
                                     <?php else: ?>
-                                        <span class="badge" data-variant="<?= e($statusVariant($lastStat)) ?>"><?= e($statusText($lastStat)) ?></span>
+                                        <span class="ow-badge" data-ow-variant="<?= e($statusVariant($lastStat)) ?>"><?= e($statusText($lastStat)) ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($enabled): ?>
-                                        <span class="badge outline"><span class="status-dot"></span>启用</span>
+                                        <span class="ow-badge ow-outline"><span class="status-dot"></span>启用</span>
                                     <?php else: ?>
-                                        <span class="badge outline"><span class="status-dot status-dot--off"></span>停用</span>
+                                        <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>停用</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if (!$enabled): ?>
-                                        <span class="cell-title text-light">已停用</span>
+                                        <span class="cell-title ow-text-light">已停用</span>
                                     <?php elseif (empty($task['plugin_active'])): ?>
-                                        <span class="cell-title text-light" title="插件当前未启用，任务无法执行">插件未启用</span>
+                                        <span class="cell-title ow-text-light" title="插件当前未启用，任务无法执行">插件未启用</span>
                                     <?php else: ?>
                                         <form class="inline-form" method="post"
                                               action="<?= e(url('/admin/cron/' . $taskId . '/toggle')) ?>">
                                             <?= csrf_field() ?>
-                                            <button type="submit" class="button small ghost">
+                                            <button type="submit" class="ow-button ow-small ow-ghost">
                                                 <?= $view('partials/icon', ['name' => $enabled ? 'pause' : 'play', 'size' => 14]) ?>
                                                 <span><?= $enabled ? '停用' : '启用' ?></span>
                                             </button>
@@ -272,11 +272,11 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                     在服务器上添加一条 crontab，定时请求下面的地址即可自动执行任务：
                 </p>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="cron-url">触发地址</label>
                     <input type="text" id="cron-url" value="<?= e($cronUrl) ?>" readonly
                            onfocus="this.select()">
-                    <span data-hint>
+                    <span data-ow-hint>
                         <?php if ($hasToken): ?>
                             地址中的令牌等同密码，请勿公开分享。
                         <?php else: ?>
@@ -291,7 +291,7 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                 <form method="post" action="<?= e(url('/admin/cron/token')) ?>"
                       data-confirm="重新生成后，旧的触发地址会立即失效。确定继续吗？">
                     <?= csrf_field() ?>
-                    <button type="submit" class="button ghost small">
+                    <button type="submit" class="ow-button ow-ghost ow-small">
                         <?= $view('partials/icon', ['name' => 'key', 'size' => 15]) ?>
                         <span><?= $hasToken ? '重新生成令牌' : '生成触发令牌' ?></span>
                     </button>
@@ -308,13 +308,13 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
             <div class="panel__head">
                 <h3><?= $view('partials/icon', ['name' => 'list', 'size' => 16]) ?>执行日志</h3>
                 <span class="spacer"></span>
-                <span class="text-light" style="font-size:12.5px">
+                <span class="ow-text-light" style="font-size:12.5px">
                     共 <?= number_format((int)($logs['total'] ?? 0)) ?> 条
                 </span>
             </div>
 
             <?php if ($logItems === []): ?>
-                <div class="panel__body text-light" style="font-size:13.5px">还没有执行记录。</div>
+                <div class="panel__body ow-text-light" style="font-size:13.5px">还没有执行记录。</div>
             <?php else: ?>
                 <div class="panel__body--flush">
                     <?php foreach ($logItems as $log): ?>
@@ -330,18 +330,18 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
                                 <div class="notice-item__text">
                                     <strong><?= e((string)($log['name'] ?? '')) ?></strong>
                                     <?php $logStat = (string)($log['status'] ?? 'ok'); ?>
-                                    <span class="badge" data-variant="<?= e($statusVariant($logStat)) ?>" style="margin-left:6px">
+                                    <span class="ow-badge" data-ow-variant="<?= e($statusVariant($logStat)) ?>" style="margin-left:6px">
                                         <?= e($statusText($logStat)) ?>
                                     </span>
                                 </div>
                                 <?php if ((string)($log['message'] ?? '') !== ''): ?>
-                                    <div class="text-light" style="font-size:12.5px;margin-top:3px">
+                                    <div class="ow-text-light" style="font-size:12.5px;margin-top:3px">
                                         <?= e((string)$log['message']) ?>
                                     </div>
                                 <?php endif; ?>
-                                <div class="hstack" style="margin-top:4px;gap:10px">
+                                <div class="ow-hstack" style="margin-top:4px;gap:10px">
                                     <time><?= e(human_time((int)($log['created_at'] ?? 0))) ?></time>
-                                    <span class="text-light mono"><?= (int)($log['duration'] ?? 0) ?> ms</span>
+                                    <span class="ow-text-light mono"><?= (int)($log['duration'] ?? 0) ?> ms</span>
                                 </div>
                             </div>
                         </div>
@@ -351,7 +351,7 @@ $statusVariant = static fn (string $s): string => ['ok' => 'outline', 'skip' => 
         </section>
 
         <?php if (($pagination ?? '') !== ''): ?>
-            <div class="mt-4"><?= (string)$pagination ?></div>
+            <div class="ow-mt-4"><?= (string)$pagination ?></div>
         <?php endif; ?>
     </div>
 </div>

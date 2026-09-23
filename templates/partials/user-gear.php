@@ -2,7 +2,7 @@
 /**
  * 个性化齿轮按钮（顶栏用户区共用：前台 partials/header.php 与后台 layouts/admin.php）
  *
- * <ot-dropdown>（OATUI dropdown.js）负责 fixed 定位 / 键盘导航 / aria-expanded，
+ * <ow-dropdown>（ui.css dropdown.js）负责 fixed 定位 / 键盘导航 / aria-expanded，
  * 点击菜单项后由 app.js 的 initDropdownAutoClose() 收起菜单。
  * 第一项是深浅色切换：文案由 app.js 按当前状态回填（深色 → 「日间模式」、浅色 → 「夜间模式」），
  * 服务端渲染的只是无 JS 时的兜底值；太阳 / 月亮图标的显隐交给 CSS（html[data-theme]）。
@@ -15,7 +15,7 @@
  * 菜单 id 全站唯一：一个页面只会渲染一份顶栏（前台 main / 后台 admin 二选一）。
  */
 ?>
-<ot-dropdown class="user-gear">
+<ow-dropdown class="user-gear">
     <button type="button" class="user-gear__btn" popovertarget="user-gear-menu"
             aria-haspopup="menu" aria-expanded="false" aria-label="个性化设置">
         <?= $view('partials/icon', ['name' => 'settings', 'size' => 18]) ?>
@@ -64,4 +64,4 @@
             </li>
         <?php endif; ?>
     </menu>
-</ot-dropdown>
+</ow-dropdown>

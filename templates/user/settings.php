@@ -21,7 +21,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
 
 <?= $view('partials/profile-head', ['profile' => $profile, 'active' => 'settings']) ?>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>账号设置</h3>
     </div>
@@ -33,7 +33,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                         <?= csrf_field() ?>
 
                         <div class="form-grid">
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="account-username">用户名</label>
                                 <input type="text" id="account-username" name="username" maxlength="20" required
                                        value="<?= e((string)old('username', (string)($profile['username'] ?? ''))) ?>"
@@ -44,7 +44,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                                 <?php endif; ?>
                             </div>
 
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="account-email">邮箱</label>
                                 <input type="email" id="account-email" name="email" maxlength="191" required
                                        value="<?= e((string)old('email', (string)($profile['email'] ?? ''))) ?>"
@@ -65,7 +65,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                         echo (string)hook('account_change_fields', '', ['user' => $profile]);
                         ?>
 
-                        <button type="submit" class="button">
+                        <button type="submit" class="ow-button">
                             <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                             <span>保存账号信息</span>
                         </button>
@@ -79,7 +79,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                         <?= csrf_field() ?>
 
                         <?php /* 个人简介同时作为楼层签名展示，因此只有一个输入框、统一 100 字上限 */ ?>
-                        <div data-field>
+                        <div data-ow-field>
                             <label for="profile-bio">个人简介</label>
                             <textarea id="profile-bio" name="bio" rows="3" maxlength="100"
                                       placeholder="介绍一下自己"><?= e((string)old('bio', (string)($profile['bio'] ?? ''))) ?></textarea>
@@ -91,7 +91,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                             <?php endif; ?>
                         </div>
 
-                        <button type="submit" class="button">
+                        <button type="submit" class="ow-button">
                             <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                             <span>保存个人资料</span>
                         </button>
@@ -104,7 +104,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                     <form method="post" action="<?= e(url('/settings/password')) ?>">
                         <?= csrf_field() ?>
 
-                        <div data-field>
+                        <div data-ow-field>
                             <label for="password-current">当前密码</label>
                             <input type="password" id="password-current" name="current_password" required
                                    autocomplete="current-password">
@@ -114,7 +114,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                         </div>
 
                         <div class="form-grid">
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="password-new">新密码</label>
                                 <input type="password" id="password-new" name="password" required
                                        autocomplete="new-password">
@@ -123,7 +123,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                                 <?php endif; ?>
                             </div>
 
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="password-confirm">确认新密码</label>
                                 <input type="password" id="password-confirm" name="password_confirm" required
                                        autocomplete="new-password">
@@ -133,12 +133,12 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
                             </div>
                         </div>
 
-                        <div class="hstack">
-                            <button type="submit" class="button">
+                        <div class="ow-hstack">
+                            <button type="submit" class="ow-button">
                                 <?= $view('partials/icon', ['name' => 'lock', 'size' => 16]) ?>
                                 <span>更新密码</span>
                             </button>
-                            <span class="text-light" style="font-size:12.5px">
+                            <span class="ow-text-light" style="font-size:12.5px">
                                 修改密码后，其他设备上的登录状态会失效，需要重新登录。
                             </span>
                         </div>
@@ -148,7 +148,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
     </div>
 </section>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'lock', 'size' => 16]) ?>我的隐私</h3>
     </div>
@@ -177,7 +177,7 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
 
             <p class="field-hint" style="margin:12px 0 0">控制个人主页的标签页权限，保护隐私。</p>
 
-            <button type="submit" class="button" style="margin-top:14px">
+            <button type="submit" class="ow-button" style="margin-top:14px">
                 <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                 <span>保存隐私设置</span>
             </button>
@@ -185,13 +185,13 @@ $publicPosts   = (bool)($profile['public_posts'] ?? true);
     </div>
 </section>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'logout', 'size' => 16]) ?>安全</h3>
     </div>
     <div class="panel__body">
-        <div class="hstack">
-            <a class="button" href="<?= e(url('/logout')) ?>">
+        <div class="ow-hstack">
+            <a class="ow-button" href="<?= e(url('/logout')) ?>">
                 <?= $view('partials/icon', ['name' => 'logout', 'size' => 16]) ?>
                 <span>安全退出</span>
             </a>

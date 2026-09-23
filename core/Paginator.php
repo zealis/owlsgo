@@ -2,7 +2,7 @@
 /**
  * 分页器
  *
- * 输出与 OATUI 一致的语义化标记（<nav> + <menu class="buttons">）。
+ * 输出与 ui.css 一致的语义化标记（<nav> + <menu class="buttons">）。
  * 出于安全与性能考虑：
  *  - 页码上限由 app.max_page 控制，避免深分页把数据库拖垮
  *  - 所有页面链接都通过 url() 生成，参数经过编码，杜绝参数注入
@@ -47,10 +47,10 @@ final class Paginator
 
         /*
          * 注意所有按钮只能用 <a> 或 <button>：
-         * OATUI 的按钮基础样式选择器是 :is(button, ..., a.button)，
+         * ui.css 的按钮基础样式选择器是 :is(button, ..., a.button)，
          * <span class="button"> 完全匹配不上 —— 不会拿到 padding / flex 布局，
          * 直接塌成一个 7px 宽的裸文字条（这个坑实际踩过：当前页原本用 span）。
-         * 禁用态用 <button disabled>，浏览器原生不可点，样式也由 OATUI 接管。
+         * 禁用态用 <button disabled>，浏览器原生不可点，样式也由 ui.css 接管。
          */
 
         // 上一页

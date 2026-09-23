@@ -17,7 +17,7 @@ $label   = (string)($label ?? '');
 $hint    = (string)($hint ?? '');
 $checked = (bool)($checked ?? false);
 ?>
-<div class="hstack" style="gap:8px;align-items:<?= $hint === '' ? 'center' : 'flex-start' ?>;margin-bottom:12px">
+<div class="ow-hstack" style="gap:8px;align-items:<?= $hint === '' ? 'center' : 'flex-start' ?>;margin-bottom:12px">
     <?php /*
             开关**只认开关本体**：不再用整行 <label> 包裹（那样点同一行很远的文字也会切换，
             和前台的日夜模式开关行为不一致）。名称改用 aria-label 提供，可访问性不受影响。
@@ -29,7 +29,7 @@ $checked = (bool)($checked ?? false);
     <?php else: ?>
         <span>
             <strong style="font-size:14px"><?= e($label) ?></strong>
-            <span class="text-light" style="display:block;font-size:12.5px"><?= e($hint) ?></span>
+            <span class="ow-text-light" style="display:block;font-size:12.5px"><?= e($hint) ?></span>
         </span>
     <?php endif; ?>
 </div>

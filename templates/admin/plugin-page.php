@@ -32,14 +32,14 @@ $handler    = (string)($pluginPage['handler'] ?? '');
             <?= e($title) ?>
         </h3>
         <span class="spacer"></span>
-        <span class="badge outline mono" style="font-size:11.5px"><?= e($pluginId) ?></span>
+        <span class="ow-badge ow-outline mono" style="font-size:11.5px"><?= e($pluginId) ?></span>
     </div>
 
     <div class="panel__body">
         <div class="empty">
             <?= $view('partials/icon', ['name' => 'puzzle', 'size' => 46]) ?>
             <p>该插件页面没有输出任何内容。</p>
-            <p class="text-light" style="font-size:13px">
+            <p class="ow-text-light" style="font-size:13px">
                 这通常意味着插件的页面处理器返回了空字符串。本页面只是占位，避免出现白屏。
             </p>
         </div>
@@ -55,7 +55,7 @@ $handler    = (string)($pluginPage['handler'] ?? '');
     </div>
 
     <div class="panel__foot">
-        <a class="button ghost small" href="<?= e(url('/admin/plugins')) ?>">
+        <a class="ow-button ow-ghost ow-small" href="<?= e(url('/admin/plugins')) ?>">
             <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
             <span>返回插件列表</span>
         </a>

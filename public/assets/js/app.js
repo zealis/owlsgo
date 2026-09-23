@@ -17,13 +17,12 @@
     return meta ? meta.getAttribute('content') || '' : '';
   }
 
-  /** 统一提示：优先使用 OATUI 的 toast，缺失时退化为原生 alert */
+  /** 统一提示：走自研 UI 层的 toast（public/assets/ui/ui.js），缺失时退化为原生 alert */
   /*
    * 弹出提示的停留时长（毫秒）。
    *
-   * OATUI 的默认值是 4000ms，偏长：连着几条操作提示会叠在一起挡住内容。
-   * 这里统一压缩 —— 成功、提示类扫一眼就够；出错、警告类需要读完，留得略久一点。
-   * 悬停时 OATUI 会自动暂停倒计时，所以停留时间短也不会来不及看。
+   * 成功、提示类扫一眼就够；出错、警告类需要读完，留得略久一点。
+   * 悬停时 toast 会暂停倒计时（ui.js 实现），所以停留时间短也不会来不及看。
    */
   var TOAST_DURATION = {
     success: 2000,
@@ -40,9 +39,9 @@
 
     var type = variant || 'info';
 
-    if (window.ot && typeof window.ot.toast === 'function') {
+    if (window.ow && typeof window.ow.toast === 'function') {
       var titles = { success: '成功', danger: '出错了', error: '出错了', warning: '请注意', info: '提示' };
-      window.ot.toast(message, titles[type] || '提示', {
+      window.ow.toast(message, titles[type] || '提示', {
         variant: type,
         duration: TOAST_DURATION[type] || 2000
       });
@@ -84,7 +83,7 @@
       variant = 'warning';
     }
 
-    // 延迟一拍，确保 oat.js 的 toast 容器已初始化
+    // 延迟一拍，等首屏渲染完再弹，避免提示条和页面元素抢焦点
     window.setTimeout(function () {
       notify(message, variant);
     }, 80);
@@ -223,7 +222,7 @@
       var trigger = form.querySelector('[data-state-target]') || form.querySelector('button');
       if (trigger) {
         trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
-        trigger.setAttribute('data-variant', active ? 'primary' : 'secondary');
+        trigger.setAttribute('data-ow-variant', active ? 'primary' : 'secondary');
       }
     }
 
@@ -2617,145 +2616,11 @@
   }
 
   /* =======================================================================
-   * 9. 下拉菜单（点击后自动关闭 + 没有 Popover API 的旧内核兜底）
+   * 9. 下拉菜单 —— 已迁移到自研 UI 层（public/assets/ui/ui.js）
    * -----------------------------------------------------------------------
-   * 现代内核：popovertarget 属性、:popover-open、popover 的 toggle 事件
-   * 都由浏览器实现，这里只补「点菜单项后自动收起」。
-   * 旧内核（Chromium < 114 等）见下面「旧内核兜底」那段。
+   * 开合 / 定位 / 键盘导航 / 点菜单项收起 / 旧内核兜底全在 ui.js 里，
+   * 这里不再重复实现（否则两套监听器会互相抢开关）。
    * ===================================================================== */
-
-  function initDropdownAutoClose() {
-    document.addEventListener('click', function (event) {
-      var item = event.target.closest ? event.target.closest('menu[popover] a, menu[popover] button') : null;
-
-      if (!item) {
-        return;
-      }
-
-      var popover = item.closest('menu[popover]');
-      if (!popover) {
-        return;
-      }
-
-      // 让浏览器完成默认行为（跳转）后再收起
-      window.setTimeout(function () {
-        if (typeof popover.hidePopover === 'function' && popover.matches(':popover-open')) {
-          popover.hidePopover();
-        }
-        // 旧内核：原生 popover 不存在，走自己的那套（见下面「旧内核兜底」）
-        legacyPopoverClose(popover);
-      }, 60);
-    });
-  }
-
-  /*
-   * ---- 旧内核兜底：没有 Popover API 的内核 ----
-   *
-   * 现代内核下 popovertarget 是空属性、[popover] 也不会被浏览器藏起来
-   * → 菜单「默认展开」而且点了没反应。兜底用 data-popover-open 自己开关，
-   * 隐藏 / 显示样式在 theme.css 第 18 节的 @supports not selector(:popover-open) 里。
-   * 定位：oat/js/dropdown.js 靠监听 popover 的 toggle 事件定位，旧内核里那个事件
-   * 永远不触发，所以这里按同一套算法（下方放不下就翻到按钮上方）写一遍。
-   */
-
-  /** 原生 Popover API 是否可用（与 theme.css 那条 @supports 判据保持一致） */
-  function hasNativePopover() {
-    return typeof HTMLElement !== 'undefined'
-      && typeof HTMLElement.prototype.showPopover === 'function';
-  }
-
-  /** 旧内核路径：收起一个菜单（现代内核下是空操作） */
-  function legacyPopoverClose(popover) {
-    if (!popover || !popover.hasAttribute('data-popover-open')) {
-      return;
-    }
-
-    popover.removeAttribute('data-popover-open');
-
-    var trigger = legacyPopoverTrigger(popover);
-    if (trigger) {
-      trigger.setAttribute('aria-expanded', 'false');
-    }
-  }
-
-  function legacyPopoverTrigger(popover) {
-    if (!popover.id) {
-      return null;
-    }
-
-    return document.querySelector('[popovertarget="' + popover.id + '"]');
-  }
-
-  function legacyPopoverOpen(popover, trigger) {
-    popover.setAttribute('data-popover-open', '');
-
-    // 先按当前位置量一次（display 刚变成 block，尺寸才是真值），再决定放上还是放下
-    var box = trigger.getBoundingClientRect();
-    var menu = popover.getBoundingClientRect();
-
-    popover.style.top = (box.bottom + menu.height > window.innerHeight ? box.top - menu.height : box.bottom) + 'px';
-    popover.style.left = (box.left + menu.width > window.innerWidth ? box.right - menu.width : box.left) + 'px';
-
-    trigger.setAttribute('aria-expanded', 'true');
-  }
-
-  function initLegacyPopovers() {
-    if (hasNativePopover()) {
-      return;
-    }
-
-    document.addEventListener('click', function (event) {
-      var target = event.target;
-
-      if (!target || typeof target.closest !== 'function') {
-        return;
-      }
-
-      var trigger = target.closest('[popovertarget]');
-
-      if (trigger) {
-        var id = trigger.getAttribute('popovertarget');
-        var popover = id ? document.getElementById(id) : null;
-
-        if (!popover) {
-          return;
-        }
-
-        // 同一时刻只留一个：先全收掉，再决定要不要开
-        var wasOpen = popover.hasAttribute('data-popover-open');
-        Array.prototype.forEach.call(
-          document.querySelectorAll('[popover][data-popover-open]'),
-          legacyPopoverClose
-        );
-
-        if (!wasOpen) {
-          legacyPopoverOpen(popover, trigger);
-        }
-
-        event.preventDefault();
-        return;
-      }
-
-      // 点菜单内部不算「点外部」；点别处一律收起
-      if (!target.closest('[popover][data-popover-open]')) {
-        Array.prototype.forEach.call(
-          document.querySelectorAll('[popover][data-popover-open]'),
-          legacyPopoverClose
-        );
-      }
-    });
-
-    document.addEventListener('keydown', function (event) {
-      if (event.key !== 'Escape' && event.key !== 'Esc') {
-        return;
-      }
-
-      Array.prototype.forEach.call(
-        document.querySelectorAll('[popover][data-popover-open]'),
-        legacyPopoverClose
-      );
-    });
-  }
 
   /* =======================================================================
    * 10. 内容区外链安全属性
@@ -4183,8 +4048,7 @@
     initEditors();
     initFilePreview();
     initCopy();
-    initDropdownAutoClose();
-    initLegacyPopovers();
+    /* 下拉菜单（第 9 节）已迁到 ui.js，这里不再调用 */
     initExternalLinks();
     initHistoryBack();
     initUploads();

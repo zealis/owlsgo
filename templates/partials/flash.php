@@ -62,8 +62,8 @@ $iconName = match ($variant) {
     <noscript>
         <?php /* 无 JS 时的兜底：内联展示同一条消息 */ ?>
         <div class="form-flash">
-            <?php /* 'info' 未在 OATUI 中定义配色，此时不输出 data-variant，回落到基础的带边框 alert 样式 */ ?>
-            <div role="alert"<?= $variant !== 'info' ? ' data-variant="' . e($variant) . '"' : '' ?>>
+            <?php /* 'info' 未在 ui.css 中定义配色，此时不输出 data-ow-variant，回落到基础的带边框 alert 样式 */ ?>
+            <div role="alert"<?= $variant !== 'info' ? ' data-ow-variant="' . e($variant) . '"' : '' ?>>
                 <?= $view('partials/icon', ['name' => $iconName, 'size' => 18]) ?>
                 <div><?= e($flashMessage) ?></div>
             </div>
@@ -73,11 +73,11 @@ $iconName = match ($variant) {
 
 <?php if ($showFieldErrors && $formErrors !== []): ?>
     <div class="form-flash">
-        <div role="alert" data-variant="error">
+        <div role="alert" data-ow-variant="error">
             <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
             <div>
                 <strong>请检查以下问题：</strong>
-                <ul class="unstyled" style="margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px">
+                <ul class="ow-unstyled" style="margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px">
                     <?php foreach ($formErrors as $field => $messages): ?>
                         <?php
                         /* 字段名为 key 时（如 install / ban）不展示字段前缀，避免出现英文键名 */
@@ -87,7 +87,7 @@ $iconName = match ($variant) {
                         ?>
                         <li>
                             <?php if (!$isNamedKey): ?>
-                                <span class="text-light"><?= e((string)$field) ?>：</span>
+                                <span class="ow-text-light"><?= e((string)$field) ?>：</span>
                             <?php endif; ?>
                             <?= e(implode('；', array_map(static fn (mixed $m): string => (string)$m, $list))) ?>
                         </li>

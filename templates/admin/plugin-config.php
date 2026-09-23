@@ -33,11 +33,11 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'plug', 'size' => 16]) ?><?= e((string)($plugin['name'] ?? $pluginId)) ?></h3>
         <span class="spacer"></span>
-        <span class="badge outline mono" style="font-size:11.5px">v<?= e((string)($plugin['version'] ?? '0')) ?></span>
+        <span class="ow-badge ow-outline mono" style="font-size:11.5px">v<?= e((string)($plugin['version'] ?? '0')) ?></span>
         <?php if ($isEnabled): ?>
-            <span class="badge outline"><span class="status-dot"></span>已启用</span>
+            <span class="ow-badge ow-outline"><span class="status-dot"></span>已启用</span>
         <?php else: ?>
-            <span class="badge outline"><span class="status-dot status-dot--off"></span>已停用</span>
+            <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>已停用</span>
         <?php endif; ?>
     </div>
 
@@ -69,7 +69,7 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
         </dl>
 
         <?php if (!$isEnabled): ?>
-            <div class="doc-note hstack" style="gap:10px;align-items:flex-start;margin-top:14px">
+            <div class="doc-note ow-hstack" style="gap:10px;align-items:flex-start;margin-top:14px">
                 <?= $view('partials/icon', ['name' => 'info', 'size' => 18]) ?>
                 <div>该插件当前处于停用状态，配置可以保存，但要启用后才会生效。</div>
             </div>
@@ -84,7 +84,7 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
         <div class="panel__head">
             <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>配置项</h3>
             <span class="spacer"></span>
-            <span class="text-light" style="font-size:12.5px">共 <?= count($fields) ?> 项</span>
+            <span class="ow-text-light" style="font-size:12.5px">共 <?= count($fields) ?> 项</span>
         </div>
 
         <div class="panel__body">
@@ -107,18 +107,18 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
                     $fieldId = 'plugin-field-' . preg_replace('/[^a-z0-9_\-]/i', '_', (string)$key);
                     ?>
                     <?php if ($type === 'checkbox'): ?>
-                        <label class="hstack" style="gap:8px;align-items:flex-start;margin-bottom:14px">
+                        <label class="ow-hstack" style="gap:8px;align-items:flex-start;margin-bottom:14px">
                             <input type="checkbox" id="<?= e($fieldId) ?>" name="<?= e((string)$key) ?>"
                                    value="1" <?= checked($isTruthy($current)) ?>>
                             <span>
                                 <strong style="font-size:14px"><?= e($label) ?></strong>
-                                <span class="text-light" style="display:block;font-size:12px">
+                                <span class="ow-text-light" style="display:block;font-size:12px">
                                     <?= e($key) ?><?= $hint !== '' ? ' · ' . e($hint) : '' ?>
                                 </span>
                             </span>
                         </label>
                     <?php else: ?>
-                        <div data-field>
+                        <div data-ow-field>
                             <label for="<?= e($fieldId) ?>"><?= e($label) ?></label>
 
                             <?php if ($type === 'textarea'): ?>
@@ -141,7 +141,7 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
                                        maxlength="2000" value="<?= e($current) ?>">
                             <?php endif; ?>
 
-                            <span data-hint>
+                            <span data-ow-hint>
                                 <code><?= e((string)$key) ?></code><?= $hint !== '' ? ' · ' . e($hint) : '' ?>
                             </span>
                         </div>
@@ -151,12 +151,12 @@ $isTruthy = static fn (string $value): bool => in_array($value, ['1', 'on', 'tru
         </div>
 
         <?php if ($fields !== []): ?>
-            <div class="panel__foot hstack">
-                <button type="submit" class="button">
+            <div class="panel__foot ow-hstack">
+                <button type="submit" class="ow-button">
                     <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                     <span>保存配置</span>
                 </button>
-                <a class="button ghost" href="<?= e(url('/admin/plugins')) ?>">
+                <a class="ow-button ow-ghost" href="<?= e(url('/admin/plugins')) ?>">
                     <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
                     <span>返回插件列表</span>
                 </a>

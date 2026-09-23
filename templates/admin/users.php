@@ -18,7 +18,7 @@ $groups   = is_array($groups ?? null) ? $groups : [];
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'users', 'size' => 16]) ?>用户列表</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">
+        <span class="ow-text-light" style="font-size:13px">
             共 <?= number_format((int)($result['total'] ?? 0)) ?> 位用户
         </span>
     </div>
@@ -46,7 +46,7 @@ $groups   = is_array($groups ?? null) ? $groups : [];
         </div>
 
         <?php if ($keyword !== '' || $groupId > 0): ?>
-            <a class="button small ghost" href="<?= e(url('/admin/users')) ?>">重置</a>
+            <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/users')) ?>">重置</a>
         <?php endif; ?>
     </form>
 
@@ -132,7 +132,7 @@ $groups   = is_array($groups ?? null) ? $groups : [];
                                    aria-label="选择用户">
                         </td>
                         <td>
-                            <div class="hstack" style="gap:9px;align-items:flex-start">
+                            <div class="ow-hstack" style="gap:9px;align-items:flex-start">
                                 <?= avatar_img($user, 32) ?>
                                 <span style="min-width:0">
                                     <div class="cell-row">
@@ -140,20 +140,20 @@ $groups   = is_array($groups ?? null) ? $groups : [];
                                            title="<?= e((string)($user['username'] ?? '')) ?>">
                                             <?= e((string)($user['username'] ?? '')) ?>
                                         </a>
-                                        <span class="badge outline" style="color:<?= e($groupCol) ?>">
+                                        <span class="ow-badge ow-outline" style="color:<?= e($groupCol) ?>">
                                             <?= e((string)($user['group_name'] ?? '游客')) ?>
                                         </span>
                                     </div>
                                 <?php /* UID 不在这里显示：用户自己用不到，管理员要定位有搜索与邮箱 */ ?>
                                 <?php if (trim((string)($user['bio'] ?? '')) !== ''): ?>
-                                    <span class="cell-title text-light" style="display:block;font-size:11.5px">
+                                    <span class="cell-title ow-text-light" style="display:block;font-size:11.5px">
                                         <?= e(mb_substr(trim((string)$user['bio']), 0, 24)) ?>
                                     </span>
                                 <?php endif; ?>
                                 </span>
                             </div>
                         </td>
-                        <td class="text-light mono">
+                        <td class="ow-text-light mono">
                             <span class="cell-title" title="<?= e((string)($user['email'] ?? '')) ?>"><?= e((string)($user['email'] ?? '')) ?></span>
                         </td>
                         <td><?= number_format((int)($user['thread_count'] ?? 0)) ?></td>
@@ -162,15 +162,15 @@ $groups   = is_array($groups ?? null) ? $groups : [];
                         <td><?= number_format((int)($user['points'] ?? 0)) ?></td>
                         <td>
                             <?php if ($status === 1): ?>
-                                <span class="badge outline"><span class="status-dot"></span>正常</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot"></span>正常</span>
                             <?php else: ?>
-                                <span class="badge outline"><span class="status-dot status-dot--off"></span>已禁用</span>
+                                <span class="ow-badge ow-outline"><span class="status-dot status-dot--off"></span>已禁用</span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-light"><?= e(human_time((int)($user['created_at'] ?? 0))) ?></td>
+                        <td class="ow-text-light"><?= e(human_time((int)($user['created_at'] ?? 0))) ?></td>
                         <td>
                             <div class="admin-table-actions">
-                                <a class="button small ghost" href="<?= e(url('/admin/users/' . $userId)) ?>">
+                                <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/users/' . $userId)) ?>">
                                     <?= $view('partials/icon', ['name' => 'edit', 'size' => 14]) ?>
                                     <span>管理</span>
                                 </a>

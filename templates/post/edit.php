@@ -26,7 +26,7 @@ $contentValue = (string)old('content', (string)($post['content'] ?? ''));
             <h2><?= $view('partials/icon', ['name' => 'edit', 'size' => 17]) ?>编辑评论</h2>
             <?php if ((int)($post['floor'] ?? 0) > 0): ?>
                 <span class="spacer"></span>
-                <span class="text-light" style="font-size:13px">#<?= (int)$post['floor'] ?> 楼</span>
+                <span class="ow-text-light" style="font-size:13px">#<?= (int)$post['floor'] ?> 楼</span>
             <?php endif; ?>
         </div>
 
@@ -36,7 +36,7 @@ $contentValue = (string)old('content', (string)($post['content'] ?? ''));
                   data-ajax data-ajax-redirect data-draft="post-edit-<?= (int)$postId ?>">
                 <?= csrf_field() ?>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="post-content">评论内容</label>
                     <?= $view('partials/editor', [
                         'editorId'    => 'post-content',
@@ -51,12 +51,12 @@ $contentValue = (string)old('content', (string)($post['content'] ?? ''));
                     <?php endif; ?>
                 </div>
 
-                <div class="hstack mt-4">
-                    <button type="submit" class="button">
+                <div class="ow-hstack ow-mt-4">
+                    <button type="submit" class="ow-button">
                         <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                         <span>保存修改</span>
                     </button>
-                    <a class="button ghost" href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>">取消</a>
+                    <a class="ow-button ow-ghost" href="<?= e(url('/t/' . $threadId, ['p' => $postId])) ?>">取消</a>
                 </div>
             </form>
         </div>

@@ -65,10 +65,10 @@ if (!is_logged_in()) {
               面包屑在卡片左上角、也就是标题的左上方（用户要求：原来它飘在卡片外面的页面上方）。
               样式用 .crumbs--topic 在卡片内收紧一点（见 theme.css 第 4 节）。
             */ ?>
-            <ol class="unstyled hstack crumbs crumbs--topic">
-                <li><a class="unstyled" href="<?= e(url('/')) ?>">首页</a></li>
+            <ol class="ow-unstyled ow-hstack crumbs crumbs--topic">
+                <li><a class="ow-unstyled" href="<?= e(url('/')) ?>">首页</a></li>
                 <li aria-hidden="true">/</li>
-                <li><a class="unstyled" href="<?= e(url('/f/' . $forumId)) ?>"><?= e((string)($forum['name'] ?? '版块')) ?></a></li>
+                <li><a class="ow-unstyled" href="<?= e(url('/f/' . $forumId)) ?>"><?= e((string)($forum['name'] ?? '版块')) ?></a></li>
             </ol>
 
             <ul class="post-list">
@@ -115,7 +115,7 @@ if (!is_logged_in()) {
 
             <div class="panel__body">
                 <?php if (!$canReply): ?>
-                    <div role="alert" data-variant="warning">
+                    <div role="alert" data-ow-variant="warning">
                         <?= $view('partials/icon', ['name' => 'lock', 'size' => 18]) ?>
                         <div>
                             <?php if ($isLocked): ?>
@@ -159,13 +159,13 @@ if (!is_logged_in()) {
                             'editorPlaceholder' => '支持 Markdown：**加粗**、`代码`、> 引用、[链接](https://)',
                         ]) ?>
 
-                        <div class="hstack mt-4">
-                            <button type="submit" class="button">
+                        <div class="ow-hstack ow-mt-4">
+                            <button type="submit" class="ow-button">
                                 <?= $view('partials/icon', ['name' => 'message', 'size' => 16]) ?>
                                 <span>提交评论</span>
                             </button>
                             <?php if ($uploadOn): ?>
-                                <span class="text-light" style="font-size:12.5px">
+                                <span class="ow-text-light" style="font-size:12.5px">
                                     附件会在选择后立即上传，请等待上传完成再提交。
                                 </span>
                             <?php endif; ?>

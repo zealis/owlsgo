@@ -29,7 +29,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
 <div class="page-grid">
     <div>
     <?php if ((string)($forum['description'] ?? '') !== ''): ?>
-        <section class="panel mb-4">
+        <section class="panel ow-mb-4">
             <div class="panel__head">
                 <h2><?= e((string)($forum['name'] ?? '')) ?></h2>
             </div>
@@ -55,7 +55,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
             <span class="spacer"></span>
 
             <?php if ($canCreate): ?>
-                <a class="button small" href="<?= e(url('/new', ['fid' => $forumId])) ?>">
+                <a class="ow-button ow-small" href="<?= e(url('/new', ['fid' => $forumId])) ?>">
                     <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
                     <span>发表帖子</span>
                 </a>
@@ -79,7 +79,7 @@ $tabEssence  = url('/f/' . $forumId, array_filter(['q' => $keyword, 'essence' =>
     </section>
 
     <?php if ($subForums !== []): ?>
-        <section class="panel mt-4">
+        <section class="panel ow-mt-4">
             <div class="panel__head">
                 <h3><?= $view('partials/icon', ['name' => 'layers', 'size' => 16]) ?>子版块</h3>
             </div>

@@ -15,7 +15,7 @@
  * 无障碍与安全：
  *  - 移动端导航由 [data-nav-toggle] + [data-site-nav] 控制（见 app.js）
  *  - 用户区 = 「头像 + 用户名」直达个人主页的链接；旁边新增**圆形齿轮按钮**：
- *    OATUI <ot-dropdown>（menu[popover]，fixed 定位、移动端可用），第一项是深浅色切换
+ *    ui.css <ow-dropdown>（menu[popover]，fixed 定位、移动端可用），第一项是深浅色切换
  *    （深色时显示「日间模式」、浅色时显示「夜间模式」，由 app.js 按当前状态回填文案），
  *    第二项直达「个性装扮」（夜间模式跟随系统等设置）。
  *    深浅色的实际生效逻辑见 public/assets/js/theme-boot.js（head 内同步执行，避免闪白）

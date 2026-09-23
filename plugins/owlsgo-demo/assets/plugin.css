@@ -5,7 +5,7 @@
  * 约定：
  *  - 不写 @import（合并时会被自动剥离）
  *  - 不使用全局元素选择器，避免污染站点其它页面
- *  - 颜色与间距一律复用主题变量（theme.css 的 --qq-* 与 OATUI 的 --space-*）
+ *  - 颜色与间距一律复用主题变量（theme.css 的 --qq-* 与 ui.css 的 --space-*）
  */
 
 /* 通过 content_rendered 钩子追加到帖子正文末尾的脚注 */

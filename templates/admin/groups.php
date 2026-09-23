@@ -17,8 +17,8 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'shield', 'size' => 16]) ?>用户组列表</h3>
         <span class="spacer"></span>
-        <span class="text-light" style="font-size:13px">共 <?= count($rows) ?> 个用户组</span>
-        <a class="button small" href="<?= e(url('/admin/groups/create')) ?>">
+        <span class="ow-text-light" style="font-size:13px">共 <?= count($rows) ?> 个用户组</span>
+        <a class="ow-button ow-small" href="<?= e(url('/admin/groups/create')) ?>">
             <?= $view('partials/icon', ['name' => 'plus', 'size' => 15]) ?>
             <span>新增用户组</span>
         </a>
@@ -60,17 +60,17 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                                 <strong class="cell-title" style="color:<?= e($groupColor) ?>"
                                         title="<?= e($groupName) ?>"><?= e($groupName) ?></strong>
                                 <?php if ($isSystem): ?>
-                                    <span class="badge outline">内置</span>
+                                    <span class="ow-badge ow-outline">内置</span>
                                 <?php endif; ?>
                             </div>
                             <?php if ((string)($row['description'] ?? '') !== ''): ?>
-                                <span class="cell-title text-light" style="display:block;font-size:12.5px"
+                                <span class="cell-title ow-text-light" style="display:block;font-size:12.5px"
                                       title="<?= e((string)$row['description']) ?>">
                                     <?= e((string)$row['description']) ?>
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="mono text-light">
+                        <td class="mono ow-text-light">
                             <span class="cell-title"><?= e((string)($row['slug'] ?? '')) ?></span>
                         </td>
                         <td>
@@ -79,9 +79,9 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                             </a>
                         </td>
                         <td>
-                            <div class="hstack" style="gap:8px">
+                            <div class="ow-hstack" style="gap:8px">
                                 <span class="bar" style="flex:1 1 auto;min-width:70px"><span style="width:<?= $percent ?>%"></span></span>
-                                <span class="text-light mono" style="font-size:12px">
+                                <span class="ow-text-light mono" style="font-size:12px">
                                     <?= $enabledRights ?>/<?= $totalRights ?>
                                 </span>
                             </div>
@@ -93,26 +93,26 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                                   · 有权限且配额 > 0 → 显示具体大小；
                                   · 有权限且配额 = 0 → 显示「不限」（不是「0 字节」）。
                         */ ?>
-                        <td class="<?= !empty($row['can_upload']) && (int)($row['quota_mb'] ?? 0) > 0 ? 'mono' : 'text-light' ?>">
+                        <td class="<?= !empty($row['can_upload']) && (int)($row['quota_mb'] ?? 0) > 0 ? 'mono' : 'ow-text-light' ?>">
                             <?= e((string)($row['quota_text'] ?? \Modules\User\UsergroupModel::quotaText((int)($row['quota_mb'] ?? 0)))) ?>
                         </td>
-                        <td class="text-light"><?= (int)($row['sort_order'] ?? 0) ?></td>
+                        <td class="ow-text-light"><?= (int)($row['sort_order'] ?? 0) ?></td>
                         <td>
                             <?php if ($isSystem): ?>
-                                <span class="badge outline">系统</span>
+                                <span class="ow-badge ow-outline">系统</span>
                             <?php else: ?>
-                                <span class="badge outline">自定义</span>
+                                <span class="ow-badge ow-outline">自定义</span>
                             <?php endif; ?>
                         </td>
                         <td>
                             <div class="admin-table-actions">
-                                <a class="button small ghost" href="<?= e(url('/admin/groups/' . $groupId . '/edit')) ?>">
+                                <a class="ow-button ow-small ow-ghost" href="<?= e(url('/admin/groups/' . $groupId . '/edit')) ?>">
                                     <?= $view('partials/icon', ['name' => 'edit', 'size' => 14]) ?>
                                     <span>编辑</span>
                                 </a>
 
                                 <?php if ($isSystem): ?>
-                                    <button type="button" class="button small ghost" disabled
+                                    <button type="button" class="ow-button ow-small ow-ghost" disabled
                                             title="系统内置用户组不可删除">
                                         <?= $view('partials/icon', ['name' => 'lock', 'size' => 14]) ?>
                                         <span>删除</span>
@@ -122,7 +122,7 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
                                           action="<?= e(url('/admin/groups/' . $groupId . '/delete')) ?>"
                                           data-confirm="确定要删除用户组「<?= e($groupName) ?>」吗？">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="button small ghost" data-variant="danger">
+                                        <button type="submit" class="ow-button ow-small ow-ghost" data-ow-variant="danger">
                                             <?= $view('partials/icon', ['name' => 'trash', 'size' => 14]) ?>
                                             <span>删除</span>
                                         </button>
@@ -137,7 +137,7 @@ $totalRights = (int)($totalRights ?? count(\Core\Permission::CATALOG));
         </div>
     <?php endif; ?>
 
-    <div class="panel__foot text-light" style="font-size:12.5px">
+    <div class="panel__foot ow-text-light" style="font-size:12.5px">
         系统内置用户组不可删除；仍有成员的自定义用户组需先转移成员后才能删除。
         权限清单集中在代码中维护，新增权限后会自动出现在编辑页。
     </div>

@@ -1,11 +1,11 @@
 /* ==========================================================================
    owlsgo · 经典蓝白主题
    --------------------------------------------------------------------------
-   本文件在 OATUI（oat.css）之后加载，做两件事：
-     1. 覆盖 OATUI 的 CSS 变量，把默认的灰紫色调替换为经典蓝白配色
+   本文件在自研 UI 层（ui.css）之后加载，做两件事：
+     1. 覆盖 ui.css 的 CSS 变量，把默认的灰紫色调替换为经典蓝白配色
      2. 补充论坛自身的版面结构：站点头部、版块表、帖子列表、楼层、后台侧栏等
 
-   注意：OATUI 默认 color-scheme: light dark（跟随系统深色）。
+   注意：ui.css 默认 color-scheme: light dark（跟随系统深色）。
    经典蓝白是明确以浅色为基准的设计，因此这里强制 color-scheme: light，
    避免系统深色模式下出现「浅色变量 + 深色组件」的错配。
    ========================================================================== */
@@ -39,7 +39,7 @@
   --qq-grad-group-a: #f7fbff;      /* .forum-group__title / 楼层信息栏渐变起 */
   --qq-grad-group-b: #ffffff;      /* 同上渐变止 */
 
-  /* ---------- 覆盖 OATUI 主题变量 ---------- */
+  /* ---------- 覆盖 ui.css 主题变量 ---------- */
   --background: var(--qq-page);
   --foreground: var(--qq-ink);
   --card: var(--qq-card);
@@ -83,17 +83,12 @@
   --radius-large: 0.875rem;
 
   /*
-   * ---------- OATUI 令牌兜底（**必须保留**，别当成重复定义删掉） ----------
+   * ---------- UI 令牌兜底（**别当成重复定义删掉**） ----------
    *
-   * oat.css 整个文件包在 `@layer` 里。不支持 CSS Cascade Layers 的内核
-   * （Chromium < 99、不少国产手机浏览器内核）会把**整份 oat.css 丢掉**，
-   * 于是「只在 oat.css 里定义过」的令牌全部取不到值 —— 而 var() 取不到值时，
-   * 那条声明会退化成 initial（margin / padding / gap 一律变 0），
-   * 现象就是「面板之间的间隔全没了」。
-   *
-   * 下面这些令牌 theme.css 自己也在用，所以在这里按 oat.css 的原值补一份：
-   * 无层样式会压过 @layer，但**值完全一致**，现代浏览器渲染不会有任何变化。
-   * ⚠️ 改动时务必与 oat.css 同一段（@layer theme 的 :root）保持一致。
+   * 这些令牌 ui.css 也定义了一份，这里保留是**保险**：万一 ui.css 没加载成
+   * （资源 404 / 部署漏拷），var() 取不到值会让声明退化成 initial
+   * （margin / padding / gap 一律变 0），现象就是「面板之间的间隔全没了」。
+   * ⚠️ 改动时与 ui.css 第 1 节的同名令牌保持一致。
    */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -104,8 +99,7 @@
   --space-8: 2rem;
   --space-12: 3rem;
 
-  /* oat.css 里写的是 rgb(0 0 0 / .1)（空格 + 斜杠语法，Chrome 65+ 才有），
-     这里换成等价的 rgba()，旧内核也认，观感完全相同 */
+  /* 用 rgba() 而不是 rgb(0 0 0 / .1)：后者是老内核不认的空格+斜杠语法 */
   --shadow-large: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -123,41 +117,41 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 
-  /* oat.css 的 `* { margin: 0 }` 在 @layer base 里，旧内核整份丢弃后
-     body 会退回 UA 的 8px 外边距（整页缩进去一圈）。这里显式钉住 ——
-     oat.css 并没有单独给 body 写过 margin，所以这条不会跟任何 OATUI 规则打架。 */
+  /* 显式钉住 body 外边距：原来靠 ui.css 的 `* { margin: 0 }`，
+     那份样式表在旧内核会被整份丢弃 → body 退回 UA 的 8px（整页缩一圈）。
+     ui.css 也没有单独给 body 写过 margin，所以这条不会跟组件规则打架。 */
   margin: 0;
 }
 
 /*
- * 前台页脚贴底：只有前台布局（无 data-sidebar-layout）才用 flex 纵向布局，
+ * 前台页脚贴底：只有前台布局（无 data-ow-sidebar-layout）才用 flex 纵向布局，
  * 让 <main> 自动撑开、页脚落在视口底部。
  *
- * 必须排除后台：后台 body[data-sidebar-layout] 用的是 CSS Grid 侧栏布局，
- * 而本文件（theme.css）未包裹 @layer，属于「无层样式」，优先级高于
- * oat.css 里 @layer 内的 [data-sidebar-layout]{display:grid}。
+ * 必须排除后台：后台 body[data-ow-sidebar-layout] 用的是 CSS Grid 侧栏布局，
+ * 而本文件（theme.css）与 ui.css 同为无层样式、本文件在后，若这里直接写
+ * body{display:flex} 会把这套 grid 覆盖掉。
  * 若这里直接写 body{display:flex}，会把后台的 grid 覆盖掉，
  * 导致侧栏被挤到页面上方、整个后台版式错乱。
  */
-body:not([data-sidebar-layout]) {
+body:not([data-ow-sidebar-layout]) {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-body:not([data-sidebar-layout]) > main {
+body:not([data-ow-sidebar-layout]) > main {
   flex: 1 0 auto;
 }
 
 /*
- * 全局链接色。必须排除 .button：
- * OATUI 的按钮颜色（实心=白字、outline/ghost=前景色）写在 @layer 里，
+ * 全局链接色。必须排除 .ow-button：
+ * ui.css 的按钮颜色（实心=白字、outline/ghost=前景色）写在 @layer 里，
  * 而 CSS 规则是「无 layer 永远压过有 layer」——本文件不在任何 layer 中，
- * 若这里不排除，所有 <a class="button"> 的文字都会被链接色染成蓝色，
+ * 若这里不排除，所有 <a class="ow-button"> 的文字都会被链接色染成蓝色，
  * 蓝底蓝字（「发表帖子」等一众链接按钮全部中招）。
- * 按钮的文字色交还给 OATUI；普通链接维持站点的深蓝链接色。
+ * 按钮的文字色交还给 ui.css；普通链接维持站点的深蓝链接色。
  */
-a:not(.button) {
+a:not(.ow-button) {
   color: var(--qq-blue-deep);
   text-decoration: none;
 }
@@ -168,25 +162,25 @@ a:not(.button) {
  * 为什么需要单独一条：有些规则会给特定容器里的 a 单独着色，例如
  *   .crumbs a        → (0,1,1)
  *   .site-footer a   → (0,1,1)
- *   .badge > a       → (0,1,1)
+ *   .ow-badge > a       → (0,1,1)
  * 它们与基础的 a:hover 特异性**完全相同**，而它们写在文件后面，
  * 按「同特异性看源码顺序」的规则就会赢 —— 结果是这些链接悬停时颜色不变，
  * 用户看起来就像「只有它们没有悬停反馈」。
  * 写成 body a:hover（(0,1,2)）比它们高一档，能稳定压过；
  * 而自带 :hover 的（.filter-tabs a:hover、.widget__list a:hover、
- * [data-sidebar] nav a:hover、下拉菜单）特异性更高，各自保留风格。
+ * [data-ow-sidebar] nav a:hover、下拉菜单）特异性更高，各自保留风格。
  *
- * ⚠️ 排除按钮必须写 :not(:where(.button))，不能写 :not(.button)：
- * :not() 会把参数的特异性算进来，写成 :not(.button) 整条规则变成 (0,2,2)，
+ * ⚠️ 排除按钮必须写 :not(:where(.ow-button))，不能写 :not(.ow-button)：
+ * :not() 会把参数的特异性算进来，写成 :not(.ow-button) 整条规则变成 (0,2,2)，
  * 反而压过了 .filter-tabs a[aria-current="page"] 这类 (0,2,1) 的**选中态**
  * 规则 —— 表现就是「选中的标签/按钮悬停时文字被染成主题蓝，与自己的蓝底
  * 撞色，字看不见了」。:where() 的参数不计特异性，既排除了按钮，
  * 又保持 (0,1,2) 只比 (0,1,1) 高一档的初衷。
  *
  * 悬停只做变色、不加下划线：标题与正文里的链接常是整行文字，加下划线会让
- * 它们整片跳动、干扰阅读。显式 none 是为了压过 OATUI 自带的下划线。
+ * 它们整片跳动、干扰阅读。显式 none 是为了压过 ui.css 自带的下划线。
  */
-body a:hover:not(:where(.button)) {
+body a:hover:not(:where(.ow-button)) {
   color: var(--qq-blue);
   text-decoration: none;
 }
@@ -328,7 +322,7 @@ code, kbd, pre {
 
 /*
  * 全站输入聚焦统一：一层淡蓝光晕，与顶栏搜索胶囊一致。
- * OATUI 默认聚焦是 --ring 色的 2px 光圈，颜色深、观感重（登录/注册页最明显），
+ * ui.css 默认聚焦是 --ring 色的 2px 光圈，颜色深、观感重（登录/注册页最明显），
  * 这里全局压平：只换边框色 + 一层 15% 透明度的盒阴影。
  * 顶栏搜索胶囊的内部 input 已单独清空阴影（聚焦反馈在胶囊外圈），不受影响。
  */
@@ -353,7 +347,7 @@ select:focus {
  *   1. 底色由**容器**独占，内部 input / button 全部 transparent —— 否则 flex
  *      布局的亚像素渲染会在两块白之间露出一条容器底色的细竖线（聚焦时尤其明显）；
  *   2. 聚焦反馈由整条胶囊承担（边框变蓝 + 3px 淡蓝光晕），内部不再单独画焦点圈；
- *   3. 清掉 OATUI 的两个默认值，否则胶囊会被撑高、按钮填不满：
+ *   3. 清掉 ui.css 的两个默认值，否则胶囊会被撑高、按钮填不满：
  *      input 的 margin-block-start（4px）与 button 的默认边框。
  */
 .search-box {
@@ -443,7 +437,7 @@ select:focus {
 }
 
 .search-box button:active:not(:disabled) {
-  transform: none;                    /* 抵消 OATUI 的位移，避免按钮跳出胶囊 */
+  transform: none;                    /* 抵消 ui.css 的位移，避免按钮跳出胶囊 */
 }
 
 .site-nav {
@@ -500,7 +494,7 @@ select:focus {
  * 用户区：头像 + 用户名整块是一个指向「我的主页」的链接（原本是带下拉的按钮）。
  * 高度与搜索框（38px）严格一致 —— 头像 26 + 上下内边距 10 + 描边 2。
  *
- * ⚠️ 选择器必须带元素名（a.user-chip）：它现在是 <a>，会被全局 `a:not(.button)`
+ * ⚠️ 选择器必须带元素名（a.user-chip）：它现在是 <a>，会被全局 `a:not(.ow-button)`
  *    （(0,1,1)）的链接色覆盖，`.user-chip`（(0,1,0)）压不回来。
  */
 a.user-chip {
@@ -744,8 +738,8 @@ a.user-chip:hover {
 
 /* 面包屑 */
 /*
- * 面包屑：结构交给 OATUI 官方约定（https://oat.ink/components/breadcrumb/）——
- *   <ol class="unstyled hstack">，链接加 a.unstyled；
+ * 面包屑：结构交给 UI 层的类名约定（纯类名，不依赖任何框架）——
+ *   <ol class="ow-unstyled ow-hstack">，链接加 a.unstyled；
  * 这里只保留全站一致性的微调：字号、间距、分隔符灰，
  * 以及把官方 a.unstyled 的悬停色（--primary）覆盖回全站统一的经典蓝。
  */
@@ -793,8 +787,8 @@ a.user-chip:hover {
  * 四个页签的内容都在框内。原来是页签条浮在卡片外面，视觉上是两截。
  * 板块页签里的分组也不再各自套卡片，改为框内「标题条 + 行」铺开，分组间用分隔线。
  *
- * ⚠️ 这里**不用** OATUI 的 <ot-tabs>：页签是链接（整页跳转），面板由服务端
- * 决定谁 hidden，不需要客户端组件（原 `.home-panel ot-tabs{display:block}` 随之删除）。
+ * ⚠️ 这里**不用** 组件化的页签：页签是链接（整页跳转），面板由服务端
+ * 决定谁 hidden，不需要客户端组件（原 `.home-panel ow-tabs{display:block}` 随之删除）。
  */
 
 /*
@@ -808,7 +802,7 @@ a.user-chip:hover {
   flex-wrap: wrap;
   gap: 4px;
   padding: 10px 12px;
-  background: var(--qq-card);                     /* ⚠️ 必须显式盖掉 OATUI [role=tablist] 的灰底，
+  background: var(--qq-card);                     /* ⚠️ 必须显式盖掉 ui.css [role=tablist] 的灰底，
                                            否则选中的灰块会和条底融为一体 */
   border-bottom: 1px solid var(--qq-line-soft);
 }
@@ -854,7 +848,7 @@ a.user-chip:hover {
 }
 
 .home-panel [role="tabpanel"] {
-  padding: 0;                           /* OATUI 的纵向 padding 在框内会顶出空隙，行自带 16px */
+  padding: 0;                           /* ui.css 的纵向 padding 在框内会顶出空隙，行自带 16px */
 }
 
 /* 首页页签内的翻页条：贴着列表底部分隔 */
@@ -1099,7 +1093,7 @@ a.user-chip:hover {
 }
 
 /*
- * 标题与用户名都是 <a>，会被全局 `a:not(.button)`（0,1,1）的链接蓝压过 ——
+ * 标题与用户名都是 <a>，会被全局 `a:not(.ow-button)`（0,1,1）的链接蓝压过 ——
  * 用 `.thread-item` 前缀提到 (0,2,0) 才能赢。标题黑色、用户名中性灰（与版块行一致）。
  */
 .thread-item .thread-item__title {
@@ -1144,7 +1138,7 @@ a.user-chip:hover {
   color: var(--qq-blue-dark);
 }
 
-/* (0,2,0) 高于全局 a:not(.button)(0,1,1)：作者名要加粗，别被链接色改回去 */
+/* (0,2,0) 高于全局 a:not(.ow-button)(0,1,1)：作者名要加粗，别被链接色改回去 */
 .thread-item .thread-item__author {
   font-weight: 600;
 }
@@ -1181,8 +1175,8 @@ a.user-chip:hover {
 }
 
 /*
- * 版块名用 <a>，会被全局 `a:not(.button)`(0,1,1) 染成链接蓝 ——
- * 这里 (0,2,0) 稳压，悬停 (0,3,0) 压过 body a:hover:not(:where(.button))(0,1,2)。
+ * 版块名用 <a>，会被全局 `a:not(.ow-button)`(0,1,1) 染成链接蓝 ——
+ * 这里 (0,2,0) 稳压，悬停 (0,3,0) 压过 body a:hover:not(:where(.ow-button))(0,1,2)。
  */
 .thread-item .thread-item__forum {
   width: 100%;
@@ -1433,15 +1427,15 @@ a.user-chip:hover {
 
 /*
  * 帖子详情页里的提示气泡都贴着卡片的右边缘，而 `.panel` 是 `overflow: hidden`
- * （卡片圆角与渐变标题栏都靠它裁切）—— OATUI 默认把气泡水平居中
+ * （卡片圆角与渐变标题栏都靠它裁切）—— ui.css 默认把气泡水平居中
  * （`inset-inline-start: 50%` + `translateX(-50%)`），右边会被卡片裁掉。
  * 这里把气泡改成贴着元素的右边缘展开；箭头（::before）保持居中，仍然指向元素本身。
  *
  * 「已编辑」那个标记还贴着卡片上沿，光靠水平对齐不够（向上显示会被顶部裁掉），
- * 所以它另外带 data-tooltip-placement="bottom"（见 partials/floor.php）。
+ * 所以它另外带 data-ow-tooltip-placement="bottom"（见 partials/floor.php）。
  */
-.post-ops [data-tooltip]::after,
-.post-edited-flag[data-tooltip]::after {
+.post-ops [data-ow-tooltip]::after,
+.post-edited-flag[data-ow-tooltip]::after {
   inset-inline-start: auto;
   inset-inline-end: 0;
   transform: translateX(0) var(--_o);
@@ -1518,8 +1512,8 @@ a.user-chip:hover {
  * 不用链接蓝（用户要求「楼层颜色改成和发布时间一样」）。
  *
  * ⚠️ 选择器必须带容器与元素（`.post-info a.post-floor`，(0,2,1)）：只写 `.post-floor`（(0,1,0)）
- *    会被全局 `a:not(.button)`（(0,1,1)）染成链接蓝 —— 这正是之前 #楼层号发蓝的原因。
- *    悬停同理用 (0,3,1) 压过全局 `body a:hover:not(:where(.button))`（(0,1,2)），
+ *    会被全局 `a:not(.ow-button)`（(0,1,1)）染成链接蓝 —— 这正是之前 #楼层号发蓝的原因。
+ *    悬停同理用 (0,3,1) 压过全局 `body a:hover:not(:where(.ow-button))`（(0,1,2)），
  *    并沿用 .post-replyto 的弱化观感（--qq-ink-2）。
  */
 .post-info a.post-floor {
@@ -1545,7 +1539,7 @@ a.user-chip:hover {
 }
 
 /* 图标按钮：收成方形小块（文字已退到 title / aria-label，靠悬浮与读屏可读） */
-.post-ops .button {
+.post-ops .ow-button {
   padding: 3px 5px;
   font-size: 12.5px;
 }
@@ -1562,7 +1556,7 @@ a.user-chip:hover {
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--qq-card);          /* 卡片底，压过 OATUI 的页面底色 */
+  background: var(--qq-card);          /* 卡片底，压过 ui.css 的页面底色 */
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-medium);
   box-shadow: 0 10px 28px -12px rgb(0 95 158 / 0.28);
@@ -1592,12 +1586,12 @@ a.user-chip:hover {
 
 /*
  * 悬浮 / 键盘焦点态。与顶栏齿轮同样的两个要点：
- *  1. 只用 :focus-visible —— OATUI 打开菜单时会 focus() 第一项，用 :focus 会让人以为已经选中了；
- *  2. ⚠️ 特异性要压过 OATUI 的 `ot-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
- *     写成 `ot-dropdown.post-more [popover] li [role="menuitem"]`（(0,4,2)）才稳。
+ *  1. 只用 :focus-visible —— ui.css 打开菜单时会 focus() 第一项，用 :focus 会让人以为已经选中了；
+ *  2. ⚠️ 特异性要压过 ui.css 的 `ow-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
+ *     写成 `ow-dropdown.post-more [popover] li [role="menuitem"]`（(0,4,2)）才稳。
  */
-ot-dropdown.post-more [popover] li [role="menuitem"]:hover,
-ot-dropdown.post-more [popover] li [role="menuitem"]:focus-visible {
+ow-dropdown.post-more [popover] li [role="menuitem"]:hover,
+ow-dropdown.post-more [popover] li [role="menuitem"]:focus-visible {
   background: var(--qq-soft);
   color: var(--qq-blue-dark);
   outline: none;
@@ -1605,7 +1599,7 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus-visible {
 }
 
 /* 程序化 focus（JS 打开菜单时的 focus()）不显示任何选中观感 */
-ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
+ow-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   background: none;
   outline: none;
 }
@@ -1647,8 +1641,8 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
  *
  * 观感与「多久前」「编辑过」一致：弱化文字色、常规字重、**没有下划线**（用户要求）。
  * ⚠️ 选择器必须带元素与容器（.post-meta a.post-replyto，(0,2,1)）：
- *    全局的 `a:not(.button)` 是 (0,1,1)，只写 .post-replyto（(0,1,0)）会被它染成链接蓝。
- *    悬停同理 —— 全局 `body a:hover:not(:where(.button))` 是 (0,1,2)，
+ *    全局的 `a:not(.ow-button)` 是 (0,1,1)，只写 .post-replyto（(0,1,0)）会被它染成链接蓝。
+ *    悬停同理 —— 全局 `body a:hover:not(:where(.ow-button))` 是 (0,1,2)，
  *    这里用 (0,2,2)/(0,3,1) 稳压，且不写 underline（全站链接都不带下划线）。
  */
 .post-meta a.post-replyto {
@@ -1987,7 +1981,7 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
  * 这一层只负责「把它摆在哪儿」：独立成一行、上下留白、**不带白底也不带分隔线**。
  *
  * 以前各处自己起名字（首页 .home-pager 带 border-top 贴在卡片底部、楼层页
- * .floor-pager 居中、其它页干脆裸写 .mt-4），结果同一套分页在不同页面长得不一样。
+ * .floor-pager 居中、其它页干脆裸写 .ow-mt-4），结果同一套分页在不同页面长得不一样。
  * 现在统一成 .pager —— 首页 / 版块页 / 帖子楼层 / 搜索 / 用户主页 / 通知中心都用它。
  * 改样式只改这一处。
  */
@@ -2107,7 +2101,7 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
 /*
  * 工具栏与正文框共享一条边框：工具栏去掉下边框、正文框去掉上边框，两者圆角各自
  * 只保留外侧两个角 —— 与站点其它组件一样是「紧贴」的整合形态。
- * 边框色统一取 --input（OATUI 输入框的边框令牌，深色下另有取值），
+ * 边框色统一取 --input（ui.css 输入框的边框令牌，深色下另有取值），
  * 否则接缝处会从工具栏的线色跳到输入框的线色。
  */
 .editor {
@@ -2190,7 +2184,7 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   width: 100%;
   min-height: 260px;
   /*
-   * OATUI 给所有表单控件加了 margin-block-start: var(--space-1)（4px）——
+   * ui.css 给所有表单控件加了 margin-block-start: var(--space-1)（4px）——
    * 工具栏与正文框要贴成一体，这里的上外边距必须清零，否则中间会露出一条缝。
    */
   margin-block-start: 0;
@@ -2238,16 +2232,16 @@ ot-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
 
 /*
  * 工具栏左右两端的气泡都要改贴边展开。
- * 卡片 .panel 是 overflow: hidden（圆角与渐变头部都靠它裁切），而 OATUI 默认把
+ * 卡片 .panel 是 overflow: hidden（圆角与渐变头部都靠它裁切），而 ui.css 默认把
  * 气泡水平居中 —— 最右的按钮与卡片右缘几乎重合，最左的「上传附件」提示又很长
  * （带大小上限），居中都会溢出卡片被裁掉。
  */
-.editor-bar > .editor-btn:first-child[data-tooltip]::after {
+.editor-bar > .editor-btn:first-child[data-ow-tooltip]::after {
   inset-inline-start: 0;
   transform: translateX(0) var(--_o);
 }
 
-.editor-bar .editor-btn--end[data-tooltip]::after {
+.editor-bar .editor-btn--end[data-ow-tooltip]::after {
   inset-inline-start: auto;
   inset-inline-end: 0;
   transform: translateX(0) var(--_o);
@@ -2837,9 +2831,9 @@ body.editor-fullscreen {
 
 /*
  * 插件可以用 ['url' => ...] 把卡片做成链接。
- * 必须显式写 .profile-stats … a：全局 `a:not(.button)`(0,1,1) 会把链接染成深蓝，
+ * 必须显式写 .profile-stats … a：全局 `a:not(.ow-button)`(0,1,1) 会把链接染成深蓝，
  * 与旁边的纯文本数值混在一排会很跳；这里回到继承色，只保留悬停反馈。
- * 本选择器 (0,2,1) 也高于全局悬停规则 body a:hover:not(:where(.button))(0,1,2)，
+ * 本选择器 (0,2,1) 也高于全局悬停规则 body a:hover:not(:where(.ow-button))(0,1,2)，
  * 所以悬停色能稳定生效。
  */
 .profile-stats .admin-card__value a {
@@ -2861,15 +2855,15 @@ body.editor-fullscreen {
 }
 
 /*
- * OATUI <ot-upload>：默认卡片带大片留白，收拢一下高度，
+ * ui.css <ow-upload>：默认卡片带大片留白，收拢一下高度，
  * 让它和下方的按钮行贴得更自然（装扮页封面、后台 Logo 都用它）。
  */
-ot-upload.card {
+ow-upload.card {
   padding: var(--space-4) var(--space-5);
   min-height: 0;
 }
 
-ot-upload [data-files] {
+ow-upload [data-files] {
   font-size: 12.5px;
 }
 
@@ -2895,7 +2889,7 @@ ot-upload [data-files] {
 
 /*
  * 「我的隐私」：一行一个开关。
- * 开关本身用 OATUI 的 .switch；右侧状态文字由 app.js 在 change 时同步。
+ * 开关本身用 ui.css 的 .switch；右侧状态文字由 app.js 在 change 时同步。
  */
 .privacy-row {
   display: flex;
@@ -3062,7 +3056,7 @@ ot-upload [data-files] {
   flex: 1 1 auto;
   min-width: 0;
   height: 44px;
-  /* 清掉 OATUI 给输入框的 margin-block-start，否则会与图片错开几像素 */
+  /* 清掉 ui.css 给输入框的 margin-block-start，否则会与图片错开几像素 */
   margin: 0;
 }
 
@@ -3146,8 +3140,8 @@ ot-upload [data-files] {
 
 .install-main .panel:last-child,
 .install-aside .panel:last-child,
-.install-main .mb-4:last-child,
-.install-aside .mb-4:last-child {
+.install-main .ow-mb-4:last-child,
+.install-aside .ow-mb-4:last-child {
   margin-bottom: 0;
 }
 
@@ -3212,7 +3206,7 @@ ot-upload [data-files] {
 }
 
 /* JS 用 hidden 属性切换「SQLite / 远程数据库」两组字段的显隐。
-   OATUI 的 [hidden] 在 @layer 内，这里补一条无层的兜底规则，
+   ui.css 的 [hidden] 在 @layer 内，这里补一条无层的兜底规则，
    确保它总能压过其它 display 设定。 */
 .install-layout [hidden] {
   display: none !important;
@@ -3283,25 +3277,25 @@ ot-upload [data-files] {
    11. 后台
    ========================================================================== */
 
-body[data-sidebar-layout] {
+body[data-ow-sidebar-layout] {
   background: var(--qq-page);
 }
 
-[data-sidebar] {
+[data-ow-sidebar] {
   background: var(--qq-card);
   border-right: 1px solid var(--qq-line);
 }
 
-[data-sidebar] .sidebar__brand {
+[data-ow-sidebar] .sidebar__brand {
   padding: 16px 18px;
   border-bottom: 1px solid var(--qq-line-soft);
 }
 
-[data-sidebar] nav {
+[data-ow-sidebar] nav {
   padding: 10px;
 }
 
-[data-sidebar] nav ul {
+[data-ow-sidebar] nav ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -3310,7 +3304,7 @@ body[data-sidebar-layout] {
   gap: 2px;
 }
 
-[data-sidebar] nav a {
+[data-ow-sidebar] nav a {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -3320,20 +3314,20 @@ body[data-sidebar-layout] {
   color: var(--qq-ink-2);
 }
 
-[data-sidebar] nav a:hover {
+[data-ow-sidebar] nav a:hover {
   background: var(--qq-soft-2);
   color: var(--qq-blue-deep);
   text-decoration: none;
 }
 
-[data-sidebar] nav a[aria-current="page"] {
+[data-ow-sidebar] nav a[aria-current="page"] {
   background: var(--qq-soft);
   color: var(--qq-blue-deep);
   font-weight: 600;
   box-shadow: inset 2px 0 0 var(--qq-blue);
 }
 
-[data-sidebar] nav a svg {
+[data-ow-sidebar] nav a svg {
   width: 17px;
   height: 17px;
   flex: none;
@@ -3346,12 +3340,12 @@ body[data-sidebar-layout] {
  * 父项只负责展开/收起，子项才是页面链接，用原生 <details>/<summary> 实现：
  * 无脚本也能用，「当前页所在分组默认展开」由 PHP 直接输出 open，不依赖前端状态。
  *
- * 必须压掉 OATUI 分层的 details 样式：oat.css 把 details 做成「带边框的卡片」
+ * 必须压掉 ui.css 分层的 details 样式：ui.css 把 details 做成「带边框的卡片」
  * （border / border-radius / overflow),summary 还带 var(--space-4) 内边距与
  * 「展开内容 16px 外边距 + fade-in-up 动画」——放进侧栏会变成一个突兀的方框。
  * theme.css 不在 @layer 里，无层规则天然压过分层规则，不需要堆特异性。
  */
-[data-sidebar] nav details.nav-group {
+[data-ow-sidebar] nav details.nav-group {
   border: 0;
   border-radius: 0;
   overflow: visible;
@@ -3359,7 +3353,7 @@ body[data-sidebar-layout] {
 }
 
 /* 与同级 <a> 完全一致的排版（字号 / 内边距 / 圆角 / 颜色） */
-[data-sidebar] nav details.nav-group > summary {
+[data-ow-sidebar] nav details.nav-group > summary {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -3370,25 +3364,25 @@ body[data-sidebar-layout] {
   color: var(--qq-ink-2);
 }
 
-[data-sidebar] nav details.nav-group > summary svg {
+[data-ow-sidebar] nav details.nav-group > summary svg {
   width: 17px;
   height: 17px;
   flex: none;
   opacity: 0.9;
 }
 
-[data-sidebar] nav details.nav-group > summary:hover {
+[data-ow-sidebar] nav details.nav-group > summary:hover {
   background: var(--qq-soft-2);
   color: var(--qq-blue-deep);
 }
 
 /* 展开中的父项用品牌色，但不上底色 —— 底色留给真正的「当前子项」 */
-[data-sidebar] nav details.nav-group[open] > summary {
+[data-ow-sidebar] nav details.nav-group[open] > summary {
   color: var(--qq-blue-deep);
 }
 
-/* OATUI 自带的下拉箭头（mask 图标）：缩小并推到最右；展开时它自己会翻转 */
-[data-sidebar] nav details.nav-group > summary::after {
+/* ui.css 自带的下拉箭头（mask 图标）：缩小并推到最右；展开时它自己会翻转 */
+[data-ow-sidebar] nav details.nav-group > summary::after {
   width: 13px;
   height: 13px;
   margin-inline-start: auto;
@@ -3399,20 +3393,20 @@ body[data-sidebar-layout] {
  * 子菜单：缩进 + 一条引导线，字号略小、不再每条都挂图标。
  * 左边距 21+9(内边距)+10(链接内边距) ≈ 40px，与父项标题（12+17 图标+9 gap = 38px）对齐。
  */
-[data-sidebar] nav details.nav-group > .nav-sub {
+[data-ow-sidebar] nav details.nav-group > .nav-sub {
   margin: 2px 0 2px 21px;
   padding: 0 0 0 9px;
   border-inline-start: 1px solid var(--qq-line);
   gap: 1px;
 }
 
-[data-sidebar] nav .nav-sub a {
+[data-ow-sidebar] nav .nav-sub a {
   padding: 7px 10px;
   font-size: 13.5px;
 }
 
-/* 取消 OATUI 给展开内容的 fade-in-up：侧栏里动画会带着整列跳一下 */
-[data-sidebar] nav details.nav-group[open] > .nav-sub {
+/* 取消 ui.css 给展开内容的 fade-in-up：侧栏里动画会带着整列跳一下 */
+[data-ow-sidebar] nav details.nav-group[open] > .nav-sub {
   animation: none;
 }
 
@@ -3431,15 +3425,15 @@ body[data-sidebar-layout] {
 /*
  * 顶栏的侧栏开关（汉堡按钮）。
  *
- * OATUI 的原始样式只给了左右 padding（上下为 0）、背景透明、颜色是纯白 ——
+ * ui.css 的原始样式只给了左右 padding（上下为 0）、背景透明、颜色是纯白 ——
  * 在浅色顶栏上图标几乎看不见（移动端尤其明显：28×23 的扁块 + 白色图标）。
  * 这里给它固定的方形热区、白底 + 深色图标，并用绝对定位把图标居中。
  *
- * 不写 display：这个按钮「什么时候出现」由 OATUI 按屏幕宽度与侧栏布局决定
+ * 不写 display：这个按钮「什么时候出现」由 ui.css 按屏幕宽度与侧栏布局决定
  * （桌面端用于收起侧栏、移动端用于打开抽屉），我们只负责它的外观 ——
  * 直接写 display 会覆盖掉那套显隐逻辑，让它在不该出现的地方冒出来。
  */
-[data-sidebar-toggle] {
+[data-ow-sidebar-toggle] {
   position: relative;
   box-sizing: border-box;
   width: 34px;
@@ -3453,13 +3447,13 @@ body[data-sidebar-layout] {
   transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-[data-sidebar-toggle]:hover {
+[data-ow-sidebar-toggle]:hover {
   border-color: var(--qq-blue);
   color: var(--qq-blue);
 }
 
 /* 绝对定位居中：不管按钮是 inline-block / block / flex 都能对齐 */
-[data-sidebar-toggle] svg {
+[data-ow-sidebar-toggle] svg {
   position: absolute;
   inset: 0;
   margin: auto;
@@ -3648,7 +3642,7 @@ body[data-sidebar-layout] {
   background: var(--qq-card);
 }
 
-.bulk-bar .button {
+.bulk-bar .ow-button {
   height: 36px;
 }
 
@@ -3686,7 +3680,7 @@ body[data-sidebar-layout] {
 
 /*
  * 后台筛选行里的下拉：统一为全站风格（白底 + 经典蓝线框 + 中圆角），
- * OATUI 默认的方角灰底与前台观感割裂。
+ * ui.css 默认的方角灰底与前台观感割裂。
  * 搜索输入已改用 .search-box（见上方全站统一搜索框），不再在此单独立规则。
  */
 .admin-filter select {
@@ -3702,8 +3696,8 @@ body[data-sidebar-layout] {
   flex: 1 1 auto;
 }
 
-/* 筛选按钮与输入框严格等高（OATUI 的 .small 只有 space-1 的竖向 padding，会矮一截） */
-.admin-filter .button {
+/* 筛选按钮与输入框严格等高（ui.css 的 .ow-small 只有 space-1 的竖向 padding，会矮一截） */
+.admin-filter .ow-button {
   height: 36px;
 }
 
@@ -3764,11 +3758,11 @@ body[data-sidebar-layout] {
  * 文本块是 flex:1 1 auto，basis 取的是「超长文本的完整宽度」，
  * 于是 flex-wrap 先判定放不下、把图标和文字竖排 —— 行高凭空多一倍。
  */
-.admin-list .hstack {
+.admin-list .ow-hstack {
   flex-wrap: nowrap;
 }
 
-.admin-list .hstack > * {
+.admin-list .ow-hstack > * {
   min-width: 0;
 }
 
@@ -4174,7 +4168,7 @@ body[data-sidebar-layout] {
 /* 分页统计（共 X 条 · 第 X/Y 页）已按需求移除，只保留翻页按钮 */
 
 /*
- * Paginator 输出的是 <menu class="buttons">，那是 OATUI 的「连体按钮组」：
+ * Paginator 输出的是 <menu class="ow-buttons">，那是 ui.css 的「连体按钮组」：
  * 相邻按钮贴在一起、除首尾外圆角清零 —— 适合工具栏，不适合分页。
  * 分页需要的是一排独立按钮 + 间距，所以在这里恢复 gap 与圆角。
  * 选择器带 .pagination 前缀是为了在特异性上压过 menu.buttons > li > *。
@@ -4197,7 +4191,7 @@ body[data-sidebar-layout] {
 }
 
 /* 当前页：实心主题色，与可点页码形成对比 */
-.pagination .button[aria-current="page"] {
+.pagination .ow-button[aria-current="page"] {
   background: var(--qq-blue);
   border-color: var(--qq-blue);
   color: #fff;
@@ -4205,7 +4199,7 @@ body[data-sidebar-layout] {
 }
 
 /* 已到头时的上一页/下一页：弱化 */
-.pagination .button[disabled] {
+.pagination .ow-button[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -4424,7 +4418,7 @@ pre.snippet code {
  * 左侧文件名、右侧「上传完成 · 点击复制」与移除按钮；
  * 上传中的行在底部画 2px 进度条，失败行文字转红。
  *
- * 注意不要给容器加 overflow: hidden——OATUI 的 tooltip 是画在元素自身的
+ * 注意不要给容器加 overflow: hidden——ui.css 的 tooltip 是画在元素自身的
  * ::after 上，容器一旦裁剪，行内按钮的悬浮提示就会被切掉。
  * 圆角改由首/末行自己承担（行背景与容器同色，视觉效果不变）。
  */
@@ -4680,40 +4674,40 @@ svg {
    15. 组件细节修正
    ========================================================================== */
 
-/* OATUI 的侧栏布局给 <main> 留了顶部内边距，后台自己控制间距，这里清零 */
-body[data-sidebar-layout] > main {
+/* ui.css 的侧栏布局给 <main> 留了顶部内边距，后台自己控制间距，这里清零 */
+body[data-ow-sidebar-layout] > main {
   padding-block-start: 0;
 }
 
 /*
- * （原「OATUI Tabs 选中态白底」覆盖规则已删除：首页页签改用 .tabbar 统一样式，
- *   未选中白底、选中灰底 --muted，不再走 OATUI 默认的选中态。）
+ * （原「ui.css Tabs 选中态白底」覆盖规则已删除：首页页签改用 .tabbar 统一样式，
+ *   未选中白底、选中灰底 --muted，不再走 ui.css 默认的选中态。）
  */
 
 /* 下拉菜单：<menu> 浏览器默认带缩进与项目符号，统一清掉 */
-ot-dropdown [popover] {
+ow-dropdown [popover] {
   padding: var(--space-1) 0;
   min-width: 12rem;
 }
 
-ot-dropdown [popover] menu,
-ot-dropdown [popover] ul {
+ow-dropdown [popover] menu,
+ow-dropdown [popover] ul {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-ot-dropdown [popover] li {
+ow-dropdown [popover] li {
   margin: 0;
   list-style: none;
 }
 
-ot-dropdown [popover] a[role="menuitem"] {
+ow-dropdown [popover] a[role="menuitem"] {
   color: var(--qq-ink);
   font-size: 14px;
   text-decoration: none;
   /*
-   * OATUI 把菜单项设成了 flex 但没给 align-items（normal），
+   * ui.css 把菜单项设成了 flex 但没给 align-items（normal），
    * 图标（16px）与文字行盒（21px）顶对齐，图标中心比文字中心高 2.5px，
    * 视觉上图标整体偏上。补 center 让两者垂直居中，gap 统一间距。
    */
@@ -4721,18 +4715,18 @@ ot-dropdown [popover] a[role="menuitem"] {
   gap: 8px;
 }
 
-ot-dropdown [popover] a[role="menuitem"]:hover {
+ow-dropdown [popover] a[role="menuitem"]:hover {
   color: var(--qq-blue-deep);
 }
 
-ot-dropdown [popover] svg {
+ow-dropdown [popover] svg {
   width: 16px;
   height: 16px;
   flex: none;
   color: var(--qq-ink-3);
 }
 
-ot-dropdown [popover] hr {
+ow-dropdown [popover] hr {
   margin: var(--space-1) 0;
 }
 
@@ -4749,7 +4743,7 @@ ot-dropdown [popover] hr {
 }
 
 /*
- * 懒加载图片的 Skeleton 占位（对应 OATUI 的 skeleton 观感）：
+ * 懒加载图片的 Skeleton 占位（对应 ui.css 的 skeleton 观感）：
  * 加载完成前用一条扫过的渐变垫底，完成后 app.js 给图片加 .is-loaded 撤掉。
  * 正文图（content-image）与正文/楼层里的站内小图都覆盖；
  * 头像 50px 内基本瞬时加载，不参与，避免每张头像都闪一下动画。
@@ -4808,7 +4802,7 @@ ot-dropdown [popover] hr {
 /*
  * 表格首末列与面板内边距对齐。
  *
- * OATUI 给 th/td 的左右 padding 是 --space-2（8px），而面板头部、筛选区、
+ * ui.css 给 th/td 的左右 padding 是 --space-2（8px），而面板头部、筛选区、
  * 面板脚注都是 16px —— 于是列表第一列的文字比同面板的标题更贴边，
  * 视觉上就像「左边没留出间隙」。这里把首末列补到 --space-4（16px），
  * 让表格内容与面板其它区域站在同一条纵向基准线上。
@@ -4832,8 +4826,8 @@ ot-dropdown [popover] hr {
   padding-right: var(--space-4);
 }
 
-/* 徽标中的按钮（附件、关键词标签等）不要被 OATUI 的 badge button 规则吃掉 */
-.badge > a {
+/* 徽标中的按钮（附件、关键词标签等）不要被 ui.css 的 badge button 规则吃掉 */
+.ow-badge > a {
   color: inherit;
 }
 
@@ -4851,7 +4845,7 @@ ot-dropdown [popover] hr {
   background: var(--qq-blue);
 }
 
-/* 皮肤：把 OATUI 的原生对话框按钮组排布得更紧凑 */
+/* 皮肤：把 ui.css 的原生对话框按钮组排布得更紧凑 */
 dialog menu.buttons {
   margin-block-end: 0;
 }
@@ -4947,7 +4941,7 @@ html[data-theme="dark"] {
   --qq-grad-group-a: #1b2331;
   --qq-grad-group-b: #171b27;
 
-  /* ---- OATUI 令牌（浅色块里写死的几个在这里翻面） ---- */
+  /* ---- ui.css 令牌（浅色块里写死的几个在这里翻面） ---- */
   --secondary: #1f2937;
   --muted: #222a38;                /* 页签未选中底 / 滑块轨道 */
   --faint: #151a24;
@@ -4957,7 +4951,7 @@ html[data-theme="dark"] {
 
 /* ---- 热点修正：未令牌化的一次性浅色底 ---- */
 
-/* OATUI 的 [role=tab]:hover 把文字染成 --muted-foreground，深色里统一为石墨悬浮色 */
+/* ui.css 的 [role=tab]:hover 把文字染成 --muted-foreground，深色里统一为石墨悬浮色 */
 html[data-theme="dark"] [role="tab"]:hover {
   color: var(--qq-blue-dark);
 }
@@ -4967,11 +4961,11 @@ html[data-theme="dark"] [role="tab"]:hover {
  * 链接基础色是近白的 --qq-blue-deep，悬浮变石灰 —— 用户指定的夜间观感
  * （参考 color_scheme 的 a:hover = primary/0.8，primary 即 #586779）。
  */
-html[data-theme="dark"] body a:hover:not(:where(.button)) {
+html[data-theme="dark"] body a:hover:not(:where(.ow-button)) {
   color: var(--qq-blue-dark);
 }
 
-/* 表格行悬浮：OATUI 用 --muted 的半透明，深色里换成石墨薄底 */
+/* 表格行悬浮：ui.css 用 --muted 的半透明，深色里换成石墨薄底 */
 html[data-theme="dark"] tbody tr:hover {
   background-color: rgb(from var(--qq-blue) r g b / 0.14);
 }
@@ -5025,9 +5019,9 @@ html[data-theme="dark"] .auth-page {
 /* ==========================================================================
    18. 顶栏个性化齿轮（用户区共用 partial：partials/user-gear.php）
    --------------------------------------------------------------------------
-   <ot-dropdown>（oat dropdown.js）负责定位与键盘导航；这里只管外观：
+   <ow-dropdown>（oat dropdown.js）负责定位与键盘导航；这里只管外观：
    圆形齿轮按钮与 a.user-chip 同高（38px），弹出的菜单用卡片底
-   （OATUI 的 [popover] 默认 var(--background) = 页面底色，会跟页面融为一体）。
+   （ui.css 的 [popover] 默认 var(--background) = 页面底色，会跟页面融为一体）。
    ========================================================================== */
 
 .user-gear {
@@ -5062,7 +5056,7 @@ html[data-theme="dark"] .auth-page {
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--qq-card);          /* 卡片底，压过 OATUI 的页面底色 */
+  background: var(--qq-card);          /* 卡片底，压过 ui.css 的页面底色 */
   border: 1px solid var(--qq-line);
   border-radius: var(--radius-medium);
   box-shadow: 0 10px 28px -12px rgb(0 95 158 / 0.28);
@@ -5086,25 +5080,25 @@ html[data-theme="dark"] .auth-page {
 
 /*
  * 悬浮 / 键盘焦点态。三个细节：
- *  1. 只用 :focus-visible、不用 :focus —— OATUI dropdown 打开菜单时会 focus() 第一项，
+ *  1. 只用 :focus-visible、不用 :focus —— ui.css dropdown 打开菜单时会 focus() 第一项，
  *     若按 :focus 上高亮，用户「还没选择」菜单里就已经有一项亮着，看起来像误触发；
  *     :focus-visible 只在键盘导航时显示，鼠标点击打开不会。
- *  2. ⚠️ 特异性必须压过旧规则 `ot-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
+ *  2. ⚠️ 特异性必须压过旧规则 `ow-dropdown [popover] a[role="menuitem"]:hover`（(0,3,2)），
  *     否则「个性装扮」项（<a>）的悬浮字色被旧规则的 --qq-blue-deep 抢走 ——
  *     深色下那是淡银蓝，正是用户反馈的「悬浮字变石灰」。这里用
- *     `ot-dropdown.user-gear [popover] li [role="menuitem"]`（(0,4,2)）稳压。
+ *     `ow-dropdown.user-gear [popover] li [role="menuitem"]`（(0,4,2)）稳压。
  *  3. 悬浮字色用 --qq-blue-dark（深色下 = #7DD6FF 最亮档），悬浮必须比常态更醒目。
  */
-ot-dropdown.user-gear [popover] li [role="menuitem"]:hover,
-ot-dropdown.user-gear [popover] li [role="menuitem"]:focus-visible {
+ow-dropdown.user-gear [popover] li [role="menuitem"]:hover,
+ow-dropdown.user-gear [popover] li [role="menuitem"]:focus-visible {
   background: var(--qq-soft);
   color: var(--qq-blue-dark);
   outline: none;
   text-decoration: none;
 }
 
-/* 抵消 OATUI 的 :focus 高亮：JS 打开菜单时的程序化 focus 不显示任何选中观感 */
-ot-dropdown.user-gear [popover] li [role="menuitem"]:focus:not(:focus-visible) {
+/* 抵消 ui.css 的 :focus 高亮：JS 打开菜单时的程序化 focus 不显示任何选中观感 */
+ow-dropdown.user-gear [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   background: none;
   outline: none;
 }
@@ -5436,40 +5430,39 @@ html[data-theme="dark"] [data-theme-icon-moon] {
 }
 
 /* 楼层操作图标：透明 ghost（与「置顶/精华/推荐/锁定」版主图标同款，用户要求）。
-   基准字色钉住 --qq-ink：ajax 切换时 app.js 会给按钮写 data-variant="secondary"，
-   OATUI 的 ghost[data-variant=secondary] 会把字染成 --secondary-foreground（蓝灰），
+   基准字色钉住 --qq-ink：ajax 切换时 app.js 会给按钮写 data-ow-variant="secondary"，
+   ui.css 的 ghost[data-ow-variant=secondary] 会把字染成 --secondary-foreground（蓝灰），
    与初始渲染不一致 —— 这里稳压掉。
    激活态（已点赞 / 已收藏 / 已置顶 / 已加精 / 已推荐）＝ 色系里的**文字链接色**：
-   与全局 `a:not(.button)` 用的同一个令牌（--qq-blue-deep），换色系 / 深色会自动跟随。 */
-.post-ops form[data-state-field] .button,
-.post-ops form[data-active] .button {
+   与全局 `a:not(.ow-button)` 用的同一个令牌（--qq-blue-deep），换色系 / 深色会自动跟随。 */
+.post-ops form[data-state-field] .ow-button,
+.post-ops form[data-active] .ow-button {
   color: var(--qq-ink);
 }
 
-.post-ops form[data-active="1"] .button {
+.post-ops form[data-active="1"] .ow-button {
   color: var(--qq-blue-deep);
 }
 
-.post-ops form[data-active="1"] .button:hover {
+.post-ops form[data-active="1"] .ow-button:hover {
   color: var(--qq-blue-dark);
 }
 
 /* ==========================================================================
-   18. 旧内核兜底（不支持 @layer / Popover API / :has() 时）
+   18. 旧内核兜底（不支持 Popover API / :has() 时）
    --------------------------------------------------------------------------
-   症状来源：oat.css 整份包在 @layer 里，不支持 CSS Cascade Layers 的内核
-   （Chromium < 99、部分国产手机浏览器内核）会把**整份 oat.css 丢掉** ——
-   令牌兜底见文件开头 :root 那段。这里再补三处「丢了以后界面会明显不对」的地方。
+   这一节是给「浏览器实现不全」的旧内核（如 Chromium 88~98：没有 Popover API）兜底。
+   令牌层面的兜底见文件开头 :root 那段；这里补的是「少了就会明显不对」的行为样式。
    全部用 @supports 特性查询包住：现代浏览器**一条都不会生效**（含 Chrome / Safari 17+ / Firefox）。
    ========================================================================== */
 
 /*
  * ① 下拉菜单（顶栏齿轮 / 帖子「⋯」）
  *
- * 原生 popover 的「默认隐藏」是**浏览器 UA 样式**给的，不是 oat.css 给的；
- * oat.css 负责的 `position: fixed`，以及 oat/js/dropdown.js 的定位与开合
- * （监听 popover 的 toggle 事件）也一起没了。于是旧内核上：菜单不隐藏，
- * 看起来像「导航栏下拉默认展开」，还留在文档流里把顶栏撑高。
+ * 原生 popover 的「默认隐藏」是**浏览器 UA 样式**给的，不是样式表给的。
+ * 没有 Popover API 的内核上：菜单不隐藏，看起来像「导航栏下拉默认展开」，
+ * 还留在文档流里把顶栏撑高 —— 这里给它默认隐藏 + 打开态定位，
+ * 开合逻辑在 ui.js 的旧内核分支（data-popover-open）。
  *
  * @supports selector() 从 Chrome 83 起可用；在支持 popover 的内核里
  * `not selector(:popover-open)` 恒为 false，所以这一整块对现代内核是空操作。
@@ -5480,7 +5473,7 @@ html[data-theme="dark"] [data-theme-icon-moon] {
   }
 
   /* 打开态：显式 fixed（不依赖父级定位），top/left 由 app.js initLegacyPopovers() 写。
-     opacity / transform 是压 oat.css 的 `[popover]{opacity:0;transform:translateY(-4px)}`
+     opacity / transform 是压 ui.css 的 `[popover]{opacity:0;transform:translateY(-4px)}`
      —— 那两条只在 `:popover-open` 时才被改回可见，旧内核里这个伪类不存在，
      不写的话菜单虽然 display:block 却仍是全透明的「隐形菜单」。 */
   [popover][data-popover-open] {

@@ -13,8 +13,8 @@ $total  = (int)($stats['total'] ?? 0);
 $used   = (int)($stats['used_total'] ?? 0);
 $unused = (int)($stats['unused_total'] ?? 0);
 ?>
-<ol class="unstyled hstack crumbs">
-    <li><a class="unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
+<ol class="ow-unstyled ow-hstack crumbs">
+    <li><a class="ow-unstyled" href="<?= e(url('/notifications')) ?>">通知中心</a></li>
     <li aria-hidden="true">/</li>
     <li>附件管理</li>
 </ol>
@@ -23,11 +23,11 @@ $unused = (int)($stats['unused_total'] ?? 0);
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'paperclip', 'size' => 16]) ?>通知中心附件管理</h3>
         <span class="spacer"></span>
-        <a class="button ghost small" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
+        <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notifications')) ?>">返回通知中心</a>
     </div>
 
     <div class="panel__body" style="padding-top:12px;padding-bottom:12px">
-        <div class="hstack" style="gap:18px;font-size:13.5px">
+        <div class="ow-hstack" style="gap:18px;font-size:13.5px">
             <span>附件资源 <strong><?= $total ?></strong></span>
             <span>已引用 <strong><?= $used ?></strong></span>
             <span>未被公告引用 <strong><?= $unused ?></strong></span>
@@ -57,11 +57,11 @@ $unused = (int)($stats['unused_total'] ?? 0);
                         引用附件 <?= count($files) ?> 个
                     </span>
                 </div>
-                <a class="button ghost small" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
+                <a class="ow-button ow-ghost ow-small" href="<?= e(url('/notices/' . $noticeId . '/edit')) ?>">编辑公告</a>
             </div>
 
             <?php if ($files === []): ?>
-                <div class="panel__body text-light" style="font-size:13px">这条公告没有引用任何附件。</div>
+                <div class="panel__body ow-text-light" style="font-size:13px">这条公告没有引用任何附件。</div>
             <?php else: ?>
                 <div class="table-scroll">
                     <table>
@@ -80,15 +80,15 @@ $unused = (int)($stats['unused_total'] ?? 0);
                                 <?php /* 公告引用的附件记录已不存在（被清理/删除）—— 显示死引用占位 */ ?>
                                 <tr>
                                     <td>
-                                        <span class="text-light">
+                                        <span class="ow-text-light">
                                             <?= e((string)($file['name'] ?? '')) ?>
                                         </span>
-                                        <span class="badge" data-variant="warning" style="margin-left:6px">引用已失效</span>
+                                        <span class="ow-badge" data-ow-variant="warning" style="margin-left:6px">引用已失效</span>
                                     </td>
-                                    <td class="text-light">—</td>
-                                    <td class="text-light">—</td>
-                                    <td class="text-light">—</td>
-                                    <td class="text-light">—</td>
+                                    <td class="ow-text-light">—</td>
+                                    <td class="ow-text-light">—</td>
+                                    <td class="ow-text-light">—</td>
+                                    <td class="ow-text-light">—</td>
                                 </tr>
                                 <?php continue; ?>
                             <?php endif; ?>

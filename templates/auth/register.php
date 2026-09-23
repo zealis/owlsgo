@@ -14,7 +14,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
 <form method="post" action="<?= e(url('/register')) ?>" autocomplete="on">
     <?= csrf_field() ?>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="register-username">用户名</label>
         <input type="text" id="register-username" name="username" required autofocus
                autocomplete="username" maxlength="20"
@@ -25,7 +25,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
         <?php endif; ?>
     </div>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="register-email">邮箱</label>
         <input type="email" id="register-email" name="email" required
                autocomplete="email" maxlength="191"
@@ -35,7 +35,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
         <?php endif; ?>
     </div>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="register-password">密码</label>
         <input type="password" id="register-password" name="password" required
                autocomplete="new-password">
@@ -44,7 +44,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
         <?php endif; ?>
     </div>
 
-    <div data-field>
+    <div data-ow-field>
         <label for="register-password-confirm">确认密码</label>
         <input type="password" id="register-password-confirm" name="password_confirm" required
                autocomplete="new-password">
@@ -54,7 +54,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
     </div>
 
     <?php if ($captchaEnabled): ?>
-        <div data-field>
+        <div data-ow-field>
             <label for="register-captcha">验证码</label>
             <div class="captcha-row">
                 <input type="text" id="register-captcha" name="captcha" required
@@ -63,7 +63,7 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
                      data-src="<?= e(url('/captcha', ['scope' => 'register'])) ?>"
                      alt="图形验证码" width="132" height="44" title="点击换一张">
             </div>
-            <span data-hint>看不清？点击图片换一张。不区分大小写。</span>
+            <span data-ow-hint>看不清？点击图片换一张。不区分大小写。</span>
             <?php if (old_error('captcha') !== ''): ?>
                 <span class="field-error"><?= e(old_error('captcha')) ?></span>
             <?php endif; ?>
@@ -71,13 +71,13 @@ $captchaEnabled = (bool)($captchaEnabled ?? false);
     <?php endif; ?>
 
     <?php if ($requireVerify): ?>
-        <div class="doc-note hstack" style="gap:10px;align-items:flex-start;margin-bottom:var(--space-4)">
+        <div class="doc-note ow-hstack" style="gap:10px;align-items:flex-start;margin-bottom:var(--space-4)">
             <?= $view('partials/icon', ['name' => 'mail', 'size' => 18]) ?>
             <div>本站建议使用真实邮箱，以便后续找回账号。</div>
         </div>
     <?php endif; ?>
 
-    <button type="submit" class="button w-100">
+    <button type="submit" class="ow-button ow-w-full">
         <?= $view('partials/icon', ['name' => 'user', 'size' => 16]) ?>
         <span>注册并登录</span>
     </button>

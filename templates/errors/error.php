@@ -26,10 +26,10 @@ $iconName  = match (true) {
 };
 ?>
 
-<div class="vstack gap-4" style="text-align:center">
+<div class="ow-vstack ow-gap-4" style="text-align:center">
     <div style="font-size:52px;font-weight:700;line-height:1;color:var(--qq-blue-deep)"><?= $code ?></div>
 
-    <div role="alert" data-variant="<?= $isOffline ? 'error' : 'warning' ?>" style="text-align:left">
+    <div role="alert" data-ow-variant="<?= $isOffline ? 'error' : 'warning' ?>" style="text-align:left">
         <?= $view('partials/icon', ['name' => $iconName, 'size' => 18]) ?>
         <div>
             <strong><?= e($title) ?></strong>
@@ -39,13 +39,13 @@ $iconName  = match (true) {
         </div>
     </div>
 
-    <div class="hstack justify-center">
+    <div class="ow-hstack ow-justify-center">
         <?php /* 站点的 CSP 只允许 'self'，因此不使用 javascript: 链接，改由 app.js 代理 */ ?>
-        <button type="button" class="button" data-history-back>
+        <button type="button" class="ow-button" data-history-back>
             <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 16]) ?>
             <span>返回上一页</span>
         </button>
-        <a class="button outline" href="<?= e(url('/')) ?>">
+        <a class="ow-button ow-outline" href="<?= e(url('/')) ?>">
             <?= $view('partials/icon', ['name' => 'home', 'size' => 16]) ?>
             <span>返回首页</span>
         </a>

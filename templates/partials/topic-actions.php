@@ -10,10 +10,10 @@
  *
  * ⚠️ 收藏是 **data-ajax 表单**：类名与 data-* 属性都不能改 ——
  *    app.js 的 initAjaxForms() 依赖 `form[data-ajax]` + `data-state-field` + `data-active`
- *    做无刷新切换；激活态字色由 theme.css 第 20 节的 `form[data-active="1"] .button` 决定。
+ *    做无刷新切换；激活态字色由 theme.css 第 20 节的 `form[data-active="1"] .ow-button` 决定。
  *
- * ⚠️ 「⋯」菜单复用 OATUI 的 <ot-dropdown> + <menu popover>（与顶栏齿轮同一套实现，
- *    oat/js/dropdown.js 负责定位 / 键盘导航 / aria-expanded，app.js 的
+ * ⚠️ 「⋯」菜单复用 ui.css 的 <ow-dropdown> + <menu popover>（与顶栏齿轮同一套实现，
+ *    自研 ui.js 负责开合 / 定位 / 键盘导航 / aria-expanded，app.js 的
  *    initDropdownAutoClose() 负责点击后收起）。popover 的 id 必须全站唯一：
  *    一页只会渲染一个首楼，所以这里固定用 post-more-menu。
  *
@@ -63,7 +63,7 @@ $hasMenu         = $canModerate || $canEdit || $canDeleteThread;
 <form method="post" action="<?= e(url('/t/' . $threadId . '/favorite')) ?>" data-ajax
       data-state-field="favorited" data-active="<?= $favorited ? '1' : '0' ?>" class="inline-form">
     <?= csrf_field() ?>
-    <button type="submit" class="button ghost small"
+    <button type="submit" class="ow-button ow-ghost ow-small"
             title="收藏 <?= (int)($thread['favorite_count'] ?? 0) ?>" aria-label="收藏">
         <?= $view('partials/icon', ['name' => 'bookmark', 'size' => 15]) ?>
     </button>
@@ -75,7 +75,7 @@ $hasMenu         = $canModerate || $canEdit || $canDeleteThread;
               data-active="<?= $mod['on'] ? '1' : '0' ?>">
             <?= csrf_field() ?>
             <button type="submit" name="action" value="<?= e($mod['action']) ?>"
-                    class="button ghost small" title="<?= e($mod['label']) ?>" aria-label="<?= e($mod['label']) ?>">
+                    class="ow-button ow-ghost ow-small" title="<?= e($mod['label']) ?>" aria-label="<?= e($mod['label']) ?>">
                 <?= $view('partials/icon', ['name' => $mod['icon'], 'size' => 15]) ?>
             </button>
         </form>
@@ -83,8 +83,8 @@ $hasMenu         = $canModerate || $canEdit || $canDeleteThread;
 <?php endif; ?>
 
 <?php if ($hasMenu): ?>
-    <ot-dropdown class="post-more">
-        <button type="button" class="button ghost small post-more__btn" popovertarget="post-more-menu"
+    <ow-dropdown class="post-more">
+        <button type="button" class="ow-button ow-ghost ow-small post-more__btn" popovertarget="post-more-menu"
                 aria-haspopup="menu" aria-expanded="false" aria-label="更多操作" title="更多操作">
             <?= $view('partials/icon', ['name' => 'more', 'size' => 15]) ?>
         </button>
@@ -129,7 +129,7 @@ $hasMenu         = $canModerate || $canEdit || $canDeleteThread;
                 </li>
             <?php endif; ?>
         </menu>
-    </ot-dropdown>
+    </ow-dropdown>
 <?php endif; ?>
 
 <?php

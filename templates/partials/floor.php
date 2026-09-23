@@ -94,12 +94,12 @@ $entryClass = 'post-entry'
                     <time datetime="<?= e(date('c', $threadAt)) ?>"><?= e(date('Y-m-d H:i', $threadAt)) ?></time>
                     <?php /*
                       只有真的改过才出现（帖子编辑 / 评论编辑都会刷新 updated_at）。
-                      data-tooltip-placement="bottom"：这个标记贴着卡片上沿，气泡默认向上显示会被卡片
+                      data-ow-tooltip-placement="bottom"：这个标记贴着卡片上沿，气泡默认向上显示会被卡片
                       的 overflow:hidden 裁掉，所以改成向下（定位样式见 theme.css 第 7 节）。
-                      title 会被 OATUI 的 tooltip.js 转成 data-tooltip。
+                      title 会被 ui.css 的 tooltip.js 转成 data-ow-tooltip。
                     */ ?>
                     <?php if ($editedAt > $threadAt): ?>
-                        <span class="post-edited-flag" data-tooltip-placement="bottom"
+                        <span class="post-edited-flag" data-ow-tooltip-placement="bottom"
                               title="<?= e($editedTip) ?>">已编辑</span>
                     <?php endif; ?>
                 </div>
@@ -153,14 +153,14 @@ $entryClass = 'post-entry'
              *
              * ⚠️ 点赞仍是 data-ajax 表单：`data-ajax` + `data-state-field` + `data-active` 是
              *    app.js initAjaxForms() 的依赖，类名与属性都不能改（激活态配色见 theme.css 第 20 节）。
-             * ⚠️ 删除按钮刻意**不用** data-variant="danger"：点击之前与其它图标同色（用户要求）。
+             * ⚠️ 删除按钮刻意**不用** data-ow-variant="danger"：点击之前与其它图标同色（用户要求）。
              */
             ?>
             <div class="post-ops">
                 <form method="post" action="<?= e(url('/p/' . $postId . '/like')) ?>" data-ajax
                       data-state-field="liked" data-active="<?= $liked ? '1' : '0' ?>" class="inline-form">
                     <?= csrf_field() ?>
-                    <button type="submit" class="button ghost small" title="赞 <?= (int)$likeCount ?>" aria-label="赞">
+                    <button type="submit" class="ow-button ow-ghost ow-small" title="赞 <?= (int)$likeCount ?>" aria-label="赞">
                         <?= $view('partials/icon', ['name' => 'heart', 'size' => 15]) ?>
                     </button>
                 </form>
@@ -170,7 +170,7 @@ $entryClass = 'post-entry'
                     <?= $topicActions !== '' ? $topicActions : '' ?>
                 <?php else: ?>
                     <?php if ($canReply): ?>
-                        <a class="button ghost small"
+                        <a class="ow-button ow-ghost ow-small"
                            href="<?= e(url('/t/' . $threadId, ['reply_to' => $postId])) ?>#respond"
                            title="评论" aria-label="评论">
                             <?= $view('partials/icon', ['name' => 'reply', 'size' => 15]) ?>
@@ -178,7 +178,7 @@ $entryClass = 'post-entry'
                     <?php endif; ?>
 
                     <?php if ($canEdit): ?>
-                        <a class="button ghost small" href="<?= e(url('/p/' . $postId . '/edit')) ?>"
+                        <a class="ow-button ow-ghost ow-small" href="<?= e(url('/p/' . $postId . '/edit')) ?>"
                            title="编辑" aria-label="编辑">
                             <?= $view('partials/icon', ['name' => 'edit', 'size' => 15]) ?>
                         </a>
@@ -189,7 +189,7 @@ $entryClass = 'post-entry'
                               data-ajax data-ajax-redirect
                               data-confirm="确定要删除这条评论吗？删除后无法自行恢复。">
                             <?= csrf_field() ?>
-                            <button type="submit" class="button ghost small" title="删除" aria-label="删除">
+                            <button type="submit" class="ow-button ow-ghost ow-small" title="删除" aria-label="删除">
                                 <?= $view('partials/icon', ['name' => 'trash', 'size' => 15]) ?>
                             </button>
                         </form>

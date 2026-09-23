@@ -44,7 +44,7 @@ $notice      = trim((string)($siteNotice ?? ''));
     <?php /* 深浅色引导：必须在样式表之前同步执行（不能 defer），否则深色用户会闪一帧白底 */ ?>
     <script src="<?= e(asset('assets/js/theme-boot.js')) ?>"></script>
     <?= $view('partials/head-critical-css') ?>
-    <link rel="stylesheet" href="<?= e(asset('assets/oat/oat.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('assets/ui/ui.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('assets/css/theme.css')) ?>">
 
     <?php
@@ -105,7 +105,7 @@ $notice      = trim((string)($siteNotice ?? ''));
     </div>
 </footer>
 
-<script type="module" src="<?= e(asset('assets/oat/js/index.js')) ?>"></script>
+<script src="<?= e(asset('assets/ui/ui.js')) ?>" defer></script>
 <script src="<?= e(asset('assets/js/app.js')) ?>" defer></script>
 <?php if (\Core\PluginManager::hasAssets()): ?>
     <script type="module" src="<?= e(url('/plugin-assets/js')) ?>"></script>
@@ -122,8 +122,8 @@ echo (string)hook('footer_assets', '');
         <p class="confirm-dialog__message" data-confirm-message></p>
     </div>
     <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" data-confirm-cancel>取消</button>
-        <button type="button" class="button" data-variant="danger" data-confirm-ok>确定</button>
+        <button type="button" class="ow-button ow-ghost" data-confirm-cancel>取消</button>
+        <button type="button" class="ow-button" data-ow-variant="danger" data-confirm-ok>确定</button>
     </div>
 </dialog>
 
@@ -137,8 +137,8 @@ echo (string)hook('footer_assets', '');
     <p class="prompt-dialog__title" data-prompt-title></p>
     <div class="prompt-dialog__body" id="app-prompt-body"></div>
     <div class="confirm-dialog__actions">
-        <button type="button" class="button ghost" data-prompt-cancel>取消</button>
-        <button type="button" class="button" data-prompt-ok>确定</button>
+        <button type="button" class="ow-button ow-ghost" data-prompt-cancel>取消</button>
+        <button type="button" class="ow-button" data-prompt-ok>确定</button>
     </div>
 </dialog>
 </body>

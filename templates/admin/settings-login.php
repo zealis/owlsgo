@@ -34,7 +34,7 @@ $toggles = [
             ]) ?>
         <?php endforeach; ?>
 
-        <div data-field style="max-width:280px">
+        <div data-ow-field style="max-width:280px">
             <label for="register_group">新用户默认用户组</label>
             <select id="register_group" name="register_group">                <?php foreach ($groups as $groupId => $groupName): ?>
                     <option value="<?= (int)$groupId ?>"
@@ -45,11 +45,11 @@ $toggles = [
             </select>
         </div>
 
-        <div data-field style="max-width:560px">
+        <div data-ow-field style="max-width:560px">
             <label for="reserved_names">保留用户名</label>
             <textarea id="reserved_names" name="reserved_names" rows="2"
                       placeholder="admin,root,guest,…（逗号分隔，不区分大小写）"><?= e($val('reserved_names', 'admin,root,administrator,system,support,official,staff,moderator,api,www,login,register,account,help,about,null,undefined,guest,test')) ?></textarea>
-            <p class="text-light" style="margin:6px 0 0;font-size:12.5px">
+            <p class="ow-text-light" style="margin:6px 0 0;font-size:12.5px">
                 前台注册不允许使用这些用户名（不区分大小写）。逗号分隔，仅对前台注册生效——
                 安装向导的管理员命名与后台修改用户名不受限制。
             </p>

@@ -33,12 +33,12 @@ $isSqlite = $driver === 'sqlite';
 ?>
 
 <?php if (!$installable): ?>
-    <div role="alert" data-variant="error" style="margin-bottom:var(--space-4)">
+    <div role="alert" data-ow-variant="error" style="margin-bottom:var(--space-4)">
         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
         <div>服务器环境未满足安装要求，请先解决右侧标记为红色的「必须」项。</div>
     </div>
 <?php elseif (!$storageWritable): ?>
-    <div role="alert" data-variant="warning" style="margin-bottom:var(--space-4)">
+    <div role="alert" data-ow-variant="warning" style="margin-bottom:var(--space-4)">
         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
         <div><code>storage/</code> 目录不可写，安装过程会失败，请先调整目录权限。</div>
     </div>
@@ -51,12 +51,12 @@ $isSqlite = $driver === 'sqlite';
         <?php /* ---------- 左栏：配置表单 ---------- */ ?>
         <div class="install-main">
 
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'database', 'size' => 16]) ?>数据库配置</h3>
                 </div>
                 <div class="panel__body">
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-driver">数据库类型</label>
                         <select id="install-driver" name="driver" required data-install-driver>
                             <?php foreach ($drivers as $code => $label): ?>
@@ -69,21 +69,21 @@ $isSqlite = $driver === 'sqlite';
 
                     <?php /* ---------- MySQL / PostgreSQL：库名 + 连接凭据（SQLite 无需任何输入项） ---------- */ ?>
                     <div data-install-remote<?= $isSqlite ? ' hidden' : '' ?>>
-                        <div data-field>
+                        <div data-ow-field>
                             <label for="install-database">数据库名</label>
                             <input type="text" id="install-database" name="database" maxlength="191"
                                    value="<?= e((string)old('database', '')) ?>">
-                            <span data-hint>数据库需提前创建，安装器只会创建其中的数据表。</span>
+                            <span data-ow-hint>数据库需提前创建，安装器只会创建其中的数据表。</span>
                         </div>
 
                         <div class="form-grid">
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="install-host">主机</label>
                                 <input type="text" id="install-host" name="host" maxlength="191"
                                        value="<?= e((string)old('host', '127.0.0.1')) ?>">
                             </div>
 
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="install-port">端口</label>
                                 <input type="number" id="install-port" name="port" min="0" max="65535"
                                        value="<?= e((string)old('port', '')) ?>" placeholder="留空使用默认端口">
@@ -91,13 +91,13 @@ $isSqlite = $driver === 'sqlite';
                         </div>
 
                         <div class="form-grid">
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="install-username">数据库用户</label>
                                 <input type="text" id="install-username" name="username" maxlength="191"
                                        autocomplete="off" value="<?= e((string)old('username', '')) ?>">
                             </div>
 
-                            <div data-field>
+                            <div data-ow-field>
                                 <label for="install-password">数据库密码</label>
                                 <input type="password" id="install-password" name="password"
                                        autocomplete="new-password">
@@ -105,7 +105,7 @@ $isSqlite = $driver === 'sqlite';
                         </div>
 
                         <button type="submit" name="action" value="test"
-                                class="button outline small install-test-btn">
+                                class="ow-button ow-outline ow-small install-test-btn">
                             <?= $view('partials/icon', ['name' => 'plug', 'size' => 15]) ?>
                             <span>测试数据库连接</span>
                         </button>
@@ -113,12 +113,12 @@ $isSqlite = $driver === 'sqlite';
                 </div>
             </section>
 
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'layers', 'size' => 16]) ?>站点信息</h3>
                 </div>
                 <div class="panel__body">
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-site-name">站点名称</label>
                         <input type="text" id="install-site-name" name="site_name" maxlength="60"
                                value="<?= e((string)old('site_name', 'owlsgo')) ?>">
@@ -131,44 +131,44 @@ $isSqlite = $driver === 'sqlite';
                 </div>
             </section>
 
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'shield', 'size' => 16]) ?>创建管理员</h3>
                 </div>
                 <div class="panel__body">
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-admin-username">管理员用户名</label>
                         <input type="text" id="install-admin-username" name="admin_username" required
                                maxlength="20" autocomplete="off"
                                value="<?= e((string)old('admin_username', '')) ?>">
                     </div>
 
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-admin-email">管理员邮箱</label>
                         <input type="email" id="install-admin-email" name="admin_email" required
                                maxlength="191" autocomplete="off"
                                value="<?= e((string)old('admin_email', '')) ?>">
-                        <span data-hint>用于找回密码与系统通知。</span>
+                        <span data-ow-hint>用于找回密码与系统通知。</span>
                     </div>
 
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-admin-password">管理员密码</label>
                         <input type="password" id="install-admin-password" name="admin_password" required
                                autocomplete="new-password">
-                        <span data-hint>建议使用 8 位以上、包含字母与数字的组合。</span>
+                        <span data-ow-hint>建议使用 8 位以上、包含字母与数字的组合。</span>
                     </div>
 
-                    <div data-field>
+                    <div data-ow-field>
                         <label for="install-admin-password-confirm">确认密码</label>
                         <input type="password" id="install-admin-password-confirm" name="admin_password_confirm"
                                required autocomplete="new-password">
-                        <span data-hint>请再次输入，两次必须完全一致。</span>
+                        <span data-ow-hint>请再次输入，两次必须完全一致。</span>
                     </div>
                 </div>
             </section>
 
             <?php /* ---------- 前置同意声明与风险确认：「开始安装」按钮就在本块下方 ---------- */ ?>
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>前置同意声明</h3>
                 </div>
@@ -189,13 +189,13 @@ $isSqlite = $driver === 'sqlite';
                         <span>我已确认这是全新安装，数据将被清理。</span>
                     </label>
 
-                    <div class="hstack install-submit">
-                        <button type="submit" class="button" data-install-submit
+                    <div class="ow-hstack install-submit">
+                        <button type="submit" class="ow-button" data-install-submit
                                 disabled<?= $installable ? '' : ' data-install-blocked' ?>>
                             <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                             <span>开始安装</span>
                         </button>
-                        <span class="text-light" style="font-size:12.5px">
+                        <span class="ow-text-light" style="font-size:12.5px">
                             勾选以上两项后方可提交。
                         </span>
                     </div>
@@ -206,7 +206,7 @@ $isSqlite = $driver === 'sqlite';
         <?php /* ---------- 右栏：环境检查 + 安装说明 ---------- */ ?>
         <aside class="install-aside">
 
-            <section class="panel mb-4">
+            <section class="panel ow-mb-4">
                 <div class="panel__head">
                     <h3><?= $view('partials/icon', ['name' => 'server', 'size' => 16]) ?>环境检查</h3>
                 </div>

@@ -21,11 +21,11 @@ $userId    = (int)($profile['id'] ?? 0);
 <?php /* 数据卡只在个人主页出现（帖子/评论/收藏/设置四个子页不渲染） */ ?>
 <?= $view('partials/profile-stats', ['profile' => $profile]) ?>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'file', 'size' => 16]) ?>最近发表的帖子</h3>
         <span class="spacer"></span>
-        <a class="text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/threads')) ?>">全部 ›</a>
+        <a class="ow-text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/threads')) ?>">全部 ›</a>
     </div>
 
     <?php if ($recentThreads === []): ?>
@@ -37,11 +37,11 @@ $userId    = (int)($profile['id'] ?? 0);
     <?php endif; ?>
 </section>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'reply', 'size' => 16]) ?>最近发表的评论</h3>
         <span class="spacer"></span>
-        <a class="text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/posts')) ?>">全部 ›</a>
+        <a class="ow-text-light" style="font-size:13px" href="<?= e(url('/u/' . $userId . '/posts')) ?>">全部 ›</a>
     </div>
 
     <?php if ($recentPosts === []): ?>
@@ -56,7 +56,7 @@ $userId    = (int)($profile['id'] ?? 0);
                             <?= e((string)($post['thread_title'] ?? '帖子已删除')) ?>
                         </a>
                     </div>
-                    <div class="text-light" style="font-size:13px;margin-top:2px">
+                    <div class="ow-text-light" style="font-size:13px;margin-top:2px">
                         <?= e(plain_text((string)($post['content'] ?? ''), 100)) ?>
                     </div>
                     <time datetime="<?= e(date('c', (int)($post['created_at'] ?? 0))) ?>">

@@ -34,7 +34,7 @@ $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
                   data-ajax data-ajax-redirect data-draft="thread-edit-<?= (int)$threadId ?>">
                 <?= csrf_field() ?>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="edit-title">帖子标题</label>
                     <input type="text" id="edit-title" name="title" required
                            maxlength="<?= $titleMax ?>" autocomplete="off"
@@ -44,7 +44,7 @@ $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
                     <?php endif; ?>
                 </div>
 
-                <div data-field>
+                <div data-ow-field>
                     <label for="edit-content">正文内容</label>
                     <?= $view('partials/editor', [
                         'editorId'    => 'edit-content',
@@ -59,12 +59,12 @@ $contentValue = (string)old('content', (string)($firstPost['content'] ?? ''));
                     <?php endif; ?>
                 </div>
 
-                <div class="hstack mt-4">
-                    <button type="submit" class="button">
+                <div class="ow-hstack ow-mt-4">
+                    <button type="submit" class="ow-button">
                         <?= $view('partials/icon', ['name' => 'check', 'size' => 16]) ?>
                         <span>保存修改</span>
                     </button>
-                    <a class="button ghost" href="<?= e(url('/t/' . $threadId)) ?>">取消</a>
+                    <a class="ow-button ow-ghost" href="<?= e(url('/t/' . $threadId)) ?>">取消</a>
                 </div>
             </form>
         </div>

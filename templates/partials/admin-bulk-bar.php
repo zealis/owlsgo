@@ -33,7 +33,7 @@ if ($bulkEndpoint === '' || $bulkOptions === []) {
 <div class="bulk-bar" data-bulk data-bulk-endpoint="<?= e($bulkEndpoint) ?>" data-bulk-noun="<?= e($bulkNoun) ?>">
     <?= csrf_field() ?>
 
-    <label class="bulk-bar__pick hstack" style="gap:6px">
+    <label class="bulk-bar__pick ow-hstack" style="gap:6px">
         <input type="checkbox" data-bulk-all>
         <span>全选本页</span>
     </label>
@@ -56,7 +56,7 @@ if ($bulkEndpoint === '' || $bulkOptions === []) {
         <?php endforeach; ?>
     </select>
 
-    <button type="button" class="button small" data-bulk-run disabled>
+    <button type="button" class="ow-button ow-small" data-bulk-run disabled>
         <?= $view('partials/icon', ['name' => 'check', 'size' => 15]) ?>
         <span>执行</span>
     </button>

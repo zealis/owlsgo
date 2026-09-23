@@ -47,8 +47,8 @@ $maxMb = max(1, (int)$maxMb);
 /**
  * 工具栏按钮
  *
- * 提示一律写成 title —— OATUI 的 tooltip.js 会把它转成样式化气泡；
- * 额外带 data-tooltip-placement="bottom"，避免气泡向上弹出时被卡片上沿裁掉
+ * 提示一律写成 title —— ui.css 的 tooltip.js 会把它转成样式化气泡；
+ * 额外带 data-ow-tooltip-placement="bottom"，避免气泡向上弹出时被卡片上沿裁掉
  * （卡片 .panel 是 overflow: hidden，见 theme.css 的说明）。
  */
 $mdButton = static function (string $attribute, string $value, string $icon, string $label, string $extra = '', string $aria = '') use ($view): string {
@@ -59,7 +59,7 @@ $mdButton = static function (string $attribute, string $value, string $icon, str
     return '<button type="button" class="editor-btn' . ($extra !== '' ? ' ' . $extra : '') . '"'
         . ' ' . $attribute . '="' . e($value) . '"'
         . ' title="' . e($label) . '" aria-label="' . e($aria !== '' ? $aria : $label) . '"'
-        . ' data-tooltip-placement="bottom">'
+        . ' data-ow-tooltip-placement="bottom">'
         . $view('partials/icon', ['name' => $icon, 'size' => 16])
         . '</button>';
 };
@@ -163,7 +163,7 @@ $mdGroups = [
          */
         ?>
         <div class="editor-upload-bar">
-            <button type="button" class="button ghost small" data-insert-all="#<?= e($targetId) ?>"
+            <button type="button" class="ow-button ow-ghost ow-small" data-insert-all="#<?= e($targetId) ?>"
                     title="把已上传的全部附件以 Markdown 形式插入正文">
                 <?= $view('partials/icon', ['name' => 'paperclip', 'size' => 14]) ?>
                 <span>批量插入</span>
