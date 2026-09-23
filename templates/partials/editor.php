@@ -171,7 +171,7 @@ $mdGroups = [
         </div>
         <input type="file" id="<?= e($filesId) ?>" name="files[]" multiple hidden
                data-upload="<?= e(url('/upload')) ?>" data-upload-target="#<?= e($targetId) ?>">
-        <div id="<?= e($targetId) ?>" class="attachment-list">
+        <div id="<?= e($targetId) ?>" class="attachment-list"<?= $attachments === [] ? ' hidden' : '' ?>>
             <?php
             /* 已有附件回显：结构与 app.js 动态创建的行完全一致，
                复制/移除走事件委托，所以回显行同样可复制、可从列表移除。 */

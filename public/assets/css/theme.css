@@ -1820,8 +1820,10 @@ ow-dropdown.post-more [popover] li [role="menuitem"]:focus:not(:focus-visible) {
   grid-area: fold;
 }
 
-/* 按钮还在 hidden（内容没超过阈值）时整行收掉，不占高度 */
-.fold-actions:has(.fold-toggle[hidden]) {
+/* 按钮还在 hidden（内容没超过阈值）时整行收掉，不占高度。
+   开合态类名由 app.js foldEvaluate() 同步（.is-shown = 按钮可见）；
+   不用 :has() —— 那要 Chrome 105，旧内核整条失效会让每个短帖子下多出一条空行 */
+.fold-actions:not(.is-shown) {
   display: none;
 }
 
@@ -4431,10 +4433,11 @@ pre.snippet code {
 }
 
 /*
- * 空列表隐藏：不能用 :empty —— 模板里的 PHP 循环会留下空白文本节点，
- * :empty 永远不匹配，空容器就只剩一条边框（看起来像「上传按钮下面多了条横线」）。
+ * 空列表隐藏：容器由模板在无附件时直接带 hidden，JS 增删行后由 app.js 的
+ * syncInsertButtons() 同步（旧实现靠 :not(:has(…))，那要 Chrome 105）。
+ * ⚠️ 必须写这条作者规则：.attachment-list 本身是 flex，会盖过 UA 的 [hidden]。
  */
-.attachment-list:not(:has(.attachment-row)) {
+.attachment-list[hidden] {
   display: none;
 }
 
@@ -4965,9 +4968,11 @@ html[data-theme="dark"] body a:hover:not(:where(.ow-button)) {
   color: var(--qq-blue-dark);
 }
 
-/* 表格行悬浮：ui.css 用 --muted 的半透明，深色里换成石墨薄底 */
+/* 表格行悬浮：ui.css 用 --muted 的半透明，深色里换成石墨薄底。
+   等价于 rgb(from var(--qq-blue) r g b / 0.14)；相对颜色要 Chrome 119，
+   深色下 --qq-blue 固定为 #586779，直接写死即可 */
 html[data-theme="dark"] tbody tr:hover {
-  background-color: rgb(from var(--qq-blue) r g b / 0.14);
+  background-color: rgba(88, 103, 121, 0.14);
 }
 
 /*
@@ -4978,7 +4983,9 @@ html[data-theme="dark"] tbody tr:hover {
  */
 html[data-theme="dark"] .tabbar > a[aria-current="page"]:hover,
 html[data-theme="dark"] .tabbar > button[aria-selected="true"]:hover {
-  background: color-mix(in srgb, var(--qq-blue) 55%, #fff);
+  /* 等价于 color-mix(in srgb, var(--qq-blue) 55%, #fff)；color-mix 要 Chrome 111，
+     深色下 --qq-blue 固定 #586779，55% 掺白 45% 手算结果写死 */
+  background: #a3abb5;
   color: #0f121a;
 }
 
@@ -5449,7 +5456,7 @@ html[data-theme="dark"] [data-theme-icon-moon] {
 }
 
 /* ==========================================================================
-   18. 旧内核兜底（不支持 Popover API / :has() 时）
+   18. 旧内核兜底（不支持 Popover API 时）
    --------------------------------------------------------------------------
    这一节是给「浏览器实现不全」的旧内核（如 Chromium 88~98：没有 Popover API）兜底。
    令牌层面的兜底见文件开头 :root 那段；这里补的是「少了就会明显不对」的行为样式。
@@ -5486,18 +5493,6 @@ html[data-theme="dark"] [data-theme-icon-moon] {
 }
 
 /*
- * ② 折叠按钮所在的整行
- *
- * 收起态本来靠 `.fold-actions:has(.fold-toggle[hidden])` 把整行收掉（见第 6 节）。
- * 没有 :has() 的内核里那条不生效 → 每个不够长的帖子下面都会多出一条 10px 空行。
- * 这里退化成类名开关，由 app.js 的 foldEvaluate() 同步。
+ * （原②折叠按钮整行的兜底已删：主规则第 6 节直接用 .is-shown 类名开关，
+ *   不再依赖 :has()，所有内核一条规则通吃，无需 @supports 分叉。）
  */
-@supports not selector(:has(*)) {
-  .fold-actions {
-    display: none;
-  }
-
-  .fold-actions.is-shown {
-    display: flex;
-  }
-}

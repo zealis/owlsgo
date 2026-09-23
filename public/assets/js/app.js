@@ -2827,6 +2827,13 @@
       ).length;
 
       btn.style.display = doneCount > 0 ? '' : 'none';
+
+      // 容器空了就 hidden（替代 theme.css 里需要 :has() 的那条；上传/移除后都会走到这里）
+      if (target.querySelector('.attachment-row')) {
+        target.removeAttribute('hidden');
+      } else {
+        target.setAttribute('hidden', '');
+      }
     });
   }
 
