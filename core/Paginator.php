@@ -2,7 +2,7 @@
 /**
  * 分页器
  *
- * 输出与 ui.css 一致的语义化标记（<nav> + <menu class="buttons">）。
+ * 输出与 ui.css 一致的语义化标记（<nav> + <menu class="ow-buttons">）。
  * 出于安全与性能考虑：
  *  - 页码上限由 app.max_page 控制，避免深分页把数据库拖垮
  *  - 所有页面链接都通过 url() 生成，参数经过编码，杜绝参数注入
@@ -47,16 +47,16 @@ final class Paginator
 
         /*
          * 注意所有按钮只能用 <a> 或 <button>：
-         * ui.css 的按钮基础样式选择器是 :is(button, ..., a.button)，
-         * <span class="button"> 完全匹配不上 —— 不会拿到 padding / flex 布局，
+         * ui.css 的按钮基础样式选择器是 :is(button, ..., a.ow-button)，
+         * <span class="ow-button"> 完全匹配不上 —— 不会拿到 padding / flex 布局，
          * 直接塌成一个 7px 宽的裸文字条（这个坑实际踩过：当前页原本用 span）。
          * 禁用态用 <button disabled>，浏览器原生不可点，样式也由 ui.css 接管。
          */
 
         // 上一页
         $items[] = $page > 1
-            ? '<li><a class="button outline small" href="' . $link($page - 1) . '" rel="prev">上一页</a></li>'
-            : '<li><button type="button" class="button outline small" disabled>上一页</button></li>';
+            ? '<li><a class="ow-button ow-outline ow-small" href="' . $link($page - 1) . '" rel="prev">上一页</a></li>'
+            : '<li><button type="button" class="ow-button ow-outline ow-small" disabled>上一页</button></li>';
 
         // 页码窗口：首页、尾页、当前页 ±2
         $window = [];
@@ -75,9 +75,9 @@ final class Paginator
             if ($number === $page) {
                 // 当前页同样是 <a>（指向自己），aria-current 负责标注「这就是当前页」，
                 // 实心高亮交给 theme.css 的 .pagination [aria-current] 规则
-                $items[] = '<li><a class="button small" aria-current="page" href="' . $link($number) . '">' . $number . '</a></li>';
+                $items[] = '<li><a class="ow-button ow-small" aria-current="page" href="' . $link($number) . '">' . $number . '</a></li>';
             } else {
-                $items[] = '<li><a class="button outline small" href="' . $link($number) . '">' . $number . '</a></li>';
+                $items[] = '<li><a class="ow-button ow-outline ow-small" href="' . $link($number) . '">' . $number . '</a></li>';
             }
 
             $previous = $number;
@@ -85,11 +85,11 @@ final class Paginator
 
         // 下一页
         $items[] = $page < $pages
-            ? '<li><a class="button outline small" href="' . $link($page + 1) . '" rel="next">下一页</a></li>'
-            : '<li><button type="button" class="button outline small" disabled>下一页</button></li>';
+            ? '<li><a class="ow-button ow-outline ow-small" href="' . $link($page + 1) . '" rel="next">下一页</a></li>'
+            : '<li><button type="button" class="ow-button ow-outline ow-small" disabled>下一页</button></li>';
 
         return '<nav class="pagination" aria-label="分页导航">'
-            . '<menu class="buttons">' . implode('', $items) . '</menu>'
+            . '<menu class="ow-buttons">' . implode('', $items) . '</menu>'
             . '</nav>';
     }
 

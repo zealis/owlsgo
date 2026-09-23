@@ -31,12 +31,12 @@ $latest = (int)($stats['latest'] ?? 0);
         <div class="panel__head">
             <h3><?= $view('partials/icon', ['name' => 'bulb', 'size' => 16]) ?>owlsgo-demo 插件</h3>
             <span class="spacer"></span>
-            <span class="badge">v1.0.0</span>
+            <span class="ow-badge">v1.0.0</span>
         </div>
 
         <div class="panel__body">
             <p style="font-size:16px;font-weight:600;margin:0 0 6px" data-owlsgo-demo-greeting><?= e($greeting) ?></p>
-            <p class="text-light" style="margin:0">
+            <p class="ow-text-light" style="margin:0">
                 这个页面由插件自己的模板渲染（<code>plugins/owlsgo-demo/templates/hello.php</code>），
                 并通过 <code>view('plugin/owlsgo-demo/hello')</code> 套用了站点前台布局，
                 因此它和核心页面拥有一致的头部、导航与页脚。
@@ -45,7 +45,7 @@ $latest = (int)($stats['latest'] ?? 0);
     </section>
 <?php else: ?>
     <h1 style="font-size:20px;margin:0 0 8px"><?= e($greeting) ?></h1>
-    <p class="text-light" style="margin:0 0 var(--space-4)">
+    <p class="ow-text-light" style="margin:0 0 var(--space-4)">
         「极简式」样式由后台配置项「前台页面样式」控制，用于演示 select 类型插件配置的读取。
     </p>
 <?php endif; ?>
@@ -84,12 +84,12 @@ $latest = (int)($stats['latest'] ?? 0);
     </div>
 </div>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'list', 'size' => 16]) ?>最近活动</h3>
         <span class="spacer"></span>
         <?php if ($isAdmin): ?>
-            <a class="text-light" style="font-size:13px" href="<?= e($adminUrl) ?>">在后台查看全部 ›</a>
+            <a class="ow-text-light" style="font-size:13px" href="<?= e($adminUrl) ?>">在后台查看全部 ›</a>
         <?php endif; ?>
     </div>
 
@@ -107,9 +107,9 @@ $latest = (int)($stats['latest'] ?? 0);
                     <div class="notice-item__text">
                         <strong><?= e((string)($record['username'] ?? '') !== '' ? (string)$record['username'] : '匿名') ?></strong>
                         ·
-                        <span class="text-light"><?= e(\OwlsgoDemo\Service::kindLabel((string)($record['kind'] ?? ''))) ?></span>
+                        <span class="ow-text-light"><?= e(\OwlsgoDemo\Service::kindLabel((string)($record['kind'] ?? ''))) ?></span>
                     </div>
-                    <div class="text-light" style="font-size:13px;margin-top:2px">
+                    <div class="ow-text-light" style="font-size:13px;margin-top:2px">
                         <?= e((string)($record['detail'] ?? '')) ?>
                     </div>
                     <time datetime="<?= e(date('c', (int)($record['created_at'] ?? 0))) ?>">
@@ -121,7 +121,7 @@ $latest = (int)($stats['latest'] ?? 0);
     <?php endif; ?>
 </section>
 
-<section class="panel mt-4">
+<section class="panel ow-mt-4">
     <div class="panel__head">
         <h3><?= $view('partials/icon', ['name' => 'info', 'size' => 16]) ?>这个插件演示了什么</h3>
     </div>
@@ -138,12 +138,12 @@ $latest = (int)($stats['latest'] ?? 0);
         </div>
 
         <?php if ($isAdmin): ?>
-            <div class="hstack mt-4">
-                <a class="button small" href="<?= e($adminUrl) ?>">
+            <div class="ow-hstack ow-mt-4">
+                <a class="ow-button ow-small" href="<?= e($adminUrl) ?>">
                     <?= $view('partials/icon', ['name' => 'dashboard', 'size' => 15]) ?>
                     <span>插件后台页面</span>
                 </a>
-                <a class="button outline small" href="<?= e($configUrl) ?>">
+                <a class="ow-button ow-outline ow-small" href="<?= e($configUrl) ?>">
                     <?= $view('partials/icon', ['name' => 'settings', 'size' => 15]) ?>
                     <span>插件配置</span>
                 </a>

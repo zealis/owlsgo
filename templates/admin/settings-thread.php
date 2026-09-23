@@ -80,21 +80,21 @@ $toggles = [
         <div class="form-grid form-grid--3">
             <div data-ow-field>
                 <label for="fold_topic_height">帖子正文高度（px）</label>
-                <input type="number" id="fold_topic_height" name="fold_topic_height" min="100" max="2000"
+                <input type="number" id="fold_topic_height" name="fold_topic_height" min="200" max="2000"
                        value="<?= e($val('fold_topic_height', '250')) ?>">
                 <span data-ow-hint>首楼正文超过这个显示高度就折叠，默认 250。</span>
             </div>
 
             <div data-ow-field>
                 <label for="fold_reply_height">回帖高度（px）</label>
-                <input type="number" id="fold_reply_height" name="fold_reply_height" min="100" max="2000"
-                       value="<?= e($val('fold_reply_height', '180')) ?>">
-                <span data-ow-hint>评论楼层用这个阈值，默认 180（比首楼矮一档）。</span>
+                <input type="number" id="fold_reply_height" name="fold_reply_height" min="200" max="2000"
+                       value="<?= e($val('fold_reply_height', '200')) ?>">
+                <span data-ow-hint>评论楼层用这个阈值，默认 200（比首楼矮一档，且已是最低允许值）。</span>
             </div>
 
             <div data-ow-field>
                 <label for="fold_notice_height">全站通知高度（px）</label>
-                <input type="number" id="fold_notice_height" name="fold_notice_height" min="100" max="2000"
+                <input type="number" id="fold_notice_height" name="fold_notice_height" min="200" max="2000"
                        value="<?= e($val('fold_notice_height', '270')) ?>">
                 <span data-ow-hint>通知中心里的公告正文，默认 270。</span>
             </div>

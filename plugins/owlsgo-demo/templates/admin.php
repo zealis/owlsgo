@@ -76,7 +76,7 @@ $configRows = [
                 <form method="post" action="<?= e($clearUrl) ?>" class="inline-form"
                       data-confirm="确定要清空该插件的全部活动记录吗？该操作立即生效且无法恢复。">
                     <?= csrf_field() ?>
-                    <button type="submit" class="button outline small" data-variant="danger">
+                    <button type="submit" class="ow-button ow-outline ow-small" data-ow-variant="danger">
                         <?= $view('partials/icon', ['name' => 'trash', 'size' => 15]) ?>
                         <span>清空记录</span>
                     </button>
@@ -110,11 +110,11 @@ $configRows = [
                                         <?= e((string)($record['username'] ?? '') !== '' ? (string)$record['username'] : '用户 #' . (int)$record['user_id']) ?>
                                     </a>
                                 <?php else: ?>
-                                    <span class="text-light">—</span>
+                                    <span class="ow-text-light">—</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <span class="badge outline"><?= e(\OwlsgoDemo\Service::kindLabel((string)($record['kind'] ?? ''))) ?></span>
+                                <span class="ow-badge ow-outline"><?= e(\OwlsgoDemo\Service::kindLabel((string)($record['kind'] ?? ''))) ?></span>
                             </td>
                             <td><?= e((string)($record['detail'] ?? '')) ?></td>
                             <td>
@@ -135,7 +135,7 @@ $configRows = [
             <div class="panel__head">
                 <h3><?= $view('partials/icon', ['name' => 'settings', 'size' => 16]) ?>当前配置</h3>
                 <span class="spacer"></span>
-                <a class="text-light" style="font-size:13px" href="<?= e($configUrl) ?>">修改 ›</a>
+                <a class="ow-text-light" style="font-size:13px" href="<?= e($configUrl) ?>">修改 ›</a>
             </div>
 
             <div class="panel__body">
@@ -153,7 +153,7 @@ $configRows = [
                         }
                         ?>
                         <tr>
-                            <td class="text-light" style="width:44%"><?= e($label) ?></td>
+                            <td class="ow-text-light" style="width:44%"><?= e($label) ?></td>
                             <td><?= e($value) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -173,26 +173,26 @@ $configRows = [
                 </p>
 
                 <?php if ($tableReady): ?>
-                    <div role="alert" data-variant="success">
+                    <div role="alert" data-ow-variant="success">
                         <?= $view('partials/icon', ['name' => 'check', 'size' => 18]) ?>
                         <div>数据表已就绪。表由 <code>sql/<?= e(\Core\Database::driver()) ?>.sql</code> 在插件启用时自动创建。</div>
                     </div>
                 <?php else: ?>
-                    <div role="alert" data-variant="warning">
+                    <div role="alert" data-ow-variant="warning">
                         <?= $view('partials/icon', ['name' => 'alert', 'size' => 18]) ?>
                         <div>未检测到数据表。请先停用再重新启用本插件，核心会重新执行建表脚本。</div>
                     </div>
                 <?php endif; ?>
 
-                <div class="doc-note mt-4">
+                <div class="doc-note ow-mt-4">
                     <div>
                         <p style="margin:0 0 6px"><strong>清理策略</strong>：计划任务 <code>owlsgo_demo_cleanup</code> 每天执行一次，删除 <strong><?= $retention ?></strong> 天前的记录。</p>
                         <p style="margin:0">可在「计划任务」页查看执行日志，或手动触发一次。</p>
                     </div>
                 </div>
 
-                <div class="hstack mt-4">
-                    <a class="button small" href="<?= e($frontUrl) ?>" target="_blank" rel="noopener">
+                <div class="ow-hstack ow-mt-4">
+                    <a class="ow-button ow-small" href="<?= e($frontUrl) ?>" target="_blank" rel="noopener">
                         <?= $view('partials/icon', ['name' => 'external', 'size' => 15]) ?>
                         <span>访问插件前台页</span>
                     </a>

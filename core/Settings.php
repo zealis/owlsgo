@@ -75,7 +75,7 @@ final class Settings
              */
             'fold_long_content'  => '1',
             'fold_topic_height'  => '250',   // 首楼
-            'fold_reply_height'  => '180',   // 回复楼层（通常比首楼短，阈值也小些）
+            'fold_reply_height'  => '200',   // 回复楼层（比首楼矮一档；200 是允许的最低值）
             'fold_notice_height' => '270',   // 通知中心的公告正文
 
             /* 附件 */

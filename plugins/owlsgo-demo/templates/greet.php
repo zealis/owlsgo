@@ -28,7 +28,7 @@ $homeUrl  = (string)($homeUrl ?? url('/hello'));
         <h3><?= $view('partials/icon', ['name' => 'bulb', 'size' => 16]) ?>打招呼</h3>
         <span class="spacer"></span>
         <?php if ($isSelf): ?>
-            <span class="badge">这是你自己的主页</span>
+            <span class="ow-badge">这是你自己的主页</span>
         <?php endif; ?>
     </div>
 
@@ -38,15 +38,15 @@ $homeUrl  = (string)($homeUrl ?? url('/hello'));
             <span style="color:var(--qq-blue-deep)"><?= e($name) ?></span>
         </p>
 
-        <p class="text-light" style="margin:0">
+        <p class="ow-text-light" style="margin:0">
             页面地址中的 <code>{name}</code> 是路由占位符，由
             <code>Plugin::route('GET', '/hello/{name}', ...)</code> 声明，
             核心会把匹配到的 <code>name</code> 作为 <code>$params['name']</code> 传给处理器。
             你也可以从个人主页的「插件标签页」点进来。
         </p>
 
-        <div class="hstack mt-4">
-            <a class="button small" href="<?= e($homeUrl) ?>">
+        <div class="ow-hstack ow-mt-4">
+            <a class="ow-button ow-small" href="<?= e($homeUrl) ?>">
                 <?= $view('partials/icon', ['name' => 'arrow-left', 'size' => 15]) ?>
                 <span>返回插件首页</span>
             </a>
