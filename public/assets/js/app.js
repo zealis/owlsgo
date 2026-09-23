@@ -2434,6 +2434,17 @@
     toggle.hidden = !overflowing;
     content.classList.toggle('is-folded', overflowing && !expanded);
 
+    /*
+     * 没有 :has() 的内核里，theme.css 的 `.fold-actions:has(.fold-toggle[hidden])`
+     * 整行收掉那招不生效，改由这里同步类名（见 theme.css 第 18 节）。
+     * 现代内核下这个类名没人用（那条 :has() 规则自己就能收掉），加了也不影响。
+     */
+    var actions = toggle.parentNode;
+
+    if (actions && actions.classList && actions.classList.contains('fold-actions')) {
+      actions.classList.toggle('is-shown', !toggle.hidden);
+    }
+
     // 展开着但内容被改短了（例如图片没加载出来）→ 复位成收起态，免得按钮文案骗人
     if (!overflowing && expanded) {
       toggle.setAttribute('aria-expanded', 'false');
@@ -2606,7 +2617,11 @@
   }
 
   /* =======================================================================
-   * 9. 下拉菜单点击后自动关闭（原生 popover 不会自动收）
+   * 9. 下拉菜单（点击后自动关闭 + 没有 Popover API 的旧内核兜底）
+   * -----------------------------------------------------------------------
+   * 现代内核：popovertarget 属性、:popover-open、popover 的 toggle 事件
+   * 都由浏览器实现，这里只补「点菜单项后自动收起」。
+   * 旧内核（Chromium < 114 等）见下面「旧内核兜底」那段。
    * ===================================================================== */
 
   function initDropdownAutoClose() {
@@ -2627,7 +2642,118 @@
         if (typeof popover.hidePopover === 'function' && popover.matches(':popover-open')) {
           popover.hidePopover();
         }
+        // 旧内核：原生 popover 不存在，走自己的那套（见下面「旧内核兜底」）
+        legacyPopoverClose(popover);
       }, 60);
+    });
+  }
+
+  /*
+   * ---- 旧内核兜底：没有 Popover API 的内核 ----
+   *
+   * 现代内核下 popovertarget 是空属性、[popover] 也不会被浏览器藏起来
+   * → 菜单「默认展开」而且点了没反应。兜底用 data-popover-open 自己开关，
+   * 隐藏 / 显示样式在 theme.css 第 18 节的 @supports not selector(:popover-open) 里。
+   * 定位：oat/js/dropdown.js 靠监听 popover 的 toggle 事件定位，旧内核里那个事件
+   * 永远不触发，所以这里按同一套算法（下方放不下就翻到按钮上方）写一遍。
+   */
+
+  /** 原生 Popover API 是否可用（与 theme.css 那条 @supports 判据保持一致） */
+  function hasNativePopover() {
+    return typeof HTMLElement !== 'undefined'
+      && typeof HTMLElement.prototype.showPopover === 'function';
+  }
+
+  /** 旧内核路径：收起一个菜单（现代内核下是空操作） */
+  function legacyPopoverClose(popover) {
+    if (!popover || !popover.hasAttribute('data-popover-open')) {
+      return;
+    }
+
+    popover.removeAttribute('data-popover-open');
+
+    var trigger = legacyPopoverTrigger(popover);
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function legacyPopoverTrigger(popover) {
+    if (!popover.id) {
+      return null;
+    }
+
+    return document.querySelector('[popovertarget="' + popover.id + '"]');
+  }
+
+  function legacyPopoverOpen(popover, trigger) {
+    popover.setAttribute('data-popover-open', '');
+
+    // 先按当前位置量一次（display 刚变成 block，尺寸才是真值），再决定放上还是放下
+    var box = trigger.getBoundingClientRect();
+    var menu = popover.getBoundingClientRect();
+
+    popover.style.top = (box.bottom + menu.height > window.innerHeight ? box.top - menu.height : box.bottom) + 'px';
+    popover.style.left = (box.left + menu.width > window.innerWidth ? box.right - menu.width : box.left) + 'px';
+
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function initLegacyPopovers() {
+    if (hasNativePopover()) {
+      return;
+    }
+
+    document.addEventListener('click', function (event) {
+      var target = event.target;
+
+      if (!target || typeof target.closest !== 'function') {
+        return;
+      }
+
+      var trigger = target.closest('[popovertarget]');
+
+      if (trigger) {
+        var id = trigger.getAttribute('popovertarget');
+        var popover = id ? document.getElementById(id) : null;
+
+        if (!popover) {
+          return;
+        }
+
+        // 同一时刻只留一个：先全收掉，再决定要不要开
+        var wasOpen = popover.hasAttribute('data-popover-open');
+        Array.prototype.forEach.call(
+          document.querySelectorAll('[popover][data-popover-open]'),
+          legacyPopoverClose
+        );
+
+        if (!wasOpen) {
+          legacyPopoverOpen(popover, trigger);
+        }
+
+        event.preventDefault();
+        return;
+      }
+
+      // 点菜单内部不算「点外部」；点别处一律收起
+      if (!target.closest('[popover][data-popover-open]')) {
+        Array.prototype.forEach.call(
+          document.querySelectorAll('[popover][data-popover-open]'),
+          legacyPopoverClose
+        );
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape' && event.key !== 'Esc') {
+        return;
+      }
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('[popover][data-popover-open]'),
+        legacyPopoverClose
+      );
     });
   }
 
@@ -4058,6 +4184,7 @@
     initFilePreview();
     initCopy();
     initDropdownAutoClose();
+    initLegacyPopovers();
     initExternalLinks();
     initHistoryBack();
     initUploads();

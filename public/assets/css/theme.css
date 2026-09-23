@@ -81,6 +81,33 @@
 
   --radius-medium: 0.5rem;
   --radius-large: 0.875rem;
+
+  /*
+   * ---------- OATUI 令牌兜底（**必须保留**，别当成重复定义删掉） ----------
+   *
+   * oat.css 整个文件包在 `@layer` 里。不支持 CSS Cascade Layers 的内核
+   * （Chromium < 99、不少国产手机浏览器内核）会把**整份 oat.css 丢掉**，
+   * 于是「只在 oat.css 里定义过」的令牌全部取不到值 —— 而 var() 取不到值时，
+   * 那条声明会退化成 initial（margin / padding / gap 一律变 0），
+   * 现象就是「面板之间的间隔全没了」。
+   *
+   * 下面这些令牌 theme.css 自己也在用，所以在这里按 oat.css 的原值补一份：
+   * 无层样式会压过 @layer，但**值完全一致**，现代浏览器渲染不会有任何变化。
+   * ⚠️ 改动时务必与 oat.css 同一段（@layer theme 的 :root）保持一致。
+   */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* oat.css 里写的是 rgb(0 0 0 / .1)（空格 + 斜杠语法，Chrome 65+ 才有），
+     这里换成等价的 rgba()，旧内核也认，观感完全相同 */
+  --shadow-large: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==========================================================================
@@ -95,6 +122,11 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  /* oat.css 的 `* { margin: 0 }` 在 @layer base 里，旧内核整份丢弃后
+     body 会退回 UA 的 8px 外边距（整页缩进去一圈）。这里显式钉住 ——
+     oat.css 并没有单独给 body 写过 margin，所以这条不会跟任何 OATUI 规则打架。 */
+  margin: 0;
 }
 
 /*
@@ -5420,4 +5452,59 @@ html[data-theme="dark"] [data-theme-icon-moon] {
 
 .post-ops form[data-active="1"] .button:hover {
   color: var(--qq-blue-dark);
+}
+
+/* ==========================================================================
+   18. 旧内核兜底（不支持 @layer / Popover API / :has() 时）
+   --------------------------------------------------------------------------
+   症状来源：oat.css 整份包在 @layer 里，不支持 CSS Cascade Layers 的内核
+   （Chromium < 99、部分国产手机浏览器内核）会把**整份 oat.css 丢掉** ——
+   令牌兜底见文件开头 :root 那段。这里再补三处「丢了以后界面会明显不对」的地方。
+   全部用 @supports 特性查询包住：现代浏览器**一条都不会生效**（含 Chrome / Safari 17+ / Firefox）。
+   ========================================================================== */
+
+/*
+ * ① 下拉菜单（顶栏齿轮 / 帖子「⋯」）
+ *
+ * 原生 popover 的「默认隐藏」是**浏览器 UA 样式**给的，不是 oat.css 给的；
+ * oat.css 负责的 `position: fixed`，以及 oat/js/dropdown.js 的定位与开合
+ * （监听 popover 的 toggle 事件）也一起没了。于是旧内核上：菜单不隐藏，
+ * 看起来像「导航栏下拉默认展开」，还留在文档流里把顶栏撑高。
+ *
+ * @supports selector() 从 Chrome 83 起可用；在支持 popover 的内核里
+ * `not selector(:popover-open)` 恒为 false，所以这一整块对现代内核是空操作。
+ */
+@supports not selector(:popover-open) {
+  [popover]:not([data-popover-open]) {
+    display: none;
+  }
+
+  /* 打开态：显式 fixed（不依赖父级定位），top/left 由 app.js initLegacyPopovers() 写。
+     opacity / transform 是压 oat.css 的 `[popover]{opacity:0;transform:translateY(-4px)}`
+     —— 那两条只在 `:popover-open` 时才被改回可见，旧内核里这个伪类不存在，
+     不写的话菜单虽然 display:block 却仍是全透明的「隐形菜单」。 */
+  [popover][data-popover-open] {
+    display: block;
+    position: fixed;
+    z-index: 60;                 /* 压过 .site-header 的 40 */
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * ② 折叠按钮所在的整行
+ *
+ * 收起态本来靠 `.fold-actions:has(.fold-toggle[hidden])` 把整行收掉（见第 6 节）。
+ * 没有 :has() 的内核里那条不生效 → 每个不够长的帖子下面都会多出一条 10px 空行。
+ * 这里退化成类名开关，由 app.js 的 foldEvaluate() 同步。
+ */
+@supports not selector(:has(*)) {
+  .fold-actions {
+    display: none;
+  }
+
+  .fold-actions.is-shown {
+    display: flex;
+  }
 }
